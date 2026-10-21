@@ -12,6 +12,8 @@ npm ci
 npm run dev          # Electron with HMR
 npm run typecheck && npm run lint && npm run format:check && npm test
 npm run build        # typecheck + electron-vite build -> out/
+npm run start        # production build, run unpackaged (no HMR, no devtools reload)
+npm run dist:dir     # packaged app, unpacked, in release/ (fast smoke test)
 npm run dist         # package for this OS -> release/
 npm run tokens       # regenerate styles/tokens.css from design/tokens.json
 ```
