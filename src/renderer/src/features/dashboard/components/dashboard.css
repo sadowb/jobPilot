@@ -1,10 +1,9 @@
 /* Dashboard-only rules the V17 boards carry in per-board <style> blocks or implicit browser defaults. */
 
-/* Height of the top bar (14px padding + 58px pill nav) the boards subtract from their frame: 960 - 874. */
+/* Share the shell toolbar's actual height on desktop and in browser previews. */
 .dash-page {
-  --topbar-h: 86px;
   display: flex;
-  height: calc(100vh - var(--topbar-h));
+  height: calc(100vh - var(--app-toolbar-height));
   position: relative;
 }
 

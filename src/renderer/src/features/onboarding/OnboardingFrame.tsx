@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavButton } from '../../components/NavButton';
 import { Logo } from '../../components/Logo';
+import { AppearanceControl } from '../../components/AppearanceControl';
 import '../../styles/motion.css';
 import '../../styles/v17-surfaces.css';
 import { ONBOARDING_STEPS, dotState, type OnboardingStep } from './steps';
@@ -26,12 +27,14 @@ export function OnboardingFrame({
 }) {
   return (
     <>
-      <header
-        className="top"
-        style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '22px 56px' }}
-      >
-        <Logo label="JobPilot, setup" />
-        <div className="row nw" style={{ gap: 8, justifySelf: 'center' }} role="img" aria-label={`Step ${step} of 5`}>
+      <header className="top onboarding-top">
+        {window.jobpilot?.platform !== 'darwin' && <Logo label="JobPilot, setup" />}
+        <div
+          className="row nw setup-progress"
+          style={{ gap: 8, justifySelf: 'center' }}
+          role="img"
+          aria-label={`Step ${step} of 5`}
+        >
           {ONBOARDING_STEPS.map((i) => (
             <i key={i} style={dotStyle(dotState(i, step))} />
           ))}
@@ -39,7 +42,8 @@ export function OnboardingFrame({
             {step} / 5
           </span>
         </div>
-        <div style={{ justifySelf: 'end' }}>
+        <div className="row nw setup-actions" style={{ justifySelf: 'end', gap: 8 }}>
+          <AppearanceControl />
           <NavButton className="btn ghost sm" to="/">
             Skip for now
           </NavButton>

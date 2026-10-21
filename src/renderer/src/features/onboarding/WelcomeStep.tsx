@@ -10,11 +10,12 @@ export function WelcomeStep() {
   return (
     <OnboardingFrame step={1} minHeight={822}>
       <div
+        className="welcome-layout"
         style={{
           flex: 1,
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: 'minmax(0,1fr) 720px',
+          gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.3fr)',
           gap: 48,
           alignItems: 'center',
         }}
@@ -71,6 +72,7 @@ export function WelcomeStep() {
           </div>
         </div>
         <div
+          className="welcome-art"
           style={{
             position: 'relative',
             width: '100%',

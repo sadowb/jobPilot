@@ -115,7 +115,10 @@ export function AppliedView({
           </button>
         </div>
         <MetricRow />
-        <div className="row nw" style={{ gap: 12, justifyContent: 'space-between', alignItems: 'center', minWidth: 0 }}>
+        <div
+          className="row nw applied-search-tools"
+          style={{ gap: 12, justifyContent: 'space-between', alignItems: 'center', minWidth: 0 }}
+        >
           <SearchField ref={searchRef} value={state.query} onChange={(query) => dispatch({ type: 'query', query })} />
           <FilterChips
             counts={counts}

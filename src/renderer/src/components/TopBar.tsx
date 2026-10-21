@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { Logo } from './Logo';
+import { AppearanceControl } from './AppearanceControl';
+import { useProfileIdentity } from '../features/profile/useProfileIdentity';
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
@@ -24,9 +26,10 @@ const GearIcon = () => (
 
 /** The V17 top bar: logo, pill nav (Dashboard · Inbox · Analytics), ⌘K, settings, account. */
 export function TopBar({ onAsk, onSettings }: { onAsk?: () => void; onSettings?: () => void }) {
+  const identity = useProfileIdentity();
   return (
     <header className="top">
-      <Logo />
+      {window.jobpilot?.platform !== 'darwin' && <Logo />}
       <nav className="pillnav" aria-label="Main">
         {NAV.map((item) => (
           <NavLink key={item.to} to={item.to} end={'end' in item} className="pn">
@@ -44,12 +47,18 @@ export function TopBar({ onAsk, onSettings }: { onAsk?: () => void; onSettings?:
         >
           ⌘K Ask Cap
         </button>
+        <AppearanceControl />
         <button className="btn ghost ic" type="button" aria-label="Settings" title="Settings (,)" onClick={onSettings}>
           <GearIcon />
         </button>
-        <button className="avatar" type="button" aria-label="Account menu">
-          AM
-        </button>
+        <NavLink
+          className="avatar"
+          to="/profile"
+          aria-label="About me — profile and documents"
+          title="Your profile & documents"
+        >
+          {identity.initials}
+        </NavLink>
       </div>
     </header>
   );

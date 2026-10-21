@@ -184,7 +184,10 @@ export const ThreadList = forwardRef<HTMLInputElement, ThreadListProps>(function
           </span>
         </label>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div
+        className="inbox-thread-list"
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
         <SectionLabel>Pilot</SectionLabel>
         <CapRow on={selected === 'cap'} clear={clear} onSelect={() => onSelect('cap')} />
         <SectionLabel>{clear ? 'Needs you · 0' : `Needs you · ${pendingCount} · newest first`}</SectionLabel>

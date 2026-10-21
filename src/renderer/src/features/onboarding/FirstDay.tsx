@@ -76,7 +76,7 @@ export function FirstDay() {
       className="v17"
       style={{
         boxSizing: 'border-box',
-        height: 'calc(100vh - 86px)',
+        height: 'calc(100vh - var(--app-toolbar-height))',
         minHeight: 814,
         padding: '28px 40px 48px',
         display: 'flex',

@@ -1,0 +1,210 @@
+:root {
+  --app-toolbar-height: 86px;
+  --native-toolbar-inset: 0px;
+}
+.onboarding-top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 22px 56px;
+}
+html[data-platform='darwin'] {
+  --native-toolbar-inset: var(--app-toolbar-height);
+  scroll-padding-top: var(--app-toolbar-height);
+}
+/* A compact toolbar stays behind the native controls when a long page scrolls. */
+html[data-platform='darwin'] .top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  height: var(--app-toolbar-height);
+  min-height: var(--app-toolbar-height);
+  padding: 6px 24px;
+  gap: 16px;
+  background: var(--ground);
+  -webkit-app-region: drag;
+  app-region: drag;
+  user-select: none;
+}
+html[data-platform='darwin'] .top::before {
+  content: '';
+  grid-column: 1;
+  grid-row: 1;
+  width: 80px;
+  height: 32px;
+}
+html[data-platform='darwin'] .top .pn {
+  min-height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+html[data-platform='darwin'] .top .btn {
+  min-height: 32px;
+  height: 32px;
+}
+html[data-platform='darwin'] .top .btn.ic {
+  width: 32px;
+  padding: 0;
+}
+html[data-platform='darwin'] .top .avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+html[data-platform='darwin'] .top > :is(.pillnav, .setup-progress) {
+  grid-column: 2;
+  grid-row: 1;
+}
+html[data-platform='darwin'] .top > :is(.right, .setup-actions) {
+  grid-column: 3;
+  grid-row: 1;
+}
+html[data-platform='darwin']
+  .top
+  :is(a, button, input, select, textarea, [role='button'], [role='radio'], .pillnav, [popover]) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+/* A standalone design preview has no normal header, but still needs a native drag surface. */
+.native-preview-titlebar {
+  display: none;
+}
+html[data-platform='darwin'] .native-preview-titlebar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  height: var(--app-toolbar-height);
+  background: var(--ground);
+  align-items: center;
+  justify-content: center;
+  font: 12px var(--sans);
+  color: var(--muted);
+  -webkit-app-region: drag;
+  app-region: drag;
+  user-select: none;
+}
+.appearance-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  flex: none;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.appearance-button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+/* A brief opacity fade keeps content still while the palette changes. */
+html[data-theme-transition]::view-transition {
+  pointer-events: none;
+}
+html[data-theme-transition]::view-transition-group(root),
+html[data-theme-transition]::view-transition-old(root),
+html[data-theme-transition]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html[data-theme-transition]::view-transition-old(root) {
+  z-index: 1;
+}
+html[data-theme-transition]::view-transition-new(root) {
+  z-index: 2;
+}
+@media (max-width: 1194px) {
+  .welcome-layout {
+    gap: 32px !important;
+  }
+  .welcome-layout .h1 {
+    font-size: 52px !important;
+  }
+  .welcome-art {
+    height: auto !important;
+    aspect-ratio: 1;
+  }
+  .welcome-art .v17-land {
+    left: 34% !important;
+    top: 15% !important;
+    width: 50% !important;
+    height: auto !important;
+  }
+  .welcome-art .v17-bob,
+  .welcome-art .v17-bob > svg {
+    width: 100% !important;
+    height: auto !important;
+  }
+  .welcome-art .bub {
+    left: 40% !important;
+    top: 30px !important;
+    font-size: 13px !important;
+  }
+  .queue-heading {
+    flex-wrap: wrap !important;
+    gap: 14px !important;
+  }
+  .applied-search-tools {
+    flex-wrap: wrap !important;
+    align-items: stretch !important;
+  }
+  .applied-search-tools > [role='group'] {
+    width: 100%;
+  }
+}
+
+html[data-platform='darwin'] .cvm {
+  top: calc(var(--app-toolbar-height) + 16px) !important;
+}
+html[data-platform='darwin'] :is(.scrim, .v17sheet) {
+  top: var(--app-toolbar-height) !important;
+}
+html[data-platform='darwin'] .profile-sidebar {
+  top: var(--app-toolbar-height);
+}
+@media (max-width: 1194px) {
+  .dash-page > .pkr {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    box-shadow: var(--float);
+  }
+}
+
+@media (max-width: 1194px) {
+  .profile-document-extras,
+  .profile-knowledge-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .profile-knowledge-grid > :first-child {
+    padding-right: 0 !important;
+  }
+  .profile-knowledge-grid > :last-child {
+    padding-left: 0 !important;
+    padding-top: 20px;
+    margin-top: 20px;
+    border-left: 0 !important;
+    border-top: 1px solid var(--line);
+  }
+  .manual-control-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1194px) {
+  .profile-links-preview {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .profile-links-preview > div:nth-child(2) {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

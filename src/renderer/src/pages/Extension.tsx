@@ -16,6 +16,7 @@ export function Extension() {
   const [open, setOpen] = useState(true);
   return (
     <div className="app" style={{ minHeight: '100%' }}>
+      <div className="native-preview-titlebar">JobPilot · Extension preview</div>
       <div
         style={{
           padding: '28px 40px 40px',

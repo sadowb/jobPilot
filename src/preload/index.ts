@@ -3,6 +3,7 @@ import { Channels, type JobPilotBridge, type ThemeSource, type ThemeState } from
 
 const bridge: JobPilotBridge = {
   platform: process.platform,
+  documents: { save: (name, bytes) => ipcRenderer.invoke(Channels.saveDocument, name, bytes) as Promise<boolean> },
   theme: {
     get: () => ipcRenderer.invoke(Channels.getTheme) as Promise<ThemeState>,
     set: (source: ThemeSource) => ipcRenderer.invoke(Channels.setTheme, source) as Promise<ThemeState>,

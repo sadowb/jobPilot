@@ -1,19 +1,9 @@
 import { forwardRef, useReducer, useState, type ReactNode } from 'react';
 import { SegmentedChoice } from '../../components/SegmentedChoice';
 import { SwitchToggle } from '../../components/SwitchToggle';
+import { ProfileDocuments } from './ProfileDocuments';
 import '../../styles/v17-surfaces.css';
-import {
-  BASE_LETTER,
-  CV_DOCS,
-  INITIAL_FACTS,
-  LINKS,
-  SAVED_ANSWERS,
-  SAVED_SPLIT,
-  SAVED_TOTAL,
-  THUMB_LINES,
-  TRANSCRIPT,
-  type CvDoc,
-} from './data';
+import { BASE_LETTER, INITIAL_FACTS, LINKS, TRANSCRIPT } from './data';
 import { confirmedTotal, factsReducer, type FactsState } from './model';
 
 const card = {
@@ -50,93 +40,6 @@ function CardHead({ title, sub, badge }: { title: string; sub: string; badge?: b
         </div>
         <div className="s" style={{ fontSize: 13, marginTop: 3 }}>
           {sub}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** White paper preview of a CV; always white, in both themes. */
-function CvThumb({ accent }: { accent: boolean }) {
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        flex: 'none',
-        width: 104,
-        height: 136,
-        border: '1px solid var(--line-2)',
-        borderRadius: 8,
-        background: 'rgb(255 255 255)',
-        color: 'rgb(17 17 17)',
-        padding: '12px 10px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-        overflow: 'hidden',
-      }}
-    >
-      <i
-        style={{
-          display: 'block',
-          height: 8,
-          width: '62%',
-          borderRadius: 2,
-          background: accent ? 'var(--brand)' : 'currentColor',
-        }}
-      />
-      <i
-        style={{
-          display: 'block',
-          height: 3,
-          width: '40%',
-          borderRadius: 2,
-          background: 'currentColor',
-          opacity: 0.18,
-          marginBottom: 4,
-        }}
-      />
-      {THUMB_LINES.map((w) => (
-        <i
-          key={w}
-          style={{ display: 'block', height: 3, borderRadius: 2, background: 'currentColor', opacity: 0.18, width: w }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function CvCard({ doc }: { doc: CvDoc }) {
-  return (
-    <div className="v17c" style={{ display: 'flex', gap: 20, padding: '20px 22px', boxSizing: 'border-box' }}>
-      <CvThumb accent={doc.accent} />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="row sp nw" style={{ gap: 8 }}>
-          <b style={{ fontSize: 16, fontWeight: 650 }}>{doc.name}</b>
-          <span className="v17x">{doc.version}</span>
-        </div>
-        <div className="s" style={{ fontSize: 13 }}>
-          {doc.meta}
-        </div>
-        <div className="s" style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
-          {doc.blurb}
-        </div>
-        <div className="row nw" style={{ gap: 8, paddingTop: 4, marginTop: 'auto' }}>
-          <span
-            className="v17x"
-            style={{ border: '1px solid var(--line-2)', borderRadius: 99, padding: '3px 10px', color: 'var(--ink-2)' }}
-          >
-            {doc.defaultFor}
-          </span>
-        </div>
-        <div className="row nw" style={{ gap: 8 }}>
-          <button className="btn sm" type="button">
-            Preview
-          </button>
-          <button className="btn sm ghost" type="button">
-            Edit source
-          </button>
         </div>
       </div>
     </div>
@@ -272,7 +175,7 @@ function TranscriptCard() {
 function LinksCard() {
   return (
     <section
-      className="v17c"
+      className="v17c profile-links-preview"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -342,23 +245,6 @@ function LinksCard() {
   );
 }
 
-const PENCIL = (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M12 20h9" />
-    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-  </svg>
-);
-
 const KnowledgeCard = forwardRef<
   HTMLElement,
   { facts: FactsState; dispatch: (a: Parameters<typeof factsReducer>[1]) => void }
@@ -366,12 +252,15 @@ const KnowledgeCard = forwardRef<
   const [tab, setTab] = useState<'review' | 'confirmed'>('review');
   const shown = tab === 'review' ? facts.review : facts.confirmed;
   return (
-    <section ref={ref} className="v17c" style={card}>
+    <section ref={ref} id="agent-knowledge" className="v17c" style={card}>
       <CardHead
         title="What the agents know"
         sub="Readable, editable, yours. Facts the agents inferred wait here until you confirm them."
       />
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.15fr)', gap: 0 }}>
+      <div
+        className="profile-knowledge-grid"
+        style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.15fr)', gap: 0 }}
+      >
         <div style={{ paddingRight: 28, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
           <SegmentedChoice
             label="Facts filter"
@@ -446,63 +335,13 @@ const KnowledgeCard = forwardRef<
             minWidth: 0,
           }}
         >
-          <div className="row sp nw">
-            <b style={{ fontSize: 14 }}>Saved answers · {SAVED_TOTAL}</b>
-            <span className="s" style={{ fontSize: 13 }}>
-              {SAVED_SPLIT}
-            </span>
-          </div>
-          <div className="inp ph" style={{ height: 40, borderRadius: 99, gap: 8 }}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-4-4" />
-            </svg>
-            Search {SAVED_TOTAL} saved answers
-          </div>
-          {SAVED_ANSWERS.map((a) => (
-            <div
-              key={a.id}
-              className="row sp nw"
-              style={{ gap: 12, padding: '10px 0', borderTop: '1px solid var(--line)', alignItems: 'center' }}
-            >
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{a.question}</div>
-                <div
-                  className="row"
-                  style={{ gap: '4px 8px', marginTop: 3, flexWrap: 'wrap', alignItems: 'baseline', minWidth: 0 }}
-                >
-                  <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{a.answer}</span>
-                  <span className="v17x" style={tag(a.setBy === 'you' ? 'var(--ink-2)' : 'var(--work)')}>
-                    {a.setBy === 'you' ? 'Set by you' : 'Set by agent'}
-                  </span>
-                  <span className="s" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-                    {a.note}
-                  </span>
-                </div>
-              </div>
-              <button className="btn sm ghost ic" type="button" aria-label="Edit answer" style={{ flex: 'none' }}>
-                {PENCIL}
-              </button>
-            </div>
-          ))}
-          <div className="row sp nw" style={{ paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-            <span className="s" style={{ fontSize: 13 }}>
-              Showing {SAVED_ANSWERS.length} of {SAVED_TOTAL}
-            </span>
-            <button className="btn sm ghost" type="button">
-              Load more
-            </button>
-          </div>
+          <h3 style={{ margin: 0, fontSize: 16 }}>Your common answers</h3>
+          <p className="s" style={{ fontSize: 13 }}>
+            Keep contact details, work preferences, and reusable application answers together in About me.
+          </p>
+          <a className="btn sm" href="#/profile">
+            Edit my details & answers →
+          </a>
         </div>
       </div>
     </section>
@@ -546,12 +385,11 @@ export function ProfileMain({
           Edit once. Every agent reads this, and each change shows who made it.
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 16, flex: 'none' }}>
-        {CV_DOCS.map((d) => (
-          <CvCard key={d.id} doc={d} />
-        ))}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 16, flex: '0 0 auto' }}>
+      <ProfileDocuments />
+      <div
+        className="profile-document-extras"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 16, flex: '0 0 auto' }}
+      >
         <CoverLetterCard />
         <TranscriptCard />
       </div>

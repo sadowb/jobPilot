@@ -50,6 +50,7 @@ export function Inbox() {
   const rootRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const [pane, setPane] = useState<'chat' | 'details'>('chat');
   useFillViewportHeight(rootRef);
 
   // Leaving a thread ends any edit in progress (the draft text is kept).
@@ -261,6 +262,8 @@ export function Inbox() {
   return (
     <div ref={rootRef} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div
+        className="inbox-grid"
+        data-pane={pane}
         style={{
           flex: 1,
           minHeight: 0,
@@ -280,8 +283,16 @@ export function Inbox() {
           onQuery={setQuery}
           onSelect={(id) => dispatch({ type: 'select', id })}
         />
-        {center()}
-        {right()}
+        <div className="inbox-pane-tabs" role="group" aria-label="Inbox view">
+          <button type="button" aria-pressed={pane === 'chat'} onClick={() => setPane('chat')}>
+            Conversation
+          </button>
+          <button type="button" aria-pressed={pane === 'details'} onClick={() => setPane('details')}>
+            {driving ? 'Live tab' : 'Details & review'}
+          </button>
+        </div>
+        <div className="inbox-conversation">{center()}</div>
+        <div className="inbox-details">{right()}</div>
       </div>
       <ShortcutBar shortcuts={SHORTCUTS_BY_VIEW[view]} />
     </div>

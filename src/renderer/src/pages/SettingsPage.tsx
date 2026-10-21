@@ -17,7 +17,14 @@ export function SettingsPage() {
   }, [location.key, navigate]);
 
   return (
-    <div style={{ height: 'calc(100vh - 86px)', minHeight: 560, display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        height: 'calc(100vh - var(--app-toolbar-height))',
+        minHeight: 560,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <SettingsBackdrop />
       <div
         className="scrim v17scrim"

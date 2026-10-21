@@ -1,7 +1,10 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, net, protocol, shell, type WebContents } from 'electron';
-import { join, normalize, sep } from 'node:path';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, shell, type WebContents } from 'electron';
+import { basename, join, normalize, sep } from 'node:path';
+import { writeFile } from 'node:fs/promises';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { Channels, type ThemeSource, type ThemeState } from '../shared/ipc';
+import { WINDOW_LAYOUT } from '../shared/window-layout';
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL);
 // The packaged renderer is served from app://jobpilot/ (not file://) so the GrantFileProtocolExtraPrivileges fuse can be off.
@@ -64,9 +67,10 @@ function createWindow(): BrowserWindow {
     minWidth: 1024,
     minHeight: 680,
     show: false,
+    acceptFirstMouse: true,
     backgroundColor: nativeTheme.shouldUseDarkColors ? GROUND.dark : GROUND.light,
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: process.platform === 'darwin' ? { x: 18, y: 18 } : undefined,
+    titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
+    trafficLightPosition: process.platform === 'darwin' ? WINDOW_LAYOUT.macTrafficLightPosition : undefined,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -101,9 +105,43 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     serveRenderer();
+    const themeFile = join(app.getPath('userData'), 'theme-preference');
+    try {
+      const saved = readFileSync(themeFile, 'utf8').trim();
+      if (isThemeSource(saved)) nativeTheme.themeSource = saved;
+    } catch {
+      /* First launch or an unreadable preference uses the system appearance. */
+    }
+    ipcMain.handle(Channels.saveDocument, async (event, name: unknown, bytes: unknown) => {
+      const frame = event.senderFrame;
+      const url = frame ? new URL(frame.url) : null;
+      const trusted =
+        url &&
+        (isDev
+          ? url.origin === new URL(process.env.ELECTRON_RENDERER_URL!).origin
+          : url.protocol === 'app:' && url.host === 'jobpilot');
+      if (
+        !trusted ||
+        frame !== event.sender.mainFrame ||
+        typeof name !== 'string' ||
+        !/\.(pdf|docx)$/i.test(name) ||
+        !(bytes instanceof Uint8Array) ||
+        !bytes.length ||
+        bytes.length > 20 * 1024 * 1024
+      ) {
+        throw new TypeError('Invalid document export');
+      }
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      if (!owner) throw new Error('Document window is unavailable');
+      const result = await dialog.showSaveDialog(owner, { title: 'Save a copy', defaultPath: basename(name) });
+      if (result.canceled || !result.filePath) return false;
+      await writeFile(result.filePath, bytes);
+      return true;
+    });
     ipcMain.handle(Channels.getTheme, () => themeState());
     ipcMain.handle(Channels.setTheme, (_event, source: unknown) => {
       if (!isThemeSource(source)) throw new TypeError('invalid theme source');
+      writeFileSync(themeFile, source, 'utf8');
       nativeTheme.themeSource = source;
       return themeState();
     });

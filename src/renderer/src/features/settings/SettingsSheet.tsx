@@ -55,7 +55,7 @@ function Section({
 
 /** The V17 Settings sheet: 584px, slides in from the right. State is local sample state (no persistence yet). */
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
-  const { state: theme, setSource } = useTheme();
+  const { state: theme, setSource, error: themeError } = useTheme();
   const [autopilot, setAutopilot] = useState(DEFAULT_SETTINGS.autopilot);
   const [crew, setCrew] = useState(DEFAULT_SETTINGS.crew);
   const [submitMode, setSubmitMode] = useState(DEFAULT_SETTINGS.submitMode);
@@ -327,6 +327,11 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </Section>
         <Section title="Theme" desc="Follows your Mac when set to System.">
           <SegmentedChoice label="Theme" options={THEMES} value={theme.source} onChange={setSource} width={300} />
+          {themeError && (
+            <p role="alert" style={{ color: 'var(--bad)', fontSize: 13 }}>
+              {themeError}
+            </p>
+          )}
         </Section>
       </div>
       <div

@@ -17,7 +17,7 @@ const chip: CSSProperties = {
 };
 const chipOn: CSSProperties = { ...chip, background: 'var(--pri)', color: 'var(--on-pri)', borderColor: 'var(--pri)' };
 
-/** Status filter chips with live counts. The row fades out at the right edge instead of wrapping. */
+/** Status filter chips with live counts. The row scrolls when space is tight so every filter stays reachable. */
 export function FilterChips({
   counts,
   active,
@@ -28,22 +28,8 @@ export function FilterChips({
   onChange: (f: StatusFilter) => void;
 }) {
   return (
-    <div
-      role="group"
-      aria-label="Filter by status"
-      style={{
-        minWidth: 0,
-        overflow: 'hidden',
-        WebkitMaskImage: 'linear-gradient(90deg,#000 calc(100% - 40px),transparent)',
-        maskImage: 'linear-gradient(90deg,#000 calc(100% - 40px),transparent)',
-        paddingRight: 40,
-        boxSizing: 'border-box',
-        display: 'flex',
-        justifyContent: 'flex-end',
-        marginRight: -40,
-      }}
-    >
-      <div className="row nw" style={{ gap: 6, minWidth: 0, overflow: 'hidden' }}>
+    <div role="group" aria-label="Filter by status" style={{ minWidth: 0, overflowX: 'auto', display: 'flex' }}>
+      <div className="row nw" style={{ gap: 6, minWidth: 'max-content', padding: '3px' }}>
         {FILTER_CHIPS.map(({ key, label }) => (
           <button
             key={key}

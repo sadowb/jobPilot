@@ -1,85 +1,59 @@
-const ITEMS = [
-  { id: 'about', label: 'About me', count: 42 },
-  { id: 'documents', label: 'Documents', count: 5 },
-] as const;
+import { useProfileIdentity } from './useProfileIdentity';
 
-/** Section list of the Profile screen. Only Documents (with its agent-knowledge panel) has a V17 board. */
-export function ProfileSidebar({ knowledgeCount, onKnowledge }: { knowledgeCount: number; onKnowledge: () => void }) {
-  const item = (active: boolean) =>
-    ({
-      minHeight: 44,
-      padding: '0 14px',
-      borderRadius: 12,
-      fontSize: 14,
-      fontWeight: active ? 650 : 500,
-      color: active ? 'var(--ink)' : 'var(--ink-2)',
-      background: active ? 'var(--hover)' : 'transparent',
-      border: 0,
-      width: '100%',
-      textAlign: 'left',
-    }) as const;
+export function ProfileSidebar({
+  section,
+  onSection,
+  onAnswers,
+  knowledgeCount,
+  onKnowledge,
+}: {
+  section: 'about' | 'documents';
+  onSection: (section: 'about' | 'documents') => void;
+  onAnswers: () => void;
+  knowledgeCount: number;
+  onKnowledge: () => void;
+}) {
+  const identity = useProfileIdentity();
   return (
-    <aside
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 22,
-        padding: '36px 24px 36px 40px',
-        boxSizing: 'border-box',
-        borderRight: '1px solid var(--line)',
-        minWidth: 0,
-      }}
-    >
-      <div className="row nw" style={{ gap: 14 }}>
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            flex: 'none',
-            display: 'grid',
-            placeItems: 'center',
-            fontWeight: 700,
-            fontSize: 18,
-            background: 'var(--brand-tint)',
-            color: 'var(--brand-text)',
-          }}
-        >
-          AM
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 650, fontSize: 15 }}>Abdelhadi Marjane</div>
-          <div className="s" style={{ fontSize: 13 }}>
-            CS · Al Akhawayn · synced today
-          </div>
+    <aside className="profile-sidebar">
+      <div className="profile-identity">
+        <div className="profile-portrait">{identity.initials}</div>
+        <div>
+          <strong>{identity.name}</strong>
+          <p>
+            {identity.headline === 'Your next chapter, in one place.' ? 'Your profile & documents' : identity.headline}
+          </p>
         </div>
       </div>
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }} aria-label="Profile sections">
-        {ITEMS.map((i) => (
-          <button
-            key={i.id}
-            type="button"
-            className="row sp nw"
-            aria-current={i.id === 'documents' ? 'page' : undefined}
-            disabled={i.id === 'about'}
-            title={i.id === 'about' ? 'No V17 board for this section yet' : undefined}
-            style={item(i.id === 'documents')}
-          >
-            <span>{i.label}</span>
-            <span className="s" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-              {i.count}
-            </span>
-          </button>
-        ))}
-        <button type="button" className="row sp nw" onClick={onKnowledge} style={item(false)}>
-          <span>What the agents know</span>
-          <span className="s" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-            {knowledgeCount}
+      <nav aria-label="Profile sections">
+        <button
+          type="button"
+          aria-current={section === 'about' ? 'page' : undefined}
+          onClick={() => onSection('about')}
+        >
+          <span>About me</span>
+        </button>
+        <button
+          type="button"
+          aria-current={section === 'documents' ? 'page' : undefined}
+          onClick={() => onSection('documents')}
+        >
+          <span>Documents</span>
+        </button>
+        <button type="button" onClick={onAnswers}>
+          <span>Common answers</span>
+          <span className="v17x" aria-hidden="true">
+            Q&A
           </span>
         </button>
+        <button type="button" onClick={onKnowledge}>
+          <span>What the agents know</span>
+          <span className="profile-count">{knowledgeCount}</span>
+        </button>
       </nav>
-      <div className="s" style={{ fontSize: 13, lineHeight: 1.55, marginTop: 'auto' }}>
-        Cap reads this on every turn. Each application sends only what its form asks for.
+      <div className="profile-sidebar-note">
+        <p>Your details belong here. Each application only needs what its form asks for.</p>
+        <span className="profile-local">Saved on this device</span>
       </div>
     </aside>
   );

@@ -132,7 +132,7 @@ export function UpNextView({
           overflowY: 'auto',
         }}
       >
-        <div className="row sp nw" style={{ alignItems: 'flex-end' }}>
+        <div className="row sp nw queue-heading" style={{ alignItems: 'flex-end' }}>
           <div className="row nw" style={{ gap: 18 }}>
             <h1 className="h1" style={{ fontSize: 42, margin: 0 }}>
               Dashboard

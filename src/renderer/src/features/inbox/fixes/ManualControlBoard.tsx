@@ -60,7 +60,10 @@ export function ManualControlBoard() {
           </span>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', columnGap: 16, rowGap: 16 }}>
+      <div
+        className="manual-control-grid"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', columnGap: 16, rowGap: 16 }}
+      >
         <FixCard
           n="01"
           by="email"
