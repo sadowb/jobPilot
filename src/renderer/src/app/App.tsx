@@ -1,7 +1,11 @@
-import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom';
+import { createHashRouter, Navigate, Outlet, RouterProvider } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { useTheme } from '../lib/theme';
+import { AnalyticsPage } from '../pages/AnalyticsPage';
+import { OnboardingPage } from '../pages/OnboardingPage';
 import { Placeholder } from '../pages/Placeholder';
+import { ProfilePage } from '../pages/ProfilePage';
+import { SettingsPage } from '../pages/SettingsPage';
 
 function Shell() {
   useTheme();
@@ -20,9 +24,14 @@ const router = createHashRouter([
     children: [
       { path: '/', element: <Placeholder board="Dashboard · Applied" files="V17_Dash_Applied" /> },
       { path: '/inbox', element: <Placeholder board="Inbox" files="V17_Inbox" /> },
-      { path: '/analytics', element: <Placeholder board="Analytics" files="V17_Analytics" /> },
+      { path: '/analytics', element: <AnalyticsPage /> },
+      { path: '/profile', element: <ProfilePage /> },
+      { path: '/settings', element: <SettingsPage /> },
     ],
   },
+  // Setup is full screen: no top bar, no pill nav.
+  { path: '/welcome', element: <Navigate to="/welcome/1" replace /> },
+  { path: '/welcome/:step', element: <OnboardingPage /> },
 ]);
 
 export function App() {
