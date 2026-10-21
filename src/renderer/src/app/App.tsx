@@ -1,6 +1,8 @@
 import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { useTheme } from '../lib/theme';
+import { Inbox } from '../pages/Inbox';
+import { ManualControl } from '../pages/ManualControl';
 import { Placeholder } from '../pages/Placeholder';
 
 function Shell() {
@@ -19,7 +21,8 @@ const router = createHashRouter([
     element: <Shell />,
     children: [
       { path: '/', element: <Placeholder board="Dashboard · Applied" files="V17_Dash_Applied" /> },
-      { path: '/inbox', element: <Placeholder board="Inbox" files="V17_Inbox" /> },
+      { path: '/inbox', element: <Inbox /> },
+      { path: '/fixes', element: <ManualControl /> },
       { path: '/analytics', element: <Placeholder board="Analytics" files="V17_Analytics" /> },
     ],
   },
