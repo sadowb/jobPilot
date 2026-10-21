@@ -1,0 +1,116 @@
+/* Dashboard-only rules the V17 boards carry in per-board <style> blocks or implicit browser defaults. */
+
+/* Height of the top bar (14px padding + 58px pill nav) the boards subtract from their frame: 960 - 874. */
+.dash-page {
+  --topbar-h: 86px;
+  display: flex;
+  height: calc(100vh - var(--topbar-h));
+  position: relative;
+}
+
+/* The search box is the board's styled span; the input must not add its own chrome. */
+.dash-search {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--ink);
+}
+.dash-search:focus-visible {
+  /* The wrapping field draws the focus ring (.inp.f). */
+  outline: 0;
+}
+.dash-search::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.dash-chip {
+  background: transparent;
+}
+.dash-chip:focus-visible,
+.dash-iconbtn:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Peek panel: children keep their height so the panel clips instead of squashing them. */
+.pkbody > * {
+  flex: none;
+}
+
+@keyframes cvIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cvFade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes pkIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.cvm {
+  animation: cvIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cvs {
+  animation: cvFade 0.2s ease-out both;
+}
+.pkr {
+  animation: pkIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cvm,
+  .cvs,
+  .pkr {
+    animation: none;
+  }
+}
+
+/* Up next: crew pill pulse and bulk-bar buttons */
+.uq-pulse {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .uq-pulse {
+    animation: none;
+    opacity: 1;
+  }
+}
+.uq-bulk button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.uq-bulk button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.uq-act {
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+.uq-act:hover {
+  background: var(--hover);
+}
