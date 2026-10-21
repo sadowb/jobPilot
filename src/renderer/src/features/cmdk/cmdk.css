@@ -1,0 +1,19 @@
+/* Query field of the ⌘K box: the board draws typed text + caret; the app needs a real input at the same metrics. */
+.jp-cmdk-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 17px;
+  color: var(--ink);
+}
+.jp-cmdk-input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.jp-cmdk-input:focus-visible {
+  outline: none;
+}

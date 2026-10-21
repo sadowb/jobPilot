@@ -1,16 +1,20 @@
 import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { useTheme } from '../lib/theme';
+import { CommandBoxHost, openCommandBox } from '../features/cmdk/CommandBoxHost';
 import { Dashboard } from '../pages/Dashboard';
 import { Extension } from '../pages/Extension';
+import { Inbox } from '../pages/Inbox';
+import { ManualControl } from '../pages/ManualControl';
 import { Placeholder } from '../pages/Placeholder';
 
 function Shell() {
   useTheme();
   return (
     <div className="app" style={{ minHeight: '100%' }}>
-      <TopBar />
+      <TopBar onAsk={openCommandBox} />
       <Outlet />
+      <CommandBoxHost />
     </div>
   );
 }
@@ -23,7 +27,8 @@ const router = createHashRouter([
     element: <Shell />,
     children: [
       { path: '/', element: <Dashboard /> },
-      { path: '/inbox', element: <Placeholder board="Inbox" files="V17_Inbox" /> },
+      { path: '/inbox', element: <Inbox /> },
+      { path: '/fixes', element: <ManualControl /> },
       { path: '/analytics', element: <Placeholder board="Analytics" files="V17_Analytics" /> },
     ],
   },
