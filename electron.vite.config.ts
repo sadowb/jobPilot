@@ -11,6 +11,9 @@ export default defineConfig({
     base: './', // file:// in the packaged app
     plugins: [react(), tailwindcss()],
     resolve: { alias: { '@': resolve('src/renderer/src') } },
-    build: { rollupOptions: { input: { index: resolve('src/renderer/index.html') } } },
+    build: {
+      assetsInlineLimit: 0, // never inline fonts as data: URIs; the CSP only allows font-src 'self'
+      rollupOptions: { input: { index: resolve('src/renderer/index.html') } },
+    },
   },
 });

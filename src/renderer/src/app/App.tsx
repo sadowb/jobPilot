@@ -1,6 +1,7 @@
 import { createHashRouter, Navigate, Outlet, RouterProvider, useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { CommandBoxHost, openCommandBox } from '../features/cmdk/CommandBoxHost';
+import { FirstDay } from '../features/onboarding/FirstDay';
 import { useSettingsShortcut } from '../features/settings/useSettingsShortcut';
 import { useTheme } from '../lib/theme';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
@@ -33,6 +34,7 @@ const router = createHashRouter([
     element: <Shell />,
     children: [
       { path: '/', element: <Dashboard /> },
+      { path: '/first-day', element: <FirstDay /> },
       { path: '/inbox', element: <Inbox /> },
       { path: '/fixes', element: <ManualControl /> },
       { path: '/analytics', element: <AnalyticsPage /> },
