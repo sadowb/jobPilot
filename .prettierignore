@@ -1,0 +1,8 @@
+out
+dist
+node_modules
+design
+release
+package-lock.json
+src/renderer/src/styles/board.css
+src/renderer/src/styles/tokens.css

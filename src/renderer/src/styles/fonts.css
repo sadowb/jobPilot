@@ -1,0 +1,6 @@
+/* Bundled locally: the app works offline and the CSP forbids remote hosts. */
+@import '@fontsource-variable/geist/index.css';
+@import '@fontsource-variable/geist-mono/index.css';
+@import '@fontsource-variable/newsreader/opsz.css';
+@import '@fontsource-variable/newsreader/opsz-italic.css';
+@import '@fontsource/bagel-fat-one/400.css';

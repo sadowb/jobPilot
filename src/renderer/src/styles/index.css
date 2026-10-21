@@ -1,0 +1,84 @@
+@import './fonts.css';
+@import 'tailwindcss';
+@import './board.css';
+@import './tokens.css';
+
+/* Tailwind utilities read the V17 tokens, so light/dark switches with the `.dark` class on <html>. */
+@theme inline {
+  --color-ground: var(--ground);
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-pri: var(--pri);
+  --color-pri-h: var(--pri-h);
+  --color-on-pri: var(--on-pri);
+  --color-brand: var(--brand);
+  --color-brand-h: var(--brand-h);
+  --color-brand-tint: var(--brand-tint);
+  --color-on-brand: var(--on-brand);
+  --color-brand-text: var(--brand-text);
+  --color-work: var(--work);
+  --color-work-tint: var(--work-tint);
+  --color-need: var(--need);
+  --color-need-tint: var(--need-tint);
+  --color-need-line: var(--need-line);
+  --color-need-dot: var(--need-dot);
+  --color-bad: var(--bad);
+  --color-bad-tint: var(--bad-tint);
+  --color-ok: var(--ok);
+  --font-sans: var(--sans);
+  --font-serif: var(--serif);
+  --font-mono: var(--mono);
+  --font-logo: var(--logo);
+  --shadow-float: var(--float);
+}
+
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+/* board.css is design/v17/jp8.css verbatim (the spec's own stylesheet; unlayered, so it wins over Tailwind).
+   tokens.css comes last so the bundled font stacks replace the boards' Google Fonts names. */
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.12s !important;
+  }
+}
