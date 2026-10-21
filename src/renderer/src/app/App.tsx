@@ -1,5 +1,6 @@
-import { createHashRouter, Navigate, Outlet, RouterProvider } from 'react-router-dom';
+import { createHashRouter, Navigate, Outlet, RouterProvider, useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
+import { useSettingsShortcut } from '../features/settings/useSettingsShortcut';
 import { useTheme } from '../lib/theme';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
@@ -9,9 +10,11 @@ import { SettingsPage } from '../pages/SettingsPage';
 
 function Shell() {
   useTheme();
+  useSettingsShortcut();
+  const navigate = useNavigate();
   return (
     <div className="app" style={{ minHeight: '100%' }}>
-      <TopBar />
+      <TopBar onSettings={() => void navigate('/settings')} />
       <Outlet />
     </div>
   );
