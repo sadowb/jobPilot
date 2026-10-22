@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
-import { KeyCap } from '../../components/KeyCap';
 import { Btn } from './Btn';
 import type { MessageAction, ThreadMessage } from './model';
 import { MONO, NEED_PILL, WIDGET } from './styles';
+import { KeyHint as KeyCap } from './KeyHint';
 
 const STEP_DOT = {
   ok: 'bg-ink',

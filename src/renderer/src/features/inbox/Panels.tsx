@@ -1,14 +1,13 @@
 import { useState, type ReactNode } from 'react';
 import { CapOnDartArt } from '../../components/CapOnDartArt';
 import { CritterBot } from '../../components/CritterBot';
-import { KeyCap } from '../../components/KeyCap';
-import { MonoLabel } from '../../components/MonoLabel';
 import { Eyebrow } from '../../components/ui';
 import { Btn } from './Btn';
 import { useLiveTabView } from './browserSeam';
 import { CLEAR_STATS, PILOT_RULES, UP_NEXT } from './model';
 import { FIGMA_REVIEW } from './sampleReview';
 import { ELLIPSIS, EYEBROW, MONO, NEED_CARD, NEED_PILL_SM } from './styles';
+import { KeyHint as KeyCap } from './KeyHint';
 
 /** Right column shell. Scrolls when the window is short so the review actions stay reachable. */
 export function PanelFrame({ children }: { children: ReactNode }) {
@@ -231,7 +230,7 @@ const FIELD_BOX = 'flex h-[34px] items-center justify-between gap-3 rounded-[9px
 function FilledField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-[5px]">
-      <MonoLabel>{label}</MonoLabel>
+      <span className={MONO}>{label}</span>
       <div className={`${FIELD_BOX} border border-line-2`}>
         <span>{value}</span>
         <span className="font-bold text-brand-text">✓</span>
@@ -262,7 +261,7 @@ function TabSnapshot({ driving }: { driving: boolean }) {
         <FilledField label="Full name" value="Abdelhadi Marjane" />
         <FilledField label="Email" value="a•••••98@gmail.com" />
         <div className="relative flex flex-col gap-[5px]">
-          <MonoLabel>Education *</MonoLabel>
+          <span className={MONO}>Education *</span>
           <div className={`${FIELD_BOX} border-[1.5px] border-bad text-muted`}>
             <span>Select…</span>
             <span>▾</span>
@@ -345,7 +344,7 @@ export function LiveTabPanel({ itemId, agent, driving, onHandBack, onFinish }: L
 export function UpNextPanel() {
   return (
     <PanelFrame>
-      <MonoLabel>Up next · {CLEAR_STATS[1].value}</MonoLabel>
+        <span className={MONO}>Up next · {CLEAR_STATS[1].value}</span>
       {UP_NEXT.map((q) => (
         <div key={q.agent} className={`flex flex-none items-center gap-3 py-2.5 ${RULE}`}>
           <CritterBot agent={q.agent} state={q.critter} size={34} />
@@ -415,7 +414,7 @@ export function ClearCenter({ onDashboard, onAddJobs }: { onDashboard: () => voi
             key={s.label}
             className="flex min-w-0 flex-1 flex-col items-start gap-1 rounded-3xl border border-line bg-bg px-[18px] py-4"
           >
-            <MonoLabel>{s.label}</MonoLabel>
+            <span className={MONO}>{s.label}</span>
             <b className="font-serif text-[34px] leading-none font-normal">{s.value}</b>
           </div>
         ))}

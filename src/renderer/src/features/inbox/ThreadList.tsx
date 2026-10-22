@@ -1,9 +1,8 @@
 import { forwardRef, type ReactNode } from 'react';
 import { CapOnDartArt } from '../../components/CapOnDartArt';
 import { CritterBot } from '../../components/CritterBot';
-import { KeyCap } from '../../components/KeyCap';
-import { MonoLabel } from '../../components/MonoLabel';
 import { BARE_INPUT, ELLIPSIS, FOCUS_WITHIN, MONO } from './styles';
+import { KeyHint as KeyCap } from './KeyHint';
 import { CAP_LIST_PREVIEW, type InboxItem, type ItemId, type ThreadId } from './model';
 
 const TAG_COLOR = {
@@ -45,7 +44,7 @@ function Row({
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div className={LABEL}>
-      <MonoLabel>{children}</MonoLabel>
+      <span className={MONO}>{children}</span>
     </div>
   );
 }
@@ -65,7 +64,7 @@ function CapRow({ on, clear, onSelect }: { on: boolean; clear: boolean; onSelect
       <div className="flex min-w-0 flex-col gap-[3px]">
         <div className="flex items-center gap-2">
           <span className="text-[14.5px] font-semibold">Cap</span>
-          <MonoLabel>pinned</MonoLabel>
+          <span className={MONO}>pinned</span>
         </div>
         <div className={`text-[13px] text-muted ${ELLIPSIS}`}>
           {clear ? CAP_LIST_PREVIEW.clear : CAP_LIST_PREVIEW.pending}

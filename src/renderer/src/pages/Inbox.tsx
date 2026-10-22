@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type Rea
 import { useNavigate } from 'react-router-dom';
 import { CapOnDartArt } from '../components/CapOnDartArt';
 import { CritterBot } from '../components/CritterBot';
-import { KeyCap } from '../components/KeyCap';
 import { Btn } from '../features/inbox/Btn';
+import { KeyHint as KeyCap } from '../features/inbox/KeyHint';
 import { useFillViewportHeight } from '../components/useFillViewportHeight';
 import { Composer } from '../features/inbox/Composer';
 import { ControlBanner, ShortcutBar, ThreadHeader } from '../features/inbox/Frame';

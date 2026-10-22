@@ -1,7 +1,7 @@
 import { CritterBot } from '../../../components/CritterBot';
-import { KeyCap } from '../../../components/KeyCap';
 import { Eyebrow } from '../../../components/ui';
 import { Btn } from '../Btn';
+import { KeyHint as KeyCap } from '../KeyHint';
 import {
   AfterBox,
   BeforeBox,

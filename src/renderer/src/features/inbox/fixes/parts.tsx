@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { KeyCap } from '../../../components/KeyCap';
 import { Btn } from '../Btn';
-import { STATUS_CHIP, type JobStatus } from '../../cmdk/jobs';
+import { KeyHint as KeyCap } from '../KeyHint';
+import type { JobStatus } from '../../cmdk/jobs';
 
 export type SetBy = 'email' | 'agent' | 'you';
 
@@ -24,14 +24,17 @@ export function SetByChip({ by }: { by: SetBy }) {
 
 const PILL = 'inline-block rounded-full px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap';
 
-/** Colours come from the job-status table in `cmdk/jobs`, so they stay dynamic (inline) here. */
+const STATUS_CLASS: Record<JobStatus, string> = {
+  Submitted: 'bg-line text-ink-2',
+  Screening: 'bg-[rgba(15,118,110,0.14)] text-[#0F766E]',
+  Interview: 'bg-[rgba(180,83,9,0.16)] text-[#B45309]',
+  Offer: 'bg-brand-tint text-brand-text',
+  Rejected: 'bg-[rgba(181,65,47,0.14)] text-[#B5412F]',
+  Withdrawn: 'bg-line text-muted',
+};
+
 export function StatusPill({ status }: { status: JobStatus }) {
-  const c = STATUS_CHIP[status];
-  return (
-    <span className={PILL} style={{ color: c.color, background: c.background }}>
-      {status}
-    </span>
-  );
+  return <span className={`${PILL} ${STATUS_CLASS[status]}`}>{status}</span>;
 }
 
 /** Neutral pill for states that are not a job status (e.g. "Back in Up next"). */

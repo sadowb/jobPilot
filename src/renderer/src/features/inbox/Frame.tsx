@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { KeyCap } from '../../components/KeyCap';
 import { ELLIPSIS } from './styles';
+import { KeyHint as KeyCap } from './KeyHint';
 
 /** Thread header bar: avatar + title/sub on the left, actions on the right. */
 export function ThreadHeader({
