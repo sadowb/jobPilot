@@ -1,7 +1,0 @@
-/* Outline colour of the row-avatar "bots": near-black on light, near-white on dark (the only themed part of the art). */
-:root {
-  --bot-ink: #1a1a1a;
-}
-.dark {
-  --bot-ink: #f5f5f5;
-}

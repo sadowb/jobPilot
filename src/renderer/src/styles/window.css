@@ -85,23 +85,6 @@ html[data-platform='darwin'] .native-preview-titlebar {
   app-region: drag;
   user-select: none;
 }
-.appearance-button {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  flex: none;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-.appearance-button:hover {
-  background: var(--hover);
-  color: var(--ink);
-}
 /* A brief opacity fade keeps content still while the palette changes. */
 html[data-theme-transition]::view-transition {
   pointer-events: none;
