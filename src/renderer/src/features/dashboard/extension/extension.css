@@ -1,9 +1,0 @@
-.ext-btn {
-  cursor: pointer;
-}
-.ext-row {
-  cursor: pointer;
-}
-.ext-row[aria-disabled='true'] {
-  cursor: default;
-}

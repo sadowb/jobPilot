@@ -7,28 +7,15 @@ export function MetricRow({
   stats?: readonly { label: string; value: string; sub: string }[];
 }) {
   return (
-    <div className="row nw" style={{ gap: 12, alignItems: 'stretch' }}>
+    <div className="flex items-stretch gap-3">
       {stats.map((m) => (
         <div
           key={m.label}
-          className="mcell"
-          style={{ flex: 1, minWidth: 0, padding: '12px 18px', gap: 4, borderRadius: 20 }}
+          className="flex min-w-0 flex-1 flex-col gap-1 rounded-[20px] border border-line bg-bg px-[18px] py-3"
         >
-          <span className="spec">{m.label}</span>
-          <b
-            style={{
-              fontFamily: 'var(--serif)',
-              fontWeight: 400,
-              fontSize: 34,
-              lineHeight: 1,
-              letterSpacing: '-.02em',
-            }}
-          >
-            {m.value}
-          </b>
-          <span className="s" style={{ fontSize: 12.5 }}>
-            {m.sub}
-          </span>
+          <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">{m.label}</span>
+          <b className="font-serif text-[34px] leading-none font-normal tracking-[-0.02em]">{m.value}</b>
+          <span className="text-[12.5px] text-muted">{m.sub}</span>
         </div>
       ))}
     </div>

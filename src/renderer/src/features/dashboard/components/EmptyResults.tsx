@@ -1,4 +1,5 @@
 import { V17CapDart } from '../../../components/V17CapDart';
+import { AppButton } from './AppButton';
 
 /** Empty search result (board Dash_Empty): Cap on the dart, what was searched, and the two ways out. */
 export function EmptyResults({
@@ -17,35 +18,24 @@ export function EmptyResults({
 }) {
   return (
     <div
-      className="tbl"
+      className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-3xl border border-line bg-bg p-10 text-center"
       role="status"
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        padding: 40,
-        textAlign: 'center',
-        minHeight: 0,
-      }}
     >
       <V17CapDart size={96} />
-      <div className="h2" style={{ fontSize: 30, lineHeight: 1.1, marginTop: 8 }}>
-        No jobs match <span className="it">“{query}”</span>
+      <div className="mt-2 font-serif text-[30px] leading-[1.1] font-normal tracking-[-0.015em]">
+        No jobs match <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">“{query}”</span>
       </div>
-      <div className="s" style={{ fontSize: 14, maxWidth: 470, lineHeight: 1.55 }}>
+      <div className="max-w-[470px] text-[14px] leading-[1.55] text-muted">
         Search covers company, role, location and work mode across your {appliedTotal} applied jobs.
         {upNextCompany ? ` ${upNextCompany} is still in Up next, so it isn’t here yet.` : ''}
       </div>
-      <div className="row nw" style={{ gap: 8, marginTop: 8 }}>
-        <button className="btn pri sm" type="button" onClick={onClear}>
+      <div className="mt-2 flex flex-nowrap items-center gap-2">
+        <AppButton variant="primary" size="sm" onClick={onClear}>
           Clear filters
-        </button>
-        <button className="btn sm" type="button" onClick={onOpenUpNext}>
+        </AppButton>
+        <AppButton size="sm" onClick={onOpenUpNext}>
           Open Up next
-        </button>
+        </AppButton>
       </div>
     </div>
   );

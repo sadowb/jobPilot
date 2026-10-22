@@ -36,9 +36,9 @@ const HINTS: Record<HintMode, { keys: string[]; label: string }[]> = {
 /** The shortcut footer. Which hints show follows what is open, like the V17 footers. */
 export function KeyHints({ mode }: { mode: HintMode }) {
   return (
-    <div className="row nw s" style={{ gap: 18, fontSize: 12.5, flexWrap: 'wrap', marginTop: 'auto' }}>
+    <div className="mt-auto flex flex-wrap items-center gap-[18px] text-[12.5px] text-muted">
       {HINTS[mode].map((h) => (
-        <span key={h.label} className="row nw" style={{ gap: 6 }}>
+        <span key={h.label} className="flex flex-nowrap items-center gap-1.5">
           {h.keys.map((k, i) => (
             <Fragment key={i}>
               <V17Kbd>{k}</V17Kbd>

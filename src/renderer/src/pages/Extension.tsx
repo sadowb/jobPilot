@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ExtensionPopup, SentCard } from '../features/dashboard/extension/ExtensionPopup';
 import { FauxBrowser } from '../features/dashboard/extension/FauxBrowser';
 import { SAMPLE_SCAN } from '../features/dashboard/extension/model';
+import { Eyebrow } from '../components/ui';
 import { useTheme } from '../lib/theme';
 
 /**
@@ -15,25 +16,20 @@ export function Extension() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(true);
   return (
-    <div className="app" style={{ minHeight: '100%' }}>
-      <div className="native-preview-titlebar">JobPilot · Extension preview</div>
-      <div
-        style={{
-          padding: '28px 40px 40px',
-          boxSizing: 'border-box',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 18,
-        }}
-      >
-        <div className="row sp nw" style={{ alignItems: 'flex-end' }}>
+    <div className="relative min-h-full bg-ground font-sans text-[15px] text-ink">
+      <div className="hidden [[data-platform=darwin]_&]:flex sticky top-0 z-[1] h-[var(--app-toolbar-height)] items-center justify-center bg-ground font-sans text-[12px] leading-normal text-muted select-none [-webkit-app-region:drag] [app-region:drag]">
+        JobPilot · Extension preview
+      </div>
+      <div className="box-border flex flex-col gap-[18px] px-10 pt-7 pb-10">
+        <div className="flex flex-nowrap items-end justify-between gap-3">
           <div>
-            <div className="eyebrow">V17 · extension</div>
-            <h1 className="h1" style={{ fontSize: 40, marginTop: 6 }}>
-              Tick what fits, <span className="it">send it in one click.</span>
+            <Eyebrow>V17 · extension</Eyebrow>
+            <h1 className="mt-1.5 mb-0 font-serif text-[40px] leading-[1.02] font-[350] tracking-[-0.025em]">
+              Tick what fits,{' '}
+              <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">send it in one click.</span>
             </h1>
           </div>
-          <div className="s" style={{ maxWidth: 380, fontSize: 13, lineHeight: 1.5 }}>
+          <div className="max-w-[380px] text-[13px] leading-normal text-muted">
             On any job board the popup finds every job link on the page. Nothing is sent until you press Send.
           </div>
         </div>
@@ -47,25 +43,21 @@ export function Extension() {
             />
           )}
         </FauxBrowser>
-        <div className="row nw" style={{ gap: 20, alignItems: 'stretch' }}>
-          <div className="mcell" style={{ flex: 1, minWidth: 0, gap: 12 }}>
-            <span className="spec" style={{ letterSpacing: '.06em' }}>
-              State 1 · choose
-            </span>
-            <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.35 }}>
+        <div className="flex flex-nowrap items-stretch gap-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-3xl border border-line bg-bg p-6">
+            <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">State 1 · choose</span>
+            <div className="text-[16px] leading-[1.35] font-semibold">
               Only ticked links are sent. The popup reads the links, not the page.
             </div>
-            <div className="s" style={{ lineHeight: 1.6, fontSize: 13 }}>
+            <div className="text-[13px] leading-[1.6] text-muted">
               Dedupe runs on the server:{' '}
-              <code style={{ fontFamily: 'monospace', fontSize: '1em', lineHeight: 1 }}>POST /capture/batch</code>{' '}
-              returns added, duplicate, applied or error per URL. Jobs you’ve applied to show their date and can’t be
-              ticked. “Match my roles” is an optional Haiku pass on titles against your preferences, off by default.
+              <code className="text-[1em] leading-none [font-family:monospace]">POST /capture/batch</code> returns
+              added, duplicate, applied or error per URL. Jobs you’ve applied to show their date and can’t be ticked.
+              “Match my roles” is an optional Haiku pass on titles against your preferences, off by default.
             </div>
           </div>
-          <div style={{ width: 470, flex: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <span className="spec" style={{ letterSpacing: '.06em' }}>
-              State 2 · sent
-            </span>
+          <div className="flex w-[470px] flex-none flex-col gap-3">
+            <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">State 2 · sent</span>
             <SentCard
               titles={['Backend Engineer, Early Career', 'Data Engineer, New Grad', 'Software Engineer, Payments']}
               onSeeUpNext={() => navigate('/?tab=up-next')}

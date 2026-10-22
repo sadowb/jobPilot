@@ -1,39 +1,11 @@
-import { useEffect, useReducer, useRef, type CSSProperties } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
+import { AppButton } from '../components/AppButton';
+import { cx } from '../../../components/ui';
 import { V17CapDart } from '../../../components/V17CapDart';
 import { V17Icon } from '../../../components/V17Icon';
 import '../../../components/v17-status.css';
 import { shortDate } from '../format';
-import './extension.css';
 import { initialPopupState, isSelectable, popupReducer, type PageLink, type PageScan, type PopupState } from './model';
-
-const title: CSSProperties = { fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-const rowBase: CSSProperties = { gap: 10, padding: '6px 0', borderTop: '1px solid var(--line)', fontSize: 13 };
-const boxOn: CSSProperties = {
-  width: 18,
-  height: 18,
-  borderRadius: 5,
-  border: '1.5px solid var(--pri)',
-  background: 'var(--pri)',
-  color: 'var(--on-pri)',
-  display: 'grid',
-  placeItems: 'center',
-  flex: 'none',
-};
-const boxOff: CSSProperties = { ...boxOn, border: '1.5px solid var(--line-2)', background: 'transparent' };
-const boxLocked: CSSProperties = { ...boxOff, background: 'var(--hover)' };
-
-const bareBtn: CSSProperties = { border: 0, background: 'transparent', padding: 0, display: 'inline-flex' };
-
-const pillMuted: CSSProperties = {
-  display: 'inline-block',
-  fontSize: 12,
-  fontWeight: 600,
-  color: 'var(--ink-2)',
-  background: 'var(--line)',
-  borderRadius: 99,
-  padding: '3px 10px',
-  whiteSpace: 'nowrap',
-};
 
 function LinkRow({
   link,
@@ -48,10 +20,12 @@ function LinkRow({
 }) {
   const selectable = isSelectable(link, matchRoles);
   const applied = link.state.kind === 'applied';
-  const dim = applied ? 0.72 : link.state.kind === 'filtered' && matchRoles ? 0.5 : 1;
   return (
     <div
-      className="row nw ext-row"
+      className={cx(
+        'flex cursor-pointer flex-nowrap items-center gap-2.5 border-t border-line py-1.5 text-[13px] aria-disabled:cursor-default',
+        applied ? 'opacity-[0.72]' : link.state.kind === 'filtered' && matchRoles ? 'opacity-50' : 'opacity-100',
+      )}
       role="checkbox"
       aria-checked={ticked}
       aria-disabled={!selectable}
@@ -63,18 +37,28 @@ function LinkRow({
           onToggle();
         }
       }}
-      style={{ ...rowBase, opacity: dim }}
     >
-      <span style={applied ? boxLocked : ticked ? boxOn : boxOff}>{ticked && <V17Icon name="check" />}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={title}>{link.title}</div>
-        <div className="s" style={{ fontSize: 12 }}>
+      <span
+        className={cx(
+          'grid size-[18px] flex-none place-items-center rounded-[5px] border-[1.5px] text-on-pri',
+          applied ? 'border-line-2 bg-hover' : ticked ? 'border-pri bg-pri' : 'border-line-2 bg-transparent',
+        )}
+      >
+        {ticked && <V17Icon name="check" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-semibold">{link.title}</div>
+        <div className="text-[12px] text-muted">
           {link.place} · {link.team}
         </div>
       </div>
-      {link.state.kind === 'applied' && <span style={pillMuted}>Applied · {shortDate(link.state.on)}</span>}
+      {link.state.kind === 'applied' && (
+        <span className="inline-block rounded-full bg-line px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap text-ink-2">
+          Applied · {shortDate(link.state.on)}
+        </span>
+      )}
       {link.state.kind === 'filtered' && matchRoles && (
-        <span className="spec" style={{ whiteSpace: 'nowrap', letterSpacing: '.06em' }}>
+        <span className="font-mono text-[11.5px] tracking-[0.06em] whitespace-nowrap text-muted">
           {link.state.reason}
         </span>
       )}
@@ -93,23 +77,21 @@ export function SentCard({
   onDismiss?: () => void;
 }) {
   return (
-    <div className="mcell" style={{ gap: 14, background: 'var(--bg)' }}>
-      <div className="row nw" style={{ gap: 14, alignItems: 'center' }}>
+    <div className="flex min-w-0 flex-col gap-3.5 rounded-3xl border border-line bg-bg p-6">
+      <div className="flex flex-nowrap items-center gap-3.5">
         <V17CapDart size={46} mood="happy" />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 650 }}>✓ {titles.length} sent · now in Up next</div>
-          <div className="s" style={{ fontSize: 13, lineHeight: 1.5 }}>
-            {titles.join(' · ')}
-          </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[18px] font-[650]">✓ {titles.length} sent · now in Up next</div>
+          <div className="text-[13px] leading-normal text-muted">{titles.join(' · ')}</div>
         </div>
       </div>
-      <div className="row nw" style={{ gap: 8 }}>
-        <button className="btn sm pri" type="button" onClick={onSeeUpNext}>
+      <div className="flex flex-nowrap items-center gap-2">
+        <AppButton variant="primary" size="sm" onClick={onSeeUpNext}>
           See Up next
-        </button>
-        <button className="btn sm ghost" type="button" onClick={onDismiss}>
+        </AppButton>
+        <AppButton variant="ghost" size="sm" onClick={onDismiss}>
           Dismiss
-        </button>
+        </AppButton>
       </div>
     </div>
   );
@@ -159,23 +141,7 @@ export function ExtensionPopup({
           send(state);
         }
       }}
-      style={{
-        position: 'absolute',
-        top: 10,
-        right: 24,
-        width: 384,
-        boxSizing: 'border-box',
-        background: 'var(--bg)',
-        border: '1px solid var(--line-2)',
-        borderRadius: 22,
-        boxShadow: 'var(--float)',
-        padding: '14px 18px 16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        zIndex: 4,
-        outline: 'none',
-      }}
+      className="absolute top-2.5 right-6 z-[4] box-border flex w-[384px] flex-col gap-2 rounded-[22px] border border-line-2 bg-bg px-[18px] pt-3.5 pb-4 shadow-float outline-none focus-visible:outline-none!"
     >
       {state.sent ? (
         <SentCard
@@ -188,11 +154,11 @@ export function ExtensionPopup({
         />
       ) : (
         <>
-          <div className="row nw" style={{ gap: 12, alignItems: 'center' }}>
+          <div className="flex flex-nowrap items-center gap-3">
             <V17CapDart size={40} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 650, fontSize: 15 }}>{scan.total} job links on this page</div>
-              <div className="s" style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>
+            <div className="min-w-0 flex-1">
+              <div className="text-[15px] font-[650]">{scan.total} job links on this page</div>
+              <div className="font-mono text-[12px] text-muted">
                 {scan.host} · showing {scan.links.length}
               </div>
             </div>
@@ -201,59 +167,48 @@ export function ExtensionPopup({
               title="Close"
               aria-label="Close"
               onClick={onClose}
-              className="ext-btn"
-              style={{
-                display: 'inline-grid',
-                placeItems: 'center',
-                width: 30,
-                height: 30,
-                borderRadius: 9,
-                color: 'var(--ink-2)',
-                border: '1px solid var(--line)',
-                background: 'var(--bg)',
-                flex: 'none',
-                padding: 0,
-              }}
+              className="inline-grid size-[30px] flex-none cursor-pointer place-items-center rounded-[9px] border border-line bg-bg p-0 text-ink-2!"
             >
               <V17Icon name="close" />
             </button>
           </div>
-          <div
-            className="row sp nw"
-            style={{ padding: '8px 0', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}
-          >
+          <div className="flex flex-nowrap items-center justify-between gap-3 border-y border-line py-2">
             <button
               type="button"
               role="switch"
               aria-checked={state.matchRoles}
               onClick={() => dispatch({ type: 'match', on: !state.matchRoles })}
-              className="row nw ext-btn"
-              style={{
-                font: 'inherit',
-                gap: 10,
-                fontSize: 13,
-                fontWeight: 600,
-                border: 0,
-                background: 'transparent',
-                padding: 0,
-                color: 'inherit',
-              }}
+              className="flex cursor-pointer flex-nowrap items-center gap-2.5 border-0 bg-transparent p-0 text-[13px]! font-semibold!"
             >
-              <span className={state.matchRoles ? 'switch on' : 'switch'}>
-                <i />
+              <span
+                className={cx(
+                  'relative h-[26px] w-11 flex-none rounded-full',
+                  state.matchRoles ? 'bg-brand' : 'bg-line-2',
+                )}
+              >
+                <i
+                  className={cx(
+                    'absolute top-[3px] block size-5 rounded-full bg-white',
+                    state.matchRoles ? 'left-[21px]' : 'left-[3px]',
+                  )}
+                />
               </span>
               Match my roles
             </button>
-            <span className="row nw" style={{ gap: 14 }}>
-              <button type="button" className="ext-btn" onClick={() => dispatch({ type: 'all' })} style={bareBtn}>
-                <span className="spec" style={{ color: 'var(--ink-2)', letterSpacing: '.06em' }}>
-                  ALL
-                </span>
+            <span className="flex flex-nowrap items-center gap-3.5">
+              <button
+                type="button"
+                className="inline-flex cursor-pointer border-0 bg-transparent p-0"
+                onClick={() => dispatch({ type: 'all' })}
+              >
+                <span className="font-mono text-[11.5px] tracking-[0.06em] text-ink-2">ALL</span>
               </button>
-              <button type="button" className="ext-btn" onClick={() => dispatch({ type: 'none' })} style={bareBtn}>
-                <span className="spec" style={{ letterSpacing: '.06em' }}>
-                  NONE
-                </span>
+              <button
+                type="button"
+                className="inline-flex cursor-pointer border-0 bg-transparent p-0"
+                onClick={() => dispatch({ type: 'none' })}
+              >
+                <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">NONE</span>
               </button>
             </span>
           </div>
@@ -266,18 +221,10 @@ export function ExtensionPopup({
               onToggle={() => dispatch({ type: 'toggle', id: l.id })}
             />
           ))}
-          <button
-            className="btn pri"
-            type="button"
-            disabled={count === 0}
-            onClick={() => send(state)}
-            style={{ width: '100%', justifyContent: 'center', marginTop: 4, opacity: count === 0 ? 0.5 : undefined }}
-          >
+          <AppButton className="mt-1 w-full" variant="primary" disabled={count === 0} onClick={() => send(state)}>
             Send {count} to JobPilot · ↵
-          </button>
-          <div className="s" style={{ fontSize: 12, textAlign: 'center' }}>
-            Only ticked links are sent. Applied jobs are locked.
-          </div>
+          </AppButton>
+          <div className="text-center text-[12px] text-muted">Only ticked links are sent. Applied jobs are locked.</div>
         </>
       )}
     </div>

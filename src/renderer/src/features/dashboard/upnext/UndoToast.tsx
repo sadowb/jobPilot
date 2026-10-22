@@ -1,14 +1,5 @@
-import type { CSSProperties } from 'react';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { UNDO_WINDOW_MS, type RemovedBatch } from './queue';
-
-const ellipsis: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
 
 /** Bottom toast after a removal: what went, Undo (⌘Z), seconds left and a draining bar. */
 export function UndoToast({ batch, now, onUndo }: { batch: RemovedBatch; now: number; onUndo: () => void }) {
@@ -17,63 +8,30 @@ export function UndoToast({ batch, now, onUndo }: { batch: RemovedBatch; now: nu
   return (
     <div
       role="status"
-      style={{
-        position: 'absolute',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        bottom: 88,
-        zIndex: 3,
-        width: 540,
-        boxSizing: 'border-box',
-        background: 'var(--bg)',
-        border: '1px solid var(--line-2)',
-        borderRadius: 16,
-        boxShadow: 'var(--float)',
-        overflow: 'hidden',
-      }}
+      className="absolute bottom-[88px] left-1/2 z-[3] box-border w-[540px] -translate-x-1/2 overflow-hidden rounded-2xl border border-line-2 bg-bg shadow-float"
     >
-      <div className="row nw" style={{ gap: 12, padding: '12px 16px', fontSize: 13.5 }}>
-        <span style={ellipsis}>
+      <div className="flex flex-nowrap items-center gap-3 px-4 py-3 text-[13.5px]">
+        <span className="min-w-0 flex-1 truncate">
           Removed{' '}
           {batch.entries.length === 1 && first ? (
             <>
-              <b style={{ fontWeight: 650 }}>{first.company}</b> · {first.role}
+              <b className="font-[650]">{first.company}</b> · {first.role}
             </>
           ) : (
-            <b style={{ fontWeight: 650 }}>{batch.entries.length} jobs</b>
+            <b className="font-[650]">{batch.entries.length} jobs</b>
           )}
         </span>
         <button
           type="button"
-          className="row nw"
+          className="flex cursor-pointer flex-nowrap items-center gap-1.5 border-0 bg-transparent p-0 font-[650]! whitespace-nowrap text-brand-text!"
           onClick={onUndo}
-          style={{
-            font: 'inherit',
-            gap: 6,
-            fontWeight: 650,
-            color: 'var(--brand-text)',
-            whiteSpace: 'nowrap',
-            border: 0,
-            background: 'transparent',
-            cursor: 'pointer',
-            padding: 0,
-          }}
         >
           Undo <V17Kbd>⌘Z</V17Kbd>
         </button>
-        <span className="s" style={{ fontFamily: 'var(--mono)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
-          {Math.ceil(left / 1000)} s
-        </span>
+        <span className="font-mono text-[12px] text-muted tabular-nums">{Math.ceil(left / 1000)} s</span>
       </div>
-      <div style={{ height: 2, background: 'var(--line)' }}>
-        <i
-          style={{
-            display: 'block',
-            height: 2,
-            width: `${Math.floor((left / UNDO_WINDOW_MS) * 100)}%`,
-            background: 'var(--brand)',
-          }}
-        />
+      <div className="h-0.5 bg-line">
+        <i className="block h-0.5 bg-brand" style={{ width: `${Math.floor((left / UNDO_WINDOW_MS) * 100)}%` }} />
       </div>
     </div>
   );

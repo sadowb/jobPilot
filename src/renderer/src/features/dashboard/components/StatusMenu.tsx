@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { cx } from '../../../components/ui';
 import { V17StatusChip } from '../../../components/V17StatusChip';
 import { STATUS_MENU_GROUPS, STATUS_META, STATUS_MENU_ORDER } from '../status';
 import type { ApplicationStatus } from '../types';
-
-const heading = { padding: '8px 8px 4px', fontSize: 10.5, textTransform: 'uppercase' } as const;
 
 /**
  * Status picker (S). A keyboard-driven listbox: ↑↓ move `cursor`, ↵ sets, Esc closes; the key handling lives
@@ -37,25 +36,9 @@ export function StatusMenu({
       role="listbox"
       aria-label="Set status"
       onClick={(e) => e.stopPropagation()}
-      style={{
-        position: 'absolute',
-        top: 34,
-        left: -6,
-        zIndex: 6,
-        width: 272,
-        boxSizing: 'border-box',
-        border: '1px solid var(--line-2)',
-        borderRadius: 16,
-        background: 'var(--bg)',
-        boxShadow: 'var(--float)',
-        padding: 10,
-        cursor: 'default',
-      }}
+      className="absolute top-[34px] -left-1.5 z-[6] box-border w-[272px] cursor-default rounded-2xl border border-line-2 bg-bg p-2.5 shadow-float"
     >
-      <div
-        className="inp f"
-        style={{ height: 36, borderRadius: 10, fontSize: 13, padding: '0 12px', gap: 8, marginBottom: 6 }}
-      >
+      <div className="mb-1.5 flex h-9 min-w-0 items-center gap-2 rounded-[10px] border border-ink bg-bg px-3 text-[13px] text-ink shadow-[0_0_0_3px_color-mix(in_srgb,var(--ink)_14%,transparent)]">
         <svg
           width="15"
           height="15"
@@ -65,16 +48,16 @@ export function StatusMenu({
           strokeWidth="2.2"
           strokeLinecap="round"
           aria-hidden="true"
-          style={{ flex: 'none' }}
+          className="flex-none"
         >
           <circle cx="11" cy="11" r="7" />
           <path d="M20 20l-3.5-3.5" />
         </svg>
-        <span style={{ color: 'var(--muted)' }}>Type to jump…</span>
+        <span className="text-muted">Type to jump…</span>
       </div>
       {STATUS_MENU_GROUPS.map((group) => (
         <div key={group.heading}>
-          <div className="spec" style={heading}>
+          <div className="px-2 pt-2 pb-1 font-mono text-[10.5px] tracking-[0.06em] text-muted uppercase">
             {group.heading}
           </div>
           {group.statuses.map((s) => {
@@ -85,31 +68,23 @@ export function StatusMenu({
                 key={s}
                 role="option"
                 aria-selected={s === current}
-                className="row nw"
+                className={cx(
+                  'flex min-h-[34px] cursor-pointer flex-nowrap items-center gap-2 rounded-[10px] px-2',
+                  active && 'bg-hover',
+                )}
                 onClick={() => onPick(s)}
-                style={{
-                  gap: 8,
-                  minHeight: 34,
-                  padding: '0 8px',
-                  borderRadius: 10,
-                  cursor: 'pointer',
-                  background: active ? 'var(--hover)' : undefined,
-                }}
               >
                 <V17StatusChip fg={meta.fg} bg={meta.bg}>
                   {meta.longLabel}
                 </V17StatusChip>
-                <span style={{ flex: 1 }} />
-                {s === current && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>✓</span>}
+                <span className="flex-1" />
+                {s === current && <span className="text-[12px] font-bold text-ink">✓</span>}
               </div>
             );
           })}
         </div>
       ))}
-      <div
-        className="s"
-        style={{ fontSize: 11.5, padding: '10px 8px 2px', marginTop: 6, borderTop: '1px solid var(--line)' }}
-      >
+      <div className="mt-1.5 border-t border-line px-2 pt-2.5 pb-0.5 text-[11.5px] text-muted">
         ↑↓ move · ↵ set · email updates this too
       </div>
     </div>
