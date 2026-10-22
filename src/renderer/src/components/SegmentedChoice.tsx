@@ -1,4 +1,5 @@
 import type { CSSProperties, KeyboardEvent } from 'react';
+import { cx } from './ui';
 
 export interface SegmentOption<T extends string> {
   value: T;
@@ -34,23 +35,25 @@ export function SegmentedChoice<T extends string>({
   };
   return (
     <div
-      className="seg"
+      className="grid auto-cols-[1fr] grid-flow-col gap-0.5 rounded-full border border-line bg-bg p-1"
       role="radiogroup"
       aria-label={label}
-      style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: '1fr', width, ...style }}
+      style={{ width, ...style }}
     >
       {options.map((o, i) => {
         const on = o.value === value;
         return (
           <span
             key={o.value}
-            className={on ? 'on' : ''}
+            className={cx(
+              'flex cursor-pointer items-center justify-center gap-2 rounded-full px-3.5 py-[7px] text-[14px] font-semibold whitespace-nowrap',
+              on ? 'bg-pri text-on-pri' : 'text-muted',
+            )}
             role="radio"
             aria-checked={on}
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => move(e, i)}
-            style={{ justifyContent: 'center', whiteSpace: 'nowrap', cursor: 'pointer' }}
           >
             {o.label}
           </span>

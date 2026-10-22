@@ -16,49 +16,32 @@ export const PAPER_TOKENS = {
   '--brand-tint': 'rgb(236 239 230)',
 } as CSSProperties;
 
-const bar = (width: string, height: number, background: string, marginTop: number): CSSProperties => ({
-  display: 'block',
-  flex: 'none',
-  width,
-  height,
-  background,
-  borderRadius: 2,
-  marginTop,
-});
+// Bars: [width, height, colour, top margin] of the CV's placeholder lines.
+const BARS = [
+  'mt-0 h-[5px] w-[58%] bg-ink',
+  'mt-[5px] h-0.5 w-[86%] bg-line-2',
+  'mt-[3px] h-0.5 w-[66%] bg-line-2',
+  'mt-2.5 h-[3px] w-[30%] bg-brand',
+  'mt-[5px] h-0.5 w-[96%] bg-line',
+  'mt-[3px] h-0.5 w-[90%] bg-line',
+  'mt-[3px] h-0.5 w-[84%] bg-line',
+  'mt-[9px] h-[3px] w-[30%] bg-brand',
+  'mt-[5px] h-0.5 w-[96%] bg-line',
+  'mt-[3px] h-0.5 w-[78%] bg-line',
+  'mt-[3px] h-0.5 w-[92%] bg-line',
+];
 
 /** 64×82 thumbnail of a one-page CV (peek panel). */
 export function V17MiniPaper() {
   return (
     <div
       aria-hidden="true"
-      style={{
-        ...PAPER_TOKENS,
-        color: 'var(--ink)',
-        width: 64,
-        height: 82,
-        flex: 'none',
-        boxSizing: 'border-box',
-        padding: 8,
-        background: 'var(--bg)',
-        border: '1px solid var(--line)',
-        borderRadius: 6,
-        boxShadow: 'var(--float)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+      className="box-border flex h-[82px] w-16 flex-none flex-col overflow-hidden rounded-md border border-line bg-bg p-2 text-ink shadow-float"
+      style={PAPER_TOKENS}
     >
-      <i style={bar('58%', 5, 'var(--ink)', 0)} />
-      <i style={bar('86%', 2, 'var(--line-2)', 5)} />
-      <i style={bar('66%', 2, 'var(--line-2)', 3)} />
-      <i style={bar('30%', 3, 'var(--brand)', 10)} />
-      <i style={bar('96%', 2, 'var(--line)', 5)} />
-      <i style={bar('90%', 2, 'var(--line)', 3)} />
-      <i style={bar('84%', 2, 'var(--line)', 3)} />
-      <i style={bar('30%', 3, 'var(--brand)', 9)} />
-      <i style={bar('96%', 2, 'var(--line)', 5)} />
-      <i style={bar('78%', 2, 'var(--line)', 3)} />
-      <i style={bar('92%', 2, 'var(--line)', 3)} />
+      {BARS.map((bar, i) => (
+        <i key={i} className={`block flex-none rounded-xs ${bar}`} />
+      ))}
     </div>
   );
 }

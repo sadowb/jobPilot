@@ -18,7 +18,7 @@ function Shell() {
   useSettingsShortcut();
   const navigate = useNavigate();
   return (
-    <div className="app" style={{ minHeight: '100%' }}>
+    <div className="app min-h-full">
       <TopBar onAsk={openCommandBox} onSettings={() => void navigate('/settings')} />
       <Outlet />
       <CommandBoxHost />

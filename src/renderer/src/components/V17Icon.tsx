@@ -102,7 +102,8 @@ export function V17Icon({ name, size, style }: { name: V17IconName; size?: numbe
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      style={{ flex: 'none', display: 'block', ...style }}
+      className="block flex-none"
+      style={style}
     >
       {def.body}
     </svg>

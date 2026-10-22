@@ -1,5 +1,6 @@
 // Extracted from the V17 boards (Cap riding the dart); paths are verbatim.
 // `flying` adds the speed lines and gusts drawn on the all-clear board (V17_Inbox_Clear).
+import { GUST_LINE, GUST_LINE_LATE } from './gustLine';
 
 export function CapOnDartArt({ size, flying = false }: { size: number; flying?: boolean }) {
   return (
@@ -19,8 +20,8 @@ export function CapOnDartArt({ size, flying = false }: { size: number; flying?: 
       <path d="M55 67 L107.5 12.5" stroke="var(--panel,#fff)" strokeWidth="4.5" strokeLinecap="round" opacity=".5" />
       {flying && (
         <g fill="none" stroke="#1A1A1A" strokeWidth="2.4" strokeLinecap="round">
-          <path className="gust" d="M20 44 q-8 2 -14 -2" />
-          <path className="gust" d="M22 52 q-10 4 -18 2" style={{ animationDelay: '.2s' }} />
+          <path className={GUST_LINE} d="M20 44 q-8 2 -14 -2" />
+          <path className={GUST_LINE_LATE} d="M22 52 q-10 4 -18 2" />
         </g>
       )}
       <g transform="translate(44 60) rotate(22) scale(1.2) translate(-24 -26)">

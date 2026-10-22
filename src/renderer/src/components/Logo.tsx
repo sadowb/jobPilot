@@ -18,8 +18,12 @@ export function LogoMark({ size = 28 }: { size?: number }) {
 
 export function Logo({ label = 'JobPilot' }: { label?: string }) {
   return (
-    <a className="logo" href="#/" aria-label={label}>
-      <i>
+    <a
+      className="flex items-center gap-2 font-logo text-[23px] font-normal tracking-[-0.01em] [html[data-platform=darwin]_&]:[-webkit-app-region:no-drag] [html[data-platform=darwin]_&]:[app-region:no-drag]"
+      href="#/"
+      aria-label={label}
+    >
+      <i className="grid size-7 place-items-center">
         <LogoMark />
       </i>
       jobpilot
