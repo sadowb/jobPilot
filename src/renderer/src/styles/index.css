@@ -36,6 +36,7 @@
   --font-mono: var(--mono);
   --font-logo: var(--logo);
   --shadow-float: var(--float);
+  --radius-field: 12px;
 }
 
 /* Tailwind `dark:` follows the `.dark` class on <html>, same switch the tokens use. */
@@ -51,6 +52,26 @@
   --animate-jp-spin: jp-spin 1.4s linear infinite;
   --animate-jp-pulse: jp-pulse 1.6s ease-in-out infinite;
   --animate-jp-typing: jp-typing 1.2s infinite;
+  --animate-jp-dialog-rise: jp-dialog-rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-jp-dialog-fade: jp-dialog-fade 160ms ease-out both;
+  @keyframes jp-dialog-rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes jp-dialog-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
   @keyframes jp-shimmer {
     to {
       background-position: -200% 0;
