@@ -4,15 +4,15 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import { CapOnDartArt } from '../../components/CapOnDartArt';
 import { CritterBot } from '../../components/CritterBot';
 import { KeyCap } from '../../components/KeyCap';
-import { MonoLabel } from '../../components/MonoLabel';
-import { SAMPLE_JOBS, STATUS_CHIP, type JobRecord } from './jobs';
+import { Button, cx } from '../../components/ui';
+import { PILL, S, shellButton } from '../shared-ui';
+import { SAMPLE_JOBS, type JobRecord } from './jobs';
 import {
   answerFor,
   buildResults,
@@ -29,7 +29,18 @@ const ICONS = {
   external: <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />,
 } as const;
 
-function Icon({ size, children, style }: { size: number; children: ReactNode; style?: CSSProperties }) {
+/** Small uppercase mono label (section captions, answer row tags). */
+const MONO_LABEL = 'font-mono text-[10.5px] tracking-[0.06em] whitespace-nowrap text-muted uppercase';
+const STATUS_CHIP_CLASSES: Record<JobRecord['status'], string> = {
+  Submitted: 'text-ink-2 bg-line',
+  Screening: 'text-[#0F766E] bg-[rgb(15_118_110/.14)]',
+  Interview: 'text-[#B45309] bg-[rgb(180_83_9/.16)]',
+  Offer: 'text-brand-text bg-brand-tint',
+  Rejected: 'text-[#B5412F] bg-[rgb(181_65_47/.14)]',
+  Withdrawn: 'text-muted bg-line',
+};
+
+function Icon({ size, children, className }: { size: number; children: ReactNode; className?: string }) {
   return (
     <svg
       width={size}
@@ -41,30 +52,16 @@ function Icon({ size, children, style }: { size: number; children: ReactNode; st
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      style={style}
+      className={className}
     >
       {children}
     </svg>
   );
 }
 
-const ELLIPSIS: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-
 function StatusChip({ status }: { status: JobRecord['status'] }) {
-  const c = STATUS_CHIP[status];
   return (
-    <span
-      style={{
-        display: 'inline-block',
-        fontSize: 12,
-        fontWeight: 600,
-        color: c.color,
-        background: c.background,
-        borderRadius: 99,
-        padding: '3px 10px',
-        whiteSpace: 'nowrap',
-      }}
-    >
+    <span className={`${PILL} ${STATUS_CHIP_CLASSES[status]}`}>
       {status}
     </span>
   );
@@ -91,17 +88,7 @@ function ResultRow({
     ) : result.kind === 'ask' ? (
       <CapOnDartArt size={34} />
     ) : (
-      <span
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 10,
-          background: 'var(--panel)',
-          display: 'grid',
-          placeItems: 'center',
-          flex: 'none',
-        }}
-      >
+      <span className="grid size-[34px] flex-none place-items-center rounded-[10px] bg-panel">
         <Icon size={16}>{result.intent.type === 'open-posting' ? ICONS.external : ICONS.arrow}</Icon>
       </span>
     );
@@ -110,24 +97,17 @@ function ResultRow({
       id={domId}
       role="option"
       aria-selected={selected}
-      className="row nw"
+      className={cx(
+        'flex min-w-0 cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5',
+        selected && 'bg-panel shadow-[inset_3px_0_0_var(--ink)]',
+      )}
       onMouseEnter={onHover}
       onClick={onRun}
-      style={{
-        gap: 12,
-        padding: '10px 12px',
-        borderRadius: 12,
-        minWidth: 0,
-        cursor: 'pointer',
-        ...(selected ? { background: 'var(--panel)', boxShadow: 'inset 3px 0 0 var(--ink)' } : null),
-      }}
     >
       {lead}
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontWeight: 600, fontSize: 14.5, ...ELLIPSIS }}>{result.title}</div>
-        <div className="s" style={{ fontSize: 12.5, ...ELLIPSIS }}>
-          {result.subtitle}
-        </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[14.5px] font-semibold">{result.title}</div>
+        <div className={cx(S, 'truncate text-[12.5px]')}>{result.subtitle}</div>
       </div>
       {result.kind === 'job' && job ? (
         <StatusChip status={job.status} />
@@ -140,7 +120,7 @@ function ResultRow({
 
 function Hint({ keys, children }: { keys: string; children: ReactNode }) {
   return (
-    <span className="row nw" style={{ gap: 6 }}>
+    <span className="flex items-center gap-1.5">
       <KeyCap>{keys}</KeyCap>
       {children}
     </span>
@@ -158,56 +138,52 @@ function AnswerPane({
 }) {
   return (
     <>
-      <div style={{ padding: '18px 18px 8px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div className="row nw" style={{ gap: 10 }}>
+      <div className="flex flex-col gap-3.5 px-[18px] pt-[18px] pb-2">
+        <div className="flex items-center gap-2.5">
           <CapOnDartArt size={34} />
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14.5 }}>Cap</div>
-            <div className="s" style={{ fontSize: 12.5 }}>
+            <div className="text-[14.5px] font-semibold">Cap</div>
+            <div className={cx(S, 'text-[12.5px]')}>
               {answer ? answer.meta : 'answer · nothing to read for this yet'}
             </div>
           </div>
         </div>
-        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--ink-2)' }}>
+        <p className="m-0 text-[15px] leading-[1.6] text-ink-2">
           {answer
             ? answer.intro
             : 'I can’t answer that in this build yet. Status changes work, for example “set ramp to interview”.'}
         </p>
         {answer && (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="flex flex-col">
             {answer.rows.map((r) => (
-              <div
-                key={r.label}
-                className="row nw"
-                style={{ gap: 14, padding: '10px 0', borderTop: '1px solid var(--line)', alignItems: 'flex-start' }}
-              >
-                <MonoLabel style={{ width: 92, flex: 'none', paddingTop: 3 }}>{r.label}</MonoLabel>
-                <span style={{ fontSize: 14, lineHeight: 1.5 }}>{r.text}</span>
+              <div key={r.label} className="flex items-start gap-3.5 border-t border-line py-2.5">
+                <span className={cx(MONO_LABEL, 'w-[92px] flex-none pt-[3px]')}>{r.label}</span>
+                <span className="text-sm leading-normal">{r.text}</span>
               </div>
             ))}
           </div>
         )}
         {answer && (
-          <p className="s" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5 }}>
-            {answer.note}
-          </p>
+          <p className={cx(S, 'm-0 text-[12.5px] leading-normal')}>{answer.note}</p>
         )}
       </div>
-      <div
-        className="row sp nw"
-        style={{ gap: 10, padding: '12px 18px', borderTop: '1px solid var(--line)', background: 'var(--panel)' }}
-      >
-        <span className="row nw s" style={{ gap: 6, fontSize: 12 }}>
+      <div className="flex items-center justify-between gap-2.5 border-t border-line bg-panel px-[18px] py-3">
+        <span className={cx(S, 'flex items-center gap-1.5 text-[12px]')}>
           <KeyCap>Esc</KeyCap>close
         </span>
-        <div className="row nw" style={{ gap: 8 }}>
-          <button className="btn sm " type="button" onClick={onOpenInbox}>
+        <div className="flex items-center gap-2">
+          <Button size="sm" className={shellButton()} onClick={onOpenInbox}>
             Open in Inbox&nbsp;<KeyCap>⌘↵</KeyCap>
-          </button>
+          </Button>
           {answer?.primary && (
-            <button className="btn sm pri" type="button" onClick={() => onRun(answer.primary!.intent)}>
+            <Button
+              variant="primary"
+              size="sm"
+              className={shellButton('primary')}
+              onClick={() => onRun(answer.primary!.intent)}
+            >
               {answer.primary.label}&nbsp;<KeyCap>↵</KeyCap>
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -277,42 +253,33 @@ export function CommandBox({ jobs = SAMPLE_JOBS, initialQuery = '', onRun, onOpe
     }
   };
 
-  const width = mode === 'answer' ? 680 : 640;
   const offsets = sections.map((_, i) => sections.slice(0, i).reduce((n, s) => n + s.results.length, 0));
 
   return (
     <>
-      <div className="scrim" style={{ position: 'fixed', zIndex: 5 }} onClick={onClose} />
+      <div
+        className="fixed inset-0 z-5 bg-[rgb(0_0_0/0.25)] backdrop-blur-[8px] dark:bg-[rgb(0_0_0/0.45)] in-[html[data-platform=darwin]]:top-(--app-toolbar-height)"
+        onClick={onClose}
+      />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Ask Cap"
         onKeyDown={onKeyDown}
-        style={{
-          position: 'fixed',
-          left: '50%',
-          top: 96,
-          transform: 'translateX(-50%)',
-          width,
-          maxWidth: 'calc(100vw - 32px)',
-          maxHeight: 'calc(100vh - 128px)',
-          overflowY: 'auto',
-          zIndex: 10,
-          background: 'var(--bg)',
-          border: '1px solid var(--line-2)',
-          borderRadius: 20,
-          boxShadow: 'var(--float)',
-          overflowX: 'hidden',
-        }}
+        className={cx(
+          'fixed top-24 left-1/2 z-10 max-h-[calc(100vh-128px)] max-w-[calc(100vw-32px)] overflow-x-hidden overflow-y-auto',
+          'rounded-[20px] border border-line-2 bg-bg shadow-float [transform:translateX(-50%)]',
+          mode === 'answer' ? 'w-[680px]' : 'w-[640px]',
+        )}
       >
-        <div className="row nw" style={{ gap: 12, padding: '16px 18px', borderBottom: '1px solid var(--line)' }}>
-          <Icon size={18} style={{ flex: 'none', color: 'var(--muted)' }}>
+        <div className="flex items-center gap-3 border-b border-line px-[18px] py-4">
+          <Icon size={18} className="flex-none text-muted">
             <circle cx="11" cy="11" r="7" />
             {ICONS.search}
           </Icon>
           <input
             ref={inputRef}
-            className="jp-cmdk-input"
+            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-[17px] text-ink outline-0 placeholder:text-muted placeholder:opacity-100 focus-visible:outline-none!"
             role="combobox"
             aria-expanded={mode === 'results'}
             aria-controls={listId}
@@ -334,8 +301,8 @@ export function CommandBox({ jobs = SAMPLE_JOBS, initialQuery = '', onRun, onOpe
           <>
             <div id={listId} role="listbox" aria-label="Results">
               {sections.map((s, si) => (
-                <div key={s.label} role="group" aria-label={s.label} style={{ padding: '6px 8px 4px' }}>
-                  <MonoLabel style={{ padding: '6px 10px 4px', display: 'block' }}>{s.label}</MonoLabel>
+                <div key={s.label} role="group" aria-label={s.label} className="px-2 pt-1.5 pb-1">
+                  <span className={cx(MONO_LABEL, 'block px-2.5 pt-1.5 pb-1')}>{s.label}</span>
                   {s.results.map((r, ri) => {
                     const at = offsets[si]! + ri;
                     return (
@@ -353,16 +320,7 @@ export function CommandBox({ jobs = SAMPLE_JOBS, initialQuery = '', onRun, onOpe
                 </div>
               ))}
             </div>
-            <div
-              className="row nw s"
-              style={{
-                gap: 16,
-                padding: '10px 18px',
-                borderTop: '1px solid var(--line)',
-                fontSize: 12,
-                background: 'var(--panel)',
-              }}
-            >
+            <div className={cx(S, 'flex items-center gap-4 border-t border-line bg-panel px-[18px] py-2.5 text-[12px]')}>
               <Hint keys="↑↓">move</Hint>
               <Hint keys="↵">run</Hint>
               <Hint keys="⇥">ask Cap</Hint>

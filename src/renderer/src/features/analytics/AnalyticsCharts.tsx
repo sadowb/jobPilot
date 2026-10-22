@@ -8,9 +8,12 @@ import {
   type FunnelStage,
   type RateRow,
 } from './model';
+import { cx } from '../../components/ui';
+import { V17X } from '../shared-ui';
 
-const NUM = { fill: 'var(--ink-2)', fontSize: '13.5px' } as const;
-const MONO_NOTE = { fill: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '11.5px' } as const;
+const NUM = 'fill-ink-2 text-[13.5px]';
+const MONO_NOTE = 'fill-muted font-mono text-[11.5px]';
+const CHART = 'block overflow-visible';
 
 export function FunnelChart({ stages, label }: { stages: readonly FunnelStage[]; label: string }) {
   const bars = funnelBars(stages);
@@ -20,7 +23,7 @@ export function FunnelChart({ stages, label }: { stages: readonly FunnelStage[];
       width="100%"
       role="img"
       aria-label={label}
-      style={{ display: 'block', overflow: 'visible' }}
+      className={CHART}
     >
       {bars.map((b, i) => (
         <g key={b.label}>
@@ -31,7 +34,7 @@ export function FunnelChart({ stages, label }: { stages: readonly FunnelStage[];
               width={FUNNEL.trackWidth}
               height={FUNNEL.rowHeight}
               rx="6"
-              style={{ fill: 'none', stroke: 'var(--line-2)', strokeDasharray: '4 4' }}
+              className="fill-none stroke-line-2 [stroke-dasharray:4_4]"
             />
           ) : (
             <rect
@@ -40,16 +43,16 @@ export function FunnelChart({ stages, label }: { stages: readonly FunnelStage[];
               width={b.width}
               height={FUNNEL.rowHeight}
               rx="6"
-              style={{ fill: i === 0 ? 'var(--sage)' : 'var(--brand)' }}
+              className={i === 0 ? 'fill-(--sage)' : 'fill-brand'}
             />
           )}
-          <text x="0" y={b.y + 15} style={NUM}>
+          <text x="0" y={b.y + 15} className={NUM}>
             {b.label}
           </text>
-          <text x={b.labelX} y={b.y + 15} style={{ fill: 'var(--ink)', fontSize: '13.5px', fontWeight: 650 }}>
+          <text x={b.labelX} y={b.y + 15} className="fill-ink text-[13.5px] font-[650]">
             {b.value}
           </text>
-          <text x="556" y={b.y + 15} textAnchor="end" style={MONO_NOTE}>
+          <text x="556" y={b.y + 15} textAnchor="end" className={MONO_NOTE}>
             {b.note}
           </text>
         </g>
@@ -75,18 +78,12 @@ export function ReplyRateChart({
       width="100%"
       role="img"
       aria-label={label}
-      style={{ display: 'block', overflow: 'visible' }}
+      className={CHART}
     >
-      <line x1="0" y1={LINE.baseline} x2="700" y2={LINE.baseline} style={{ stroke: 'var(--line)' }} />
+      <line x1="0" y1={LINE.baseline} x2="700" y2={LINE.baseline} className="stroke-line" />
       <polyline
         points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
-        style={{
-          fill: 'none',
-          stroke: 'var(--brand)',
-          strokeWidth: 2,
-          strokeLinejoin: 'round',
-          strokeLinecap: 'round',
-        }}
+        className="fill-none stroke-brand stroke-2 [stroke-linecap:round] [stroke-linejoin:round]"
       />
       {pts.map((p, i) => (
         <g key={p.label}>
@@ -94,13 +91,13 @@ export function ReplyRateChart({
             cx={p.x}
             cy={p.y}
             r={i === last ? 5 : 3}
-            style={{ fill: i === last ? 'var(--brand)' : 'var(--bg)', stroke: 'var(--brand)', strokeWidth: 2 }}
+            className={cx('stroke-brand stroke-2', i === last ? 'fill-brand' : 'fill-bg')}
           />
           <text
             x={p.x}
             y={p.y - LINE.labelRise}
             textAnchor="middle"
-            style={{ fill: 'var(--ink-2)', fontSize: '13px', fontWeight: 600 }}
+            className="fill-ink-2 text-[13px] font-semibold"
           >
             {p.value}%
           </text>
@@ -112,7 +109,7 @@ export function ReplyRateChart({
           x={p.x}
           y="180"
           textAnchor="middle"
-          style={{ fill: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: '11px' }}
+          className="fill-muted font-mono text-[11px]"
         >
           {p.label}
         </text>
@@ -121,72 +118,32 @@ export function ReplyRateChart({
   );
 }
 
-const ROW_GRID = 'minmax(0,1.15fr) 52px 52px minmax(0,1.5fr)';
+const ROW_GRID = 'grid grid-cols-[minmax(0,1.15fr)_52px_52px_minmax(0,1.5fr)] gap-2.5';
 
 export function RateTable({ rows }: { rows: readonly RateRow[] }) {
   return (
     <>
-      <div
-        className="v17x"
-        style={{ display: 'grid', gridTemplateColumns: ROW_GRID, gap: 10, alignItems: 'end', paddingBottom: 8 }}
-      >
+      <div className={cx(V17X, ROW_GRID, 'items-end pb-2')}>
         <span>Name</span>
-        <span style={{ textAlign: 'right' }}>Applied</span>
-        <span style={{ textAlign: 'right' }}>Replies</span>
-        <span style={{ paddingLeft: 12 }}>Reply rate</span>
+        <span className="text-right">Applied</span>
+        <span className="text-right">Replies</span>
+        <span className="pl-3">Reply rate</span>
       </div>
       {rows.map((r) => {
         const pct = ratePercent(r.replies, r.applied);
         return (
-          <div
-            key={r.name}
-            className="v17hair"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: ROW_GRID,
-              gap: 10,
-              alignItems: 'center',
-              padding: '7px 0',
-              fontSize: 13.5,
-            }}
-          >
-            <span
-              style={{
-                fontWeight: r.highlight ? 650 : 500,
-                color: r.highlight ? 'var(--ink)' : 'var(--ink-2)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+          <div key={r.name} className={cx(ROW_GRID, 'items-center border-t border-line py-[7px] text-[13.5px]')}>
+            <span className={cx('truncate', r.highlight ? 'font-[650] text-ink' : 'font-medium text-ink-2')}>
               {r.name}
             </span>
-            <span className="s" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-              {r.applied}
-            </span>
-            <span className="s" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-              {r.replies}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 12, minWidth: 0 }}>
-              <b style={{ width: 38, fontVariantNumeric: 'tabular-nums' }}>{pct}%</b>
-              <i
-                style={{
-                  flex: 1,
-                  height: 5,
-                  borderRadius: 99,
-                  background: 'var(--line)',
-                  overflow: 'hidden',
-                  display: 'block',
-                }}
-              >
+            <span className="text-right text-[13.5px] text-muted tabular-nums">{r.applied}</span>
+            <span className="text-right text-[13.5px] text-muted tabular-nums">{r.replies}</span>
+            <span className="flex min-w-0 items-center gap-2.5 pl-3">
+              <b className="w-[38px] tabular-nums">{pct}%</b>
+              <i className="block h-[5px] flex-1 overflow-hidden rounded-full bg-line">
                 <i
-                  style={{
-                    display: 'block',
-                    height: 5,
-                    width: `${rateBarWidth(pct)}%`,
-                    borderRadius: 99,
-                    background: r.highlight ? 'var(--brand)' : 'var(--sage)',
-                  }}
+                  className={cx('block h-[5px] rounded-full', r.highlight ? 'bg-brand' : 'bg-(--sage)')}
+                  style={{ width: `${rateBarWidth(pct)}%` }}
                 />
               </i>
             </span>

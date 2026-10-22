@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CommandBox, type CommandBoxProps } from './CommandBox';
-import './cmdk.css';
 
 export const ASK_CAP_EVENT = 'jobpilot:ask-cap';
 

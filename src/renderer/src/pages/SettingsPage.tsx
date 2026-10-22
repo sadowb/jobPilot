@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SettingsBackdrop } from '../features/settings/SettingsBackdrop';
+import '../styles/v17-surfaces.css'; // keyframes only (`v17Fade`)
 import { SettingsSheet } from '../features/settings/SettingsSheet';
 
 /** /settings: the sheet over a dimmed dashboard. Close returns to the screen it was opened from. */
@@ -17,18 +18,10 @@ export function SettingsPage() {
   }, [location.key, navigate]);
 
   return (
-    <div
-      style={{
-        height: 'calc(100vh - var(--app-toolbar-height))',
-        minHeight: 560,
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <div className="flex h-[calc(100vh-var(--app-toolbar-height))] min-h-[560px] flex-col">
       <SettingsBackdrop />
       <div
-        className="scrim v17scrim"
-        style={{ position: 'fixed', inset: 0, zIndex: 1 }}
+        className="fixed inset-0 z-1 animate-[v17Fade_0.3s_ease-out_both] bg-[rgb(0_0_0/0.25)] backdrop-blur-[8px] motion-reduce:animate-none dark:bg-[rgb(0_0_0/0.45)] in-[html[data-platform=darwin]]:top-(--app-toolbar-height)"
         aria-hidden="true"
         onClick={close}
       />

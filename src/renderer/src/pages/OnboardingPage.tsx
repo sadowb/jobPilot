@@ -16,7 +16,7 @@ export function OnboardingPage() {
   if (step === null) return <Navigate to={stepPath(1)} replace />;
   const View = STEP_VIEWS[step];
   return (
-    <div className="app" style={{ minHeight: '100%' }}>
+    <div className="relative min-h-full bg-ground font-sans text-[15px] leading-[1.45] text-ink antialiased">
       <View />
     </div>
   );

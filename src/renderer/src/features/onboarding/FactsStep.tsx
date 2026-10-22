@@ -1,54 +1,26 @@
 import { useState } from 'react';
-import { NavButton } from '../../components/NavButton';
 import { CapDartArt } from '../../components/CapDartArt';
+import { Eyebrow, cx } from '../../components/ui';
 import { cssVars } from '../../lib/css-vars';
+import { A_POP, A_RISE, BUBBLE, CELL, GoButton, S, SPEC } from '../shared-ui';
 import { FACT_QUESTIONS, FACT_USES } from './data';
 import { activeQuestion, answer, answeredCount, emptyAnswers } from './facts';
 import { OnboardingFrame, StepHeading } from './OnboardingFrame';
 import { nextPath } from './steps';
 
 const CAP_AVATAR = (
-  <span
-    style={{
-      flex: 'none',
-      width: 40,
-      height: 40,
-      borderRadius: 14,
-      background: 'var(--brand-tint)',
-      display: 'grid',
-      placeItems: 'center',
-    }}
-  >
+  <span className="grid size-10 flex-none place-items-center rounded-[14px] bg-brand-tint">
     <CapDartArt size={31} />
   </span>
 );
 
-const chipBase = {
-  position: 'relative',
-  height: 42,
-  padding: '0 18px',
-  borderRadius: 99,
-  border: '1px solid var(--line-2)',
-  background: 'var(--bg)',
-  fontSize: 15,
-  fontWeight: 500,
-  whiteSpace: 'nowrap',
-} as const;
+const CHIP = 'relative h-[42px] cursor-pointer rounded-full border px-[18px] text-[15px] font-medium! whitespace-nowrap';
 
 function Bubble({ text, delay, dim }: { text: string; delay: string; dim: boolean }) {
   return (
-    <div className="v17-rise" style={cssVars({ '--d': delay }, { display: 'flex', gap: 14, alignItems: 'flex-end' })}>
+    <div className={cx('flex items-end gap-3.5', A_RISE)} style={cssVars({ '--d': delay })}>
       {CAP_AVATAR}
-      <div
-        className="bub a"
-        style={{
-          maxWidth: 600,
-          fontSize: 16,
-          lineHeight: 1.5,
-          padding: '14px 18px',
-          ...(dim ? { opacity: 0.45 } : {}),
-        }}
-      >
+      <div className={cx(BUBBLE, 'max-w-[600px] self-start px-[18px] py-3.5 text-[16px] leading-normal', dim && 'opacity-45')}>
         {text}
       </div>
     </div>
@@ -72,53 +44,45 @@ export function FactsStep() {
         tail="then I stop asking."
         lede="Tap an answer. Each one applies to every job, and you can change it in Profile at any time."
       />
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0,1fr) 340px',
-          gap: 48,
-          alignItems: 'start',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 760, minWidth: 0 }}>
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_340px] items-start gap-12">
+        <div className="flex max-w-[760px] min-w-0 flex-col gap-[18px]">
           <Bubble text="Three quick facts, then I stop asking. I use them on every form." delay="0s" dim={false} />
           {FACT_QUESTIONS.map((q, i) => {
             const future = active !== null && i > active;
             const chosen = answers[i];
             return (
-              <div key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div key={q.id} className="flex flex-col gap-[18px]">
                 <Bubble text={q.prompt} delay={i === 0 ? '0.1s' : '0s'} dim={future} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: 54 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div className="flex flex-col gap-3 pl-[54px]">
+                  <div className="flex flex-wrap gap-2">
                     {i === 0 && !authOpen && chosen === null ? (
-                      <span className="v17-pop" style={cssVars({ '--d': '0.05s' }, { display: 'inline-flex' })}>
+                      <span className={cx('inline-flex', A_POP)} style={cssVars({ '--d': '0.05s' })}>
                         <button
                           type="button"
                           onClick={() => setAuthOpen(true)}
-                          style={{ ...chipBase, color: 'var(--muted)', borderStyle: 'dashed' }}
+                          className={cx(CHIP, 'border-dashed border-line-2 bg-bg font-medium text-muted!')}
                         >
                           Your answer
-                          <span className="v17-ripple" aria-hidden="true" />
+                          <span
+                            className="pointer-events-none absolute -inset-[5px] animate-[v17ripple_1.8s_ease-out_infinite] rounded-[99px] border-2 border-brand motion-reduce:hidden"
+                            aria-hidden="true"
+                          />
                         </button>
                       </span>
                     ) : (
                       q.options.map((o) => (
-                        <span key={o} className="v17-pop" style={cssVars({ '--d': '0s' }, { display: 'inline-flex' })}>
+                        <span key={o} className={cx('inline-flex [--d:0s]', A_POP)}>
                           <button
                             type="button"
                             disabled={future}
                             aria-pressed={chosen === o}
                             onClick={() => pick(i, o)}
-                            style={{
-                              ...chipBase,
-                              color: 'var(--ink)',
-                              ...(future ? { opacity: 0.45 } : {}),
-                              ...(chosen === o
-                                ? { borderColor: 'var(--ink)', background: 'var(--panel)', fontWeight: 600 }
-                                : {}),
-                            }}
+                            className={cx(
+                              CHIP,
+                              'text-ink!',
+                              future && 'opacity-45',
+                              chosen === o ? 'border-ink bg-panel font-semibold!' : 'border-line-2 bg-bg',
+                            )}
                           >
                             {o}
                           </button>
@@ -127,7 +91,7 @@ export function FactsStep() {
                     )}
                   </div>
                   {i === 0 && (
-                    <div className="s v17-rise" style={cssVars({ '--d': '.3s' }, { fontSize: 13 })}>
+                    <div className={cx(S, 'text-[13px] [--d:.3s]', A_RISE)}>
                       Your decision. Cap won’t assume it. Change it any time in Profile → What the agents know.
                     </div>
                   )}
@@ -136,52 +100,34 @@ export function FactsStep() {
             );
           })}
           {done === FACT_QUESTIONS.length && (
-            <div className="row nw v17-rise" style={cssVars({ '--d': '0s' }, { gap: 14, paddingLeft: 54 })}>
-              <NavButton
-                className="btn pri"
-                to={nextPath(4)}
-                style={{ minHeight: 52, padding: '0 26px', fontSize: 16 }}
-              >
+            <div className={cx('flex items-center gap-3.5 pl-[54px] [--d:0s]', A_RISE)}>
+              <GoButton to={nextPath(4)} variant="primary" className="min-h-[52px]! px-[26px]! text-[16px]! text-on-pri!">
                 Save and continue →
-              </NavButton>
+              </GoButton>
             </div>
           )}
         </div>
-        <aside className="mcell" style={{ gap: 16, padding: 26, minWidth: 0 }}>
-          <div className="eyebrow">Saved to Profile · Facts</div>
-          <b style={{ fontSize: 18, marginTop: -4 }}>What I do with these</b>
+        <aside className={cx(CELL, 'gap-4 p-[26px]')}>
+          <Eyebrow>Saved to Profile · Facts</Eyebrow>
+          <b className="-mt-1 text-[18px]">What I do with these</b>
           {FACT_USES.map((u) => (
-            <div
-              key={u.tag}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'auto 1fr',
-                gap: '4px 14px',
-                padding: '12px 0',
-                borderTop: '1px solid var(--line)',
-              }}
-            >
-              <span className="spec" style={{ color: 'var(--brand-text)' }}>
-                {u.tag}
-              </span>
-              <span style={{ fontSize: 14, lineHeight: 1.5 }}>{u.text}</span>
+            <div key={u.tag} className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 border-t border-line py-3">
+              <span className={cx(SPEC, 'text-brand-text tracking-[0.02em]!')}>{u.tag}</span>
+              <span className="text-[14px] leading-normal">{u.text}</span>
             </div>
           ))}
-          <div style={{ marginTop: 'auto', borderTop: '1px solid var(--line)', paddingTop: 16 }}>
-            <div className="row sp nw">
-              <span className="s">Answered</span>
-              <span className="spec">
+          <div className="mt-auto border-t border-line pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className={cx(S, 'text-[13.5px]')}>Answered</span>
+              <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>
                 {done} of {FACT_QUESTIONS.length}
               </span>
             </div>
-            <div style={{ height: 4, background: 'var(--line)', borderRadius: 9, marginTop: 8, overflow: 'hidden' }}>
+            <div className="mt-2 h-1 overflow-hidden rounded-[9px] bg-line">
               <div
-                style={{
-                  height: 4,
-                  width: `${(done / FACT_QUESTIONS.length) * 100}%`,
-                  background: 'var(--brand)',
-                  transition: 'width .2s',
-                }}
+                className="h-1 bg-brand transition-[width] duration-200 ease-[ease]"
+                // Width follows the answer count.
+                style={{ width: `${(done / FACT_QUESTIONS.length) * 100}%` }}
               />
             </div>
           </div>
