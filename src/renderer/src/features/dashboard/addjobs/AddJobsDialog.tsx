@@ -182,7 +182,10 @@ export function AddJobsDialog({
   const q = kept.toQueue.length;
   return (
     <>
-      <div className="fixed inset-0 z-20 bg-black/25 backdrop-blur-[8px] dark:bg-black/45" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-20 bg-[rgb(20_33_27_/_0.25)] backdrop-blur-[8px] dark:bg-black/45 [[data-platform=darwin]_&]:!top-[var(--app-toolbar-height)]"
+        onClick={onClose}
+      />
       <div
         ref={dialogRef}
         role="dialog"
@@ -215,7 +218,7 @@ export function AddJobsDialog({
         <div className="mt-[18px] flex flex-nowrap items-center justify-between gap-3 rounded-2xl border-[1.5px] border-dashed border-line-2 px-4 py-3">
           {empty ? (
             <textarea
-              className="min-h-11 w-full resize-none border-0 bg-transparent text-[13.5px] text-ink outline-0 placeholder:text-muted focus-visible:outline-0!"
+              className="min-h-11 w-full resize-none border-0 bg-transparent font-sans text-[13.5px] text-ink outline-0 placeholder:text-muted"
               aria-label="Paste links, an email, or a sheet"
               placeholder="Paste links, an email, or a sheet here (⌘V)"
               rows={2}

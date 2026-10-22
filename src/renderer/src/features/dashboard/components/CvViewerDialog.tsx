@@ -43,12 +43,12 @@ export function CvViewerDialog({ company, cv, onClose }: { company: string; cv: 
   return (
     <>
       <div
-        className="fixed inset-0 z-20 animate-jp-cv-fade bg-black/25 motion-reduce:animate-none backdrop-blur-[8px] dark:bg-black/45"
+        className="fixed inset-0 z-20 animate-jp-cv-fade bg-[rgb(20_33_27_/_0.25)] backdrop-blur-[8px] motion-reduce:animate-none dark:bg-black/45 [[data-platform=darwin]_&]:!top-[var(--app-toolbar-height)]"
         onClick={onClose}
       />
       <div
         ref={dialogRef}
-        className="fixed inset-x-12 inset-y-10 z-30 flex animate-jp-cv-in flex-col motion-reduce:animate-none overflow-hidden rounded-3xl border border-line bg-bg shadow-float"
+        className="fixed inset-x-12 inset-y-10 z-30 flex animate-jp-cv-in flex-col motion-reduce:animate-none overflow-hidden rounded-3xl border border-line bg-bg shadow-float [[data-platform=darwin]_&]:!top-[calc(var(--app-toolbar-height)+16px)]"
         role="dialog"
         aria-modal="true"
         aria-label="CV viewer, sent version"
