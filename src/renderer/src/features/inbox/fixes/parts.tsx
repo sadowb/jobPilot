@@ -1,58 +1,45 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { KeyCap } from '../../../components/KeyCap';
-import { STATUS_CHIP, type JobStatus } from '../../cmdk/jobs';
+import type { ReactNode } from 'react';
+import { Btn } from '../Btn';
+import { KeyHint as KeyCap } from '../KeyHint';
+import type { JobStatus } from '../../cmdk/jobs';
 
 export type SetBy = 'email' | 'agent' | 'you';
 
 const SET_BY: Record<SetBy, { label: string; dot: string }> = {
-  email: { label: 'set by email', dot: 'var(--work)' },
-  agent: { label: 'set by agent', dot: 'var(--muted)' },
-  you: { label: 'set by you', dot: 'var(--brand)' },
+  email: { label: 'set by email', dot: 'bg-work' },
+  agent: { label: 'set by agent', dot: 'bg-muted' },
+  you: { label: 'set by you', dot: 'bg-brand' },
 };
 
 /** "set by email / agent / you": who made an automatic change. Provenance is always shown, never colour-only. */
 export function SetByChip({ by }: { by: SetBy }) {
   const s = SET_BY[by];
   return (
-    <span
-      className="nw"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        fontFamily: 'var(--mono)',
-        fontSize: 11,
-        color: 'var(--ink-2)',
-        border: '1px solid var(--line-2)',
-        borderRadius: 99,
-        padding: '3px 9px 3px 7px',
-        whiteSpace: 'nowrap',
-        flex: 'none',
-      }}
-    >
-      <i style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flex: 'none' }}></i>
+    <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-line-2 py-[3px] pr-[9px] pl-[7px] font-mono text-[11px] whitespace-nowrap text-ink-2">
+      <i className={`size-1.5 flex-none rounded-full ${s.dot}`}></i>
       {s.label}
     </span>
   );
 }
 
-const PILL: CSSProperties = {
-  display: 'inline-block',
-  fontSize: 12,
-  fontWeight: 600,
-  borderRadius: 99,
-  padding: '3px 10px',
-  whiteSpace: 'nowrap',
+const PILL = 'inline-block rounded-full px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap';
+
+const STATUS_CLASS: Record<JobStatus, string> = {
+  Submitted: 'bg-line text-ink-2',
+  Screening: 'bg-[rgba(15,118,110,0.14)] text-[#0F766E]',
+  Interview: 'bg-[rgba(180,83,9,0.16)] text-[#B45309]',
+  Offer: 'bg-brand-tint text-brand-text',
+  Rejected: 'bg-[rgba(181,65,47,0.14)] text-[#B5412F]',
+  Withdrawn: 'bg-line text-muted',
 };
 
 export function StatusPill({ status }: { status: JobStatus }) {
-  const c = STATUS_CHIP[status];
-  return <span style={{ ...PILL, color: c.color, background: c.background }}>{status}</span>;
+  return <span className={`${PILL} ${STATUS_CLASS[status]}`}>{status}</span>;
 }
 
 /** Neutral pill for states that are not a job status (e.g. "Back in Up next"). */
 export function NeutralPill({ children }: { children: ReactNode }) {
-  return <span style={{ ...PILL, color: 'var(--muted)', background: 'var(--line)' }}>{children}</span>;
+  return <span className={`${PILL} bg-line text-muted`}>{children}</span>;
 }
 
 export function Icon({
@@ -75,7 +62,7 @@ export function Icon({
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      style={{ flex: 'none', display: 'block' }}
+      className="block flex-none"
     >
       {children}
     </svg>
@@ -84,20 +71,7 @@ export function Icon({
 
 export function DonePill({ children }: { children: ReactNode }) {
   return (
-    <span
-      className="row nw"
-      style={{
-        gap: 5,
-        fontSize: 12,
-        fontWeight: 600,
-        color: 'var(--brand-text)',
-        background: 'var(--brand-tint)',
-        borderRadius: 99,
-        padding: '3px 10px 3px 8px',
-        whiteSpace: 'nowrap',
-        flex: 'none',
-      }}
-    >
+    <span className="flex flex-none items-center gap-[5px] rounded-full bg-brand-tint py-[3px] pr-2.5 pl-2 text-[12px] font-semibold whitespace-nowrap text-brand-text">
       <Icon size={12} strokeWidth={2.6}>
         <path d="M5 12.5l4.5 4.5L19 7.5" />
       </Icon>
@@ -108,33 +82,23 @@ export function DonePill({ children }: { children: ReactNode }) {
 
 export function UndoButton() {
   return (
-    <button className="btn sm ghost" type="button">
+    <Btn size="sm" variant="ghost">
       <Icon>
         <path d="M9 14L4 9l5-5" />
         <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
       </Icon>
       Undo <KeyCap>⌘Z</KeyCap>
-    </button>
+    </Btn>
   );
 }
 
-const BOX: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  borderRadius: 16,
-  padding: '10px 12px',
-  minWidth: 0,
-};
-
-const SPEC: CSSProperties = { fontSize: 10.5, letterSpacing: '.06em' };
+const BOX = 'flex min-w-0 flex-col gap-2 rounded-2xl px-3 py-2.5';
+const SPEC = 'font-mono text-[10.5px] tracking-[0.06em]';
 
 export function BeforeBox({ children }: { children: ReactNode }) {
   return (
-    <div style={{ ...BOX, border: '1px solid var(--line)', background: 'var(--panel)' }}>
-      <span className="spec" style={{ ...SPEC, color: 'var(--muted)' }}>
-        BEFORE · AUTO
-      </span>
+    <div className={`${BOX} border border-line bg-panel`}>
+      <span className={`${SPEC} text-muted`}>BEFORE · AUTO</span>
       {children}
     </div>
   );
@@ -142,40 +106,23 @@ export function BeforeBox({ children }: { children: ReactNode }) {
 
 export function AfterBox({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ ...BOX, border: '1px solid var(--brand)', background: 'var(--bg)' }}>
-      <span className="spec" style={{ ...SPEC, color: 'var(--brand-text)' }}>
-        AFTER · SET BY YOU · {label}
-      </span>
+    <div className={`${BOX} border border-brand bg-bg`}>
+      <span className={`${SPEC} text-brand-text`}>AFTER · SET BY YOU · {label}</span>
       {children}
     </div>
   );
 }
 
 export const Note = ({ children }: { children: ReactNode }) => (
-  <span className="s" style={{ fontSize: 12, lineHeight: 1.4 }}>
-    {children}
-  </span>
+  <span className="text-[12px] leading-[1.4] text-muted">{children}</span>
 );
 
 export const ItemTitle = ({ children }: { children: ReactNode }) => (
-  <div
-    style={{
-      fontSize: 13.5,
-      fontWeight: 600,
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-      minWidth: 0,
-    }}
-  >
-    {children}
-  </div>
+  <div className="min-w-0 truncate text-[13.5px] font-semibold">{children}</div>
 );
 
 export const WrapRow = ({ children }: { children: ReactNode }) => (
-  <div className="row sp" style={{ gap: '6px 8px', minWidth: 0, flexWrap: 'wrap' }}>
-    {children}
-  </div>
+  <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5">{children}</div>
 );
 
 export function FixCard({
@@ -194,37 +141,17 @@ export function FixCard({
   after: ReactNode;
 }) {
   return (
-    <div
-      style={{
-        background: 'var(--bg)',
-        border: '1px solid var(--line)',
-        borderRadius: 22,
-        padding: 16,
-        display: 'grid',
-        gridTemplateRows: 'subgrid',
-        gridRow: 'span 5',
-        rowGap: 10,
-        minWidth: 0,
-      }}
-    >
-      <div className="row sp nw" style={{ gap: 8 }}>
-        <span className="spec" style={{ letterSpacing: '.06em' }}>
-          {n}
-        </span>
+    <div className="row-[span_5] grid min-w-0 grid-rows-subgrid gap-y-2.5 rounded-[22px] border border-line bg-bg p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">{n}</span>
         <SetByChip by={by} />
       </div>
       <div>
-        <div style={{ fontWeight: 650, fontSize: 15.5, lineHeight: 1.25 }}>{title}</div>
-        <div className="s" style={{ fontSize: 13, lineHeight: 1.45, marginTop: 4 }}>
-          {body}
-        </div>
+        <div className="text-[15.5px] leading-[1.25] font-[650]">{title}</div>
+        <div className="mt-1 text-[13px] leading-[1.45] text-muted">{body}</div>
       </div>
       {before}
-      <div
-        className="spec"
-        aria-hidden="true"
-        style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11, lineHeight: 1 }}
-      >
+      <div aria-hidden="true" className="text-center font-mono text-[11px] leading-none tracking-[0.02em] text-muted">
         ↓
       </div>
       {after}

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CapOnDartArt } from '../components/CapOnDartArt';
 import { CritterBot } from '../components/CritterBot';
-import { KeyCap } from '../components/KeyCap';
+import { Btn } from '../features/inbox/Btn';
+import { KeyHint as KeyCap } from '../features/inbox/KeyHint';
 import { useFillViewportHeight } from '../components/useFillViewportHeight';
 import { Composer } from '../features/inbox/Composer';
 import { ControlBanner, ShortcutBar, ThreadHeader } from '../features/inbox/Frame';
@@ -27,7 +28,6 @@ import {
   threadMessages,
   viewOf,
 } from '../features/inbox/state';
-import '../features/inbox/inbox.css';
 
 const matches = (q: string, ...fields: string[]) => {
   const needle = q.trim().toLowerCase();
@@ -163,9 +163,7 @@ export function Inbox() {
           title="Cap"
           sub="Your pilot · reads your profile, rules and history every turn"
         >
-          <span className="s" style={{ fontSize: 12.5 }}>
-            Memory · 42 keys · 5 rules
-          </span>
+          <span className="text-[12.5px] text-muted">Memory · 42 keys · 5 rules</span>
         </ThreadHeader>
       ) : (
         <ThreadHeader
@@ -175,44 +173,34 @@ export function Inbox() {
         >
           {driving ? (
             <>
-              <button className="btn sm pri" type="button" aria-pressed="true">
+              <Btn size="sm" variant="primary" aria-pressed="true">
                 You’re driving
-              </button>
-              <button className="btn sm " type="button">
+              </Btn>
+              <Btn size="sm">
                 Go to tab&nbsp;<KeyCap>G</KeyCap>
-              </button>
+              </Btn>
             </>
           ) : (
             <>
-              <button className="btn sm " type="button">
+              <Btn size="sm">
                 Go to tab&nbsp;<KeyCap>G</KeyCap>
-              </button>
+              </Btn>
               {hasTab && (
-                <button
-                  className="btn sm ghost"
-                  type="button"
+                <Btn
+                  size="sm"
+                  variant="ghost"
                   onClick={() => dispatch({ type: 'takeOver', id: selectedItem!.id })}
                   disabled={state.takeover !== null}
                 >
                   Take over&nbsp;<KeyCap>T</KeyCap>
-                </button>
+                </Btn>
               )}
             </>
           )}
         </ThreadHeader>
       );
     const thread = (
-      <section
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-          minHeight: 0,
-          position: 'relative',
-          background: 'var(--ground)',
-        }}
-      >
+      <section className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-ground">
         {header}
         {stream}
         {composer}
@@ -220,16 +208,7 @@ export function Inbox() {
     );
     if (!driving) return thread;
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-          minHeight: 0,
-          position: 'relative',
-          background: 'var(--ground)',
-        }}
-      >
+      <div className="relative flex min-h-0 min-w-0 flex-col bg-ground">
         <ControlBanner agent={selectedItem!.agent} />
         {thread}
       </div>
@@ -259,19 +238,13 @@ export function Inbox() {
     }
   };
 
+  const columns =
+    rightWidth === 400 ? 'grid-cols-[336px_minmax(0,1fr)_400px]' : 'grid-cols-[336px_minmax(0,1fr)_384px]';
   return (
-    <div ref={rootRef} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div ref={rootRef} className="flex min-h-0 flex-col">
       <div
-        className="inbox-grid"
+        className={`grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] border-t border-line ${columns} [@media(max-width:1194px)]:grid-cols-[304px_minmax(0,1fr)] [@media(max-width:1194px)]:grid-rows-[44px_minmax(0,1fr)]`}
         data-pane={pane}
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: `336px minmax(0,1fr) ${rightWidth}px`,
-          gridTemplateRows: 'minmax(0,1fr)',
-          borderTop: '1px solid var(--line)',
-        }}
       >
         <ThreadList
           ref={searchRef}
@@ -283,18 +256,46 @@ export function Inbox() {
           onQuery={setQuery}
           onSelect={(id) => dispatch({ type: 'select', id })}
         />
-        <div className="inbox-pane-tabs" role="group" aria-label="Inbox view">
-          <button type="button" aria-pressed={pane === 'chat'} onClick={() => setPane('chat')}>
+        <div
+          className={`hidden items-center gap-1.5 border-b border-line bg-bg px-5 [@media(max-width:1194px)]:col-start-2 [@media(max-width:1194px)]:row-start-1 [@media(max-width:1194px)]:flex`}
+          role="group"
+          aria-label="Inbox view"
+        >
+          <PaneTab pressed={pane === 'chat'} onClick={() => setPane('chat')}>
             Conversation
-          </button>
-          <button type="button" aria-pressed={pane === 'details'} onClick={() => setPane('details')}>
+          </PaneTab>
+          <PaneTab pressed={pane === 'details'} onClick={() => setPane('details')}>
             {driving ? 'Live tab' : 'Details & review'}
-          </button>
+          </PaneTab>
         </div>
-        <div className="inbox-conversation">{center()}</div>
-        <div className="inbox-details">{right()}</div>
+        <div
+          className={`flex min-h-0 min-w-0 *:min-w-0 *:flex-1 [@media(max-width:1194px)]:col-start-2 [@media(max-width:1194px)]:row-start-2 ${pane === 'details' ? '[@media(max-width:1194px)]:hidden' : ''}`}
+        >
+          {center()}
+        </div>
+        <div
+          className={`flex min-h-0 min-w-0 *:min-w-0 *:flex-1 [@media(max-width:1194px)]:col-start-2 [@media(max-width:1194px)]:row-start-2 [@media(max-width:1194px)]:overflow-y-auto ${pane === 'chat' ? '[@media(max-width:1194px)]:hidden' : ''}`}
+        >
+          {right()}
+        </div>
       </div>
       <ShortcutBar shortcuts={SHORTCUTS_BY_VIEW[view]} />
     </div>
+  );
+}
+
+/** Pane switcher shown below 1195px. `!` beats the unlayered global `button { font; color }`. */
+function PaneTab({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={`rounded-lg border-0 px-3 py-[5px] text-[12.5px]! ${
+        pressed ? 'bg-panel font-semibold! text-ink!' : 'bg-transparent text-muted!'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

@@ -1,5 +1,7 @@
 import { CritterBot } from '../../../components/CritterBot';
-import { KeyCap } from '../../../components/KeyCap';
+import { Eyebrow } from '../../../components/ui';
+import { Btn } from '../Btn';
+import { KeyHint as KeyCap } from '../KeyHint';
 import {
   AfterBox,
   BeforeBox,
@@ -16,54 +18,38 @@ import {
 } from './parts';
 
 const MonoCaption = ({ children }: { children: string }) => (
-  <div className="s" style={{ fontSize: 11, fontFamily: 'var(--mono)', letterSpacing: '.06em' }}>
-    {children}
-  </div>
+  <div className="font-mono text-[11px] tracking-[0.06em] text-muted">{children}</div>
 );
 
 /** V17 "manual control": every automatic change shows who made it and has one fix. Static states, no store. */
 export function ManualControlBoard() {
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        padding: '28px 40px 40px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 22,
-      }}
-    >
-      <div className="row sp nw" style={{ alignItems: 'flex-end', gap: 32 }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="eyebrow">V17 · manual control</div>
-          <h1 className="h1" style={{ fontSize: 36, marginTop: 6 }}>
-            Auto does the work. <span className="it">You keep the last word.</span>
+    <div className="flex min-h-0 flex-1 flex-col gap-[22px] px-10 pt-7 pb-10">
+      <div className="flex items-end justify-between gap-8">
+        <div className="min-w-0">
+          <Eyebrow>V17 · manual control</Eyebrow>
+          <h1 className="m-0 mt-1.5 font-serif text-[36px] leading-[1.02] font-[350] tracking-[-0.025em]">
+            Auto does the work.{' '}
+            <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">You keep the last word.</span>
           </h1>
-          <div className="s" style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.5 }}>
+          <div className="mt-2 text-[13.5px] leading-[1.5] text-muted">
             Every automatic change shows who made it and has one fix. Only what already reached an employer is locked,
             and the card says why.
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flex: 'none' }}>
-          <span className="spec" style={{ letterSpacing: '.06em' }}>
-            SET BY
-          </span>
-          <div className="row nw" style={{ gap: 8 }}>
+        <div className="flex flex-none flex-col items-end gap-2">
+          <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">SET BY</span>
+          <div className="flex items-center gap-2">
             <SetByChip by="email" />
             <SetByChip by="agent" />
             <SetByChip by="you" />
           </div>
-          <span className="s" style={{ fontSize: 12.5 }}>
+          <span className="text-[12.5px] text-muted">
             Undo is always one step. Nothing an email or the crew sets is final.
           </span>
         </div>
       </div>
-      <div
-        className="manual-control-grid"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', columnGap: 16, rowGap: 16 }}
-      >
+      <div className="grid grid-cols-[repeat(4,minmax(0,1fr))] gap-4 [@media(max-width:1194px)]:grid-cols-[repeat(2,minmax(0,1fr))]">
         <FixCard
           n="01"
           by="email"
@@ -94,13 +80,13 @@ export function ManualControlBoard() {
           before={
             <BeforeBox>
               <ItemTitle>Re: next steps · Dana, recruiter</ItemTitle>
-              <div className="s" style={{ fontSize: 12, lineHeight: 1.4 }}>
-                matched to <b style={{ color: 'var(--ink)' }}>Linear · Software Engineer</b>
+              <div className="text-[12px] leading-[1.4] text-muted">
+                matched to <b className="text-ink">Linear · Software Engineer</b>
               </div>
               <div>
-                <button className="btn sm neg" type="button">
+                <Btn size="sm" variant="danger">
                   Not this job
-                </button>
+                </Btn>
               </div>
             </BeforeBox>
           }
@@ -124,11 +110,11 @@ export function ManualControlBoard() {
               <Note>Oct 19 · Greenhouse</Note>
               <ItemTitle>Perpay · Software Engineer, New Grad</ItemTitle>
               <Note>Oct 19 · flagged duplicate?</Note>
-              <div className="row nw" style={{ gap: 8 }}>
-                <button className="btn sm ghost" type="button">
+              <div className="flex items-center gap-2">
+                <Btn size="sm" variant="ghost">
                   Not a duplicate
-                </button>
-                <button className="btn sm pri" type="button">
+                </Btn>
+                <Btn size="sm" variant="primary">
                   <Icon>
                     <circle cx="6" cy="5.5" r="2.2" />
                     <circle cx="6" cy="18.5" r="2.2" />
@@ -136,7 +122,7 @@ export function ManualControlBoard() {
                     <path d="M6 7.7v8.6M18 10.2c0 4.5-6 3.6-11 6.4" />
                   </Icon>
                   Merge
-                </button>
+                </Btn>
               </div>
             </BeforeBox>
           }
@@ -157,45 +143,34 @@ export function ManualControlBoard() {
           before={
             <BeforeBox>
               <WrapRow>
-                <span className="row nw" style={{ gap: 8, minWidth: 0 }}>
+                <span className="flex min-w-0 items-center gap-2">
                   <Icon>
                     <path d="M7 3h7l5 5v13H7z" />
                     <path d="M14 3v5h5" />
                   </Icon>
-                  <b style={{ fontSize: 13.5 }}>AI / ML CV v4</b>
+                  <b className="text-[13.5px]">AI / ML CV v4</b>
                 </span>
-                <button className="btn sm ghost" type="button">
+                <Btn size="sm" variant="ghost">
                   <Icon>
                     <path d="M6 9l6 6 6-6" />
                   </Icon>
                   Change CV
-                </button>
+                </Btn>
               </WrapRow>
               <Note>Picked for Asana · Greenhouse</Note>
             </BeforeBox>
           }
           after={
             <AfterBox label="BEFORE SEND">
-              <b style={{ fontSize: 13.5 }}>Base CV</b>
-              <div
-                className="row nw"
-                style={{
-                  gap: 8,
-                  padding: '8px 10px',
-                  borderRadius: 12,
-                  background: 'var(--hover)',
-                  fontSize: 12,
-                  color: 'var(--ink-2)',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <span style={{ marginTop: 1 }}>
+              <b className="text-[13.5px]">Base CV</b>
+              <div className="flex items-start gap-2 rounded-xl bg-hover px-2.5 py-2 text-[12px] text-ink-2">
+                <span className="mt-px">
                   <Icon>
                     <rect x="5" y="11" width="14" height="10" rx="2.5" />
                     <path d="M8 11V8a4 4 0 0 1 8 0v3" />
                   </Icon>
                 </span>
-                <span style={{ minWidth: 0 }}>Locks at submit: the employer gets this exact file.</span>
+                <span className="min-w-0">Locks at submit: the employer gets this exact file.</span>
               </div>
             </AfterBox>
           }
@@ -213,9 +188,9 @@ export function ManualControlBoard() {
                 <Note>Oct 19 · no ack yet</Note>
               </WrapRow>
               <div>
-                <button className="btn sm neg" type="button">
+                <Btn size="sm" variant="danger">
                   Didn’t go through
-                </button>
+                </Btn>
               </div>
             </BeforeBox>
           }
@@ -235,14 +210,12 @@ export function ManualControlBoard() {
           body="Removal is archive, not erase. Undo stays in the toast for 8 seconds; after that, Show deleted brings it back."
           before={
             <BeforeBox>
-              <div style={{ fontSize: 13.5, minWidth: 0, lineHeight: 1.4 }}>
-                Removed <b style={{ fontWeight: 650 }}>Coinbase</b> · Software Engineer, New Grad
+              <div className="min-w-0 text-[13.5px] leading-[1.4]">
+                Removed <b className="font-[650]">Coinbase</b> · Software Engineer, New Grad
               </div>
-              <div className="row nw" style={{ gap: 10 }}>
+              <div className="flex items-center gap-2.5">
                 <UndoButton />
-                <span className="s" style={{ fontSize: 12, textDecoration: 'underline' }}>
-                  Show deleted (3)
-                </span>
+                <span className="text-[12px] text-muted underline">Show deleted (3)</span>
               </div>
             </BeforeBox>
           }
@@ -263,23 +236,13 @@ export function ManualControlBoard() {
           before={
             <BeforeBox>
               <MonoCaption>LOCATION</MonoCaption>
-              <div className="row sp nw" style={{ gap: 8 }}>
-                <b style={{ fontSize: 14 }}>Remote · US</b>
+              <div className="flex items-center justify-between gap-2">
+                <b className="text-[14px]">Remote · US</b>
                 <span
                   role="button"
                   title="Edit"
                   aria-label="Edit"
-                  style={{
-                    display: 'inline-grid',
-                    placeItems: 'center',
-                    width: 30,
-                    height: 30,
-                    borderRadius: 9,
-                    color: 'var(--ink-2)',
-                    border: '1px solid var(--line)',
-                    background: 'var(--bg)',
-                    flex: 'none',
-                  }}
+                  className="inline-grid size-[30px] flex-none place-items-center rounded-[9px] border border-line bg-bg text-ink-2"
                 >
                   <Icon>
                     <path d="M4 20h4L19 9l-4-4L4 16v4z" />
@@ -292,7 +255,7 @@ export function ManualControlBoard() {
           after={
             <AfterBox label="NOW">
               <MonoCaption>LOCATION</MonoCaption>
-              <div className="inp f" style={{ height: 38, borderRadius: 10, fontSize: 14 }}>
+              <div className="flex h-[38px] min-w-0 items-center gap-2.5 rounded-[10px] border border-ink bg-bg px-3.5 text-[14px] text-ink shadow-[0_0_0_3px_color-mix(in_srgb,var(--ink)_14%,transparent)]">
                 Austin, TX
               </div>
               <Note>↵ save · Esc cancel</Note>
@@ -306,39 +269,35 @@ export function ManualControlBoard() {
           body="The education dropdown didn’t load after 3 tries. Take over, pick it yourself, hand it back. Press T on the card."
           before={
             <BeforeBox>
-              <div className="row nw" style={{ gap: 10 }}>
+              <div className="flex items-center gap-2.5">
                 <CritterBot agent="Brex" state="block" size={34} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>Brex · Human check</div>
-                  <div className="s" style={{ fontSize: 12 }}>
-                    Education dropdown · Greenhouse step 3
-                  </div>
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-semibold">Brex · Human check</div>
+                  <div className="text-[12px] text-muted">Education dropdown · Greenhouse step 3</div>
                 </div>
               </div>
-              <div className="row nw" style={{ gap: 8 }}>
-                <button className="btn sm pri" type="button">
+              <div className="flex items-center gap-2">
+                <Btn size="sm" variant="primary">
                   <Icon>
                     <path d="M5 12h12" />
                     <path d="M12 6l6 6-6 6" />
                   </Icon>
                   Take over
-                </button>
+                </Btn>
                 <KeyCap>T</KeyCap>
               </div>
             </BeforeBox>
           }
           after={
             <AfterBox label="9:38">
-              <div className="row nw" style={{ gap: 10 }}>
+              <div className="flex items-center gap-2.5">
                 <CritterBot agent="Brex" state="work" size={34} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>You’re driving</div>
-                  <div className="s" style={{ fontSize: 12 }}>
-                    Agent paused · resumes from your page
-                  </div>
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-semibold">You’re driving</div>
+                  <div className="text-[12px] text-muted">Agent paused · resumes from your page</div>
                 </div>
               </div>
-              <span className="row nw s" style={{ gap: 6, fontSize: 12 }}>
+              <span className="flex items-center gap-1.5 text-[12px] text-muted">
                 Hand back <KeyCap>H</KeyCap>
               </span>
             </AfterBox>

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
-import { KeyCap } from '../../components/KeyCap';
-
-const ELLIPSIS = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
+import { ELLIPSIS } from './styles';
+import { KeyHint as KeyCap } from './KeyHint';
 
 /** Thread header bar: avatar + title/sub on the left, actions on the right. */
 export function ThreadHeader({
@@ -16,31 +15,15 @@ export function ThreadHeader({
   children?: ReactNode;
 }) {
   return (
-    <div
-      className="row sp nw"
-      style={{
-        flex: 'none',
-        gap: 16,
-        padding: '16px 28px',
-        borderBottom: '1px solid var(--line)',
-        background: 'var(--bg)',
-        minWidth: 0,
-      }}
-    >
-      <div className="row nw" style={{ gap: 12, minWidth: 0 }}>
+    <div className="flex min-w-0 flex-none items-center justify-between gap-4 border-b border-line bg-bg px-7 py-4">
+      <div className="flex min-w-0 items-center gap-3">
         {lead}
-        <div style={{ minWidth: 0 }}>
-          <div className="t" style={ELLIPSIS}>
-            {title}
-          </div>
-          <div className="s" style={{ fontSize: 12.5, ...ELLIPSIS }}>
-            {sub}
-          </div>
+        <div className="min-w-0">
+          <div className={`text-[15px] font-semibold ${ELLIPSIS}`}>{title}</div>
+          <div className={`text-[12.5px] text-muted ${ELLIPSIS}`}>{sub}</div>
         </div>
       </div>
-      <div className="row nw" style={{ gap: 8, flex: 'none' }}>
-        {children}
-      </div>
+      <div className="flex flex-none items-center gap-2">{children}</div>
     </div>
   );
 }
@@ -48,23 +31,8 @@ export function ThreadHeader({
 /** "You have control of …" bar above the thread while the owner drives. */
 export function ControlBanner({ agent }: { agent: string }) {
   return (
-    <div
-      className="row nw"
-      role="status"
-      style={{ flex: 'none', gap: 12, padding: '12px 28px', background: 'var(--pri)', color: 'var(--on-pri)' }}
-    >
-      <span
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: '50%',
-          display: 'grid',
-          placeItems: 'center',
-          background: 'var(--on-pri)',
-          color: 'var(--pri)',
-          flex: 'none',
-        }}
-      >
+    <div role="status" className="flex flex-none items-center gap-3 bg-pri px-7 py-3 text-on-pri">
+      <span className="grid size-[26px] flex-none place-items-center rounded-full bg-on-pri text-pri">
         <svg
           width="14"
           height="14"
@@ -79,10 +47,8 @@ export function ControlBanner({ agent }: { agent: string }) {
           <path d="M5 3l14 8-6 2-3 6z" />
         </svg>
       </span>
-      <b style={{ fontSize: 14.5 }}>You have control of {agent} · its agent is paused</b>
-      <span style={{ fontSize: 13, opacity: 0.75, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-        The rest of the crew keeps working
-      </span>
+      <b className="text-[14.5px]">You have control of {agent} · its agent is paused</b>
+      <span className="ml-auto text-[13px] whitespace-nowrap opacity-75">The rest of the crew keeps working</span>
     </div>
   );
 }
@@ -94,23 +60,9 @@ export interface Shortcut {
 
 export function ShortcutBar({ shortcuts }: { shortcuts: readonly Shortcut[] }) {
   return (
-    <div
-      style={{
-        flex: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 22,
-        padding: '11px 24px',
-        borderTop: '1px solid var(--line)',
-        background: 'var(--bg)',
-        fontSize: 12.5,
-        color: 'var(--muted)',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="flex flex-none items-center gap-[22px] overflow-hidden border-t border-line bg-bg px-6 py-[11px] text-[12.5px] whitespace-nowrap text-muted">
       {shortcuts.map((s) => (
-        <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+        <span key={s.label} className="inline-flex items-center gap-[7px]">
           {s.keys.map((k) => (
             <KeyCap key={k}>{k}</KeyCap>
           ))}
