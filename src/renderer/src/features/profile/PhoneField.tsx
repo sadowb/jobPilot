@@ -1,5 +1,7 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useState, type AriaAttributes, type KeyboardEvent } from 'react';
+import { Field, Input } from '../../components/ui';
 import { CountryBadge, Glyph } from './icons';
+import { dialButton, dialCode, dialItem, dialList, dialName, dialPanel, dialSearch, emptyText } from './styles';
 import {
   asYouType,
   callingCode,
@@ -40,9 +42,6 @@ export function PhoneField({
   const [touched, setTouched] = useState(false);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const root = useRef<HTMLDivElement>(null);
-  const inputId = useId();
-  const errorId = useId();
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
     return dialCodeOptions().filter(
@@ -81,73 +80,116 @@ export function PhoneField({
   const invalid = national.trim() !== '' && !parsePhone(national, region).valid;
   const showError = invalid && touched;
   return (
-    <div className="profile-field pf-phone" ref={root} onKeyDown={escape}>
-      <label htmlFor={inputId}>
-        <span>{label}</span>
-      </label>
-      <div className="pf-phone-row">
-        <div
-          className="pf-dial"
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) close();
-          }}
+    <Field label={label} error={showError ? CHECK_NUMBER : undefined} onKeyDown={escape}>
+      <PhoneControl
+        label={label}
+        region={region}
+        national={national}
+        open={open}
+        setOpen={setOpen}
+        query={query}
+        setQuery={setQuery}
+        options={options}
+        onPick={pick}
+        close={close}
+        onType={type}
+        onTouched={() => setTouched(true)}
+      />
+    </Field>
+  );
+}
+
+function PhoneControl({
+  id,
+  'aria-describedby': describedBy,
+  'aria-invalid': invalid,
+  label,
+  region,
+  national,
+  open,
+  setOpen,
+  query,
+  setQuery,
+  options,
+  onPick,
+  close,
+  onType,
+  onTouched,
+}: AriaAttributes & {
+  id?: string;
+  label: string;
+  region: CountryCode;
+  national: string;
+  open: boolean;
+  setOpen: (next: (open: boolean) => boolean) => void;
+  query: string;
+  setQuery: (query: string) => void;
+  options: ReturnType<typeof dialCodeOptions>;
+  onPick: (code: CountryCode) => void;
+  close: () => void;
+  onType: (text: string) => void;
+  onTouched: () => void;
+}) {
+  return (
+    <div className="flex items-stretch gap-2">
+      <div
+        className="relative flex-none"
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) close();
+        }}
+      >
+        <button
+          type="button"
+          className={dialButton}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={`${label} country code: ${regionName(region)} +${callingCode(region)}`}
+          onClick={() => setOpen((o) => !o)}
         >
-          <button
-            type="button"
-            className="pf-dialbtn"
-            aria-haspopup="listbox"
-            aria-expanded={open}
-            aria-label={`${label} country code: ${regionName(region)} +${callingCode(region)}`}
-            onClick={() => setOpen((o) => !o)}
-          >
-            <CountryBadge code={region} name={regionName(region)} />
-            <span>+{callingCode(region)}</span>
-            <Glyph name="chevronDown" size={14} />
-          </button>
-          {open && (
-            <div className="pf-dialpanel">
-              <input
-                type="search"
-                autoFocus
-                autoComplete="off"
-                aria-label="Search country codes"
-                placeholder="Search countries"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <ul role="listbox" aria-label="Country codes">
-                {options.map((o) => (
-                  <li key={o.code} role="option" aria-selected={o.code === region}>
-                    <button type="button" tabIndex={-1} onClick={() => pick(o.code)}>
-                      <CountryBadge code={o.code} name={o.name} />
-                      <span className="pf-dial-name">{o.name}</span>
-                      <span className="pf-dial-code">{o.dial}</span>
-                    </button>
-                  </li>
-                ))}
-                {!options.length && <li className="pf-empty">No matching countries.</li>}
-              </ul>
-            </div>
-          )}
-        </div>
-        <input
-          id={inputId}
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel-national"
-          value={national}
-          maxLength={40}
-          aria-invalid={showError}
-          aria-describedby={showError ? errorId : undefined}
-          onChange={(e) => type(e.target.value)}
-          onBlur={() => setTouched(true)}
-        />
+          <CountryBadge code={region} name={regionName(region)} />
+          <span>+{callingCode(region)}</span>
+          <Glyph name="chevronDown" size={14} />
+        </button>
+        {open && (
+          <div className={dialPanel}>
+            <input
+              type="search"
+              autoFocus
+              autoComplete="off"
+              aria-label="Search country codes"
+              placeholder="Search countries"
+              className={dialSearch}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <ul role="listbox" aria-label="Country codes" className={dialList}>
+              {options.map((o) => (
+                <li key={o.code} role="option" aria-selected={o.code === region} className="group">
+                  <button type="button" tabIndex={-1} className={dialItem} onClick={() => onPick(o.code)}>
+                    <CountryBadge code={o.code} name={o.name} />
+                    <span className={dialName}>{o.name}</span>
+                    <span className={dialCode}>{o.dial}</span>
+                  </button>
+                </li>
+              ))}
+              {!options.length && <li className={emptyText}>No matching countries.</li>}
+            </ul>
+          </div>
+        )}
       </div>
-      {showError && (
-        <span id={errorId} className="pf-field-error" role="alert">
-          {CHECK_NUMBER}
-        </span>
-      )}
+      <Input
+        id={id}
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel-national"
+        className="min-w-0 flex-1"
+        value={national}
+        maxLength={40}
+        aria-invalid={invalid ?? false}
+        aria-describedby={describedBy}
+        onChange={(e) => onType(e.target.value)}
+        onBlur={onTouched}
+      />
     </div>
   );
 }

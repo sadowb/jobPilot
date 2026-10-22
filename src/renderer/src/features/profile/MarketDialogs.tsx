@@ -1,5 +1,6 @@
-import { useId, useMemo, useState } from 'react';
-import { SegmentedChoice } from '../../components/SegmentedChoice';
+import { useMemo, useState } from 'react';
+import { Field, FieldGrid, Segmented, Select, cx } from '../../components/ui';
+import { PButton } from './buttons';
 import { Glyph, CountryBadge } from './icons';
 import { ProfileEditor } from './ProfileEditor';
 import {
@@ -17,6 +18,7 @@ import { effectiveSalaryCurrency, type PersonalProfile } from './personal';
 import { SalaryField } from './ProfileInputs';
 import type { SalaryPeriod } from './salary';
 import { parsePhone } from './phones';
+import { emptyText } from './styles';
 
 /** "+212 6 12 34 56 78 · Mobile", the same international format as the Contact card. */
 function phoneLabel(stored: string): string {
@@ -46,6 +48,15 @@ function normalise(m: Market): Market {
   if (m.salary) next.salary = m.salary;
   return next;
 }
+
+const pickButton =
+  'flex min-h-[46px] w-full items-center gap-3 rounded-xl bg-transparent px-3 text-left hover:bg-hover';
+const countryStatus = (workAuth: WorkAuth) =>
+  workAuth === 'authorized' ? (
+    <span className="flex-none text-[13px] font-semibold whitespace-nowrap text-brand-text">Can work</span>
+  ) : (
+    <span className="flex-none text-[13px] font-semibold whitespace-nowrap text-need">Visa needed</span>
+  );
 
 const AUTH_OPTIONS = [
   { value: 'authorized', label: 'Yes' },
@@ -83,7 +94,6 @@ export function CountryEditor({
   const staleCurrency = draft.currency && !CURRENCIES.some((c) => c.code === draft.currency) ? draft.currency : null;
   const dirty = JSON.stringify(normalise(draft)) !== JSON.stringify(normalise(market));
   const set = (patch: Partial<Market>) => setDraft((d) => ({ ...d, ...patch }));
-  const authLabelId = useId();
   return (
     <ProfileEditor
       eyebrow="Where you apply"
@@ -99,20 +109,16 @@ export function CountryEditor({
       onCancel={onCancel}
       onSave={() => onSave(normalise(draft))}
     >
-      <div className="profile-fields">
-        <div className="profile-field profile-wide" role="group" aria-labelledby={authLabelId}>
-          <span id={authLabelId}>Can you work there?</span>
-          <SegmentedChoice<WorkAuth>
-            label="Can you work there?"
+      <FieldGrid>
+        <Field label="Can you work there?" wide>
+          <Segmented<WorkAuth>
             options={AUTH_OPTIONS}
             value={draft.workAuth}
             onChange={(workAuth) => set({ workAuth })}
-            style={{ alignSelf: 'flex-start' }}
           />
-        </div>
-        <label className="profile-field">
-          <span>Phone number</span>
-          <select value={draft.phone ?? ''} onChange={(e) => set({ phone: e.target.value || undefined })}>
+        </Field>
+        <Field label="Phone number">
+          <Select value={draft.phone ?? ''} onChange={(e) => set({ phone: e.target.value || undefined })}>
             <option value="">{phones.length ? 'Main phone' : 'Main phone (none saved yet)'}</option>
             {phones.map((p) => (
               <option key={p} value={p}>
@@ -120,11 +126,10 @@ export function CountryEditor({
               </option>
             ))}
             {stalePhone && <option value={stalePhone}>{phoneLabel(stalePhone)} (not in your profile)</option>}
-          </select>
-        </label>
-        <label className="profile-field">
-          <span>Salary in</span>
-          <select value={draft.currency ?? ''} onChange={(e) => set({ currency: e.target.value || undefined })}>
+          </Select>
+        </Field>
+        <Field label="Salary in">
+          <Select value={draft.currency ?? ''} onChange={(e) => set({ currency: e.target.value || undefined })}>
             <option value="">Main details</option>
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
@@ -132,8 +137,8 @@ export function CountryEditor({
               </option>
             ))}
             {staleCurrency && <option value={staleCurrency}>{staleCurrency}</option>}
-          </select>
-        </label>
+          </Select>
+        </Field>
         <SalaryField
           label="Salary"
           amount={draft.salary?.amount ?? null}
@@ -145,30 +150,26 @@ export function CountryEditor({
             set({ salary: amount === null ? undefined : { amount, period: next } });
           }}
         />
-        <label className="profile-field">
-          <span>CV language</span>
-          <select value={draft.cvLanguage ?? ''} onChange={(e) => set({ cvLanguage: e.target.value || undefined })}>
+        <Field label="CV language">
+          <Select value={draft.cvLanguage ?? ''} onChange={(e) => set({ cvLanguage: e.target.value || undefined })}>
             <option value="">Main details</option>
             {CV_LANGUAGES.map((l) => (
               <option key={l}>{l}</option>
             ))}
             {staleLanguage && <option value={staleLanguage}>{staleLanguage}</option>}
-          </select>
-        </label>
-        <div className="profile-field">
-          <span aria-hidden="true">Photo on CV</span>
-          <SegmentedChoice
-            label="Photo on CV"
+          </Select>
+        </Field>
+        <Field label="Photo on CV">
+          <Segmented
             options={PHOTO_OPTIONS}
             value={draft.photo ? 'yes' : 'no'}
             onChange={(v) => set({ photo: v === 'yes' })}
-            style={{ alignSelf: 'flex-start' }}
           />
-        </div>
-      </div>
-      <button type="button" className="btn sm neg profile-delete-answer" onClick={onRemove}>
+        </Field>
+      </FieldGrid>
+      <PButton variant="danger" className="mt-6" onClick={onRemove}>
         Remove {name}
-      </button>
+      </PButton>
     </ProfileEditor>
   );
 }
@@ -190,7 +191,6 @@ export function AddCountryDialog({
       (c) => !existing.includes(c.code) && (!q || c.name.toLowerCase().includes(q) || c.code.toLowerCase() === q),
     );
   }, [query, existing]);
-  const searchId = useId();
   return (
     <ProfileEditor
       eyebrow="Where you apply"
@@ -202,11 +202,11 @@ export function AddCountryDialog({
       onCancel={onCancel}
       onSave={() => picked && onAdd(picked)}
     >
-      <label className="pf-search" htmlFor={searchId}>
+      <label className="flex h-11 items-center gap-2.5 rounded-xl border border-line px-3.5 text-muted focus-within:outline-2 focus-within:outline-solid focus-within:outline-ink focus-within:outline-offset-2">
         <Glyph name="search" />
         <input
-          id={searchId}
           type="search"
+          className="min-w-0 flex-1 border-0 bg-transparent font-sans text-sm leading-[normal] text-ink outline-none!"
           autoComplete="off"
           placeholder="Search countries"
           aria-label="Search countries"
@@ -214,22 +214,22 @@ export function AddCountryDialog({
           onChange={(e) => setQuery(e.target.value)}
         />
       </label>
-      <div className="pf-picklist" role="group" aria-label="Countries">
+      <div className="mt-2 max-h-[280px] overflow-y-auto" role="group" aria-label="Countries">
         {options.map((c) => (
           <button
             type="button"
             key={c.code}
-            className="pf-pick"
+            className={cx(pickButton, 'aria-pressed:bg-hover aria-pressed:font-semibold!')}
             aria-pressed={picked === c.code}
             onClick={() => setPicked(c.code)}
             onDoubleClick={() => onAdd(c.code)}
           >
             <CountryBadge code={c.code} name={c.name} />
-            <span className="pf-pick-name">{c.name}</span>
-            {isEuMember(c.code) && <span className="pf-pick-hint">in European Union</span>}
+            <span className="min-w-0 flex-1">{c.name}</span>
+            {isEuMember(c.code) && <span className="text-[12.5px] text-muted">in European Union</span>}
           </button>
         ))}
-        {!options.length && <p className="pf-empty">No matching countries.</p>}
+        {!options.length && <p className={emptyText}>No matching countries.</p>}
       </div>
     </ProfileEditor>
   );
@@ -256,28 +256,26 @@ export function ManageCountriesDialog({
       onCancel={onClose}
     >
       {markets.length ? (
-        <ul className="pf-managelist">
+        <ul className="mb-3">
           {markets.map((m) => (
             <li key={m.code}>
-              <button type="button" className="pf-manage" onClick={() => onOpen(m.code)}>
+              <button type="button" className={cx(pickButton, 'py-2')} onClick={() => onOpen(m.code)}>
                 <CountryBadge code={m.code} name={nameOf(m.code)} />
-                <span className="pf-manage-text">
+                <span className="flex min-w-0 flex-1 flex-col">
                   <strong>{nameOf(m.code)}</strong>
-                  <small>{marketSummary(m) || 'Uses your main details'}</small>
+                  <small className="text-xs text-muted">{marketSummary(m) || 'Uses your main details'}</small>
                 </span>
-                <span className={m.workAuth === 'authorized' ? 'pf-status' : 'pf-status need'}>
-                  {m.workAuth === 'authorized' ? 'Can work' : 'Visa needed'}
-                </span>
+                {countryStatus(m.workAuth)}
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="pf-empty">No countries yet. Every job uses your main details.</p>
+        <p className={emptyText}>No countries yet. Every job uses your main details.</p>
       )}
-      <button type="button" className="btn sm pf-addbtn" onClick={onAdd}>
+      <PButton className="gap-1.5!" onClick={onAdd}>
         <Glyph name="plus" /> Add a country
-      </button>
+      </PButton>
     </ProfileEditor>
   );
 }

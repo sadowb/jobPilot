@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import { cx } from '../../components/ui';
+import { PButton, ghostLinkButton } from './buttons';
 import { documentError } from './personal';
 import { documentStore, type ProfileDocument } from './documents';
 import { Glyph } from './icons';
+import { actionsRow, sectionTitle } from './styles';
 import { DOCUMENTS_CHANGED } from './useDocumentCount';
 import { useProfileIdentity } from './useProfileIdentity';
+
+const DOC_COLUMNS = 'grid grid-cols-[36px_minmax(0,1fr)_110px_130px_auto] items-center gap-4';
+const docColumn = 'text-[12.5px] text-muted [@media(width<=800px)]:hidden';
 
 function DocumentRow({
   doc,
@@ -42,19 +48,24 @@ function DocumentRow({
     ? ''
     : `Updated ${updated.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
   return (
-    <li className="pf-docrow">
+    <li
+      className={cx(
+        DOC_COLUMNS,
+        'min-h-16 border-t border-line px-5 py-2 text-sm first:border-t-0 [@media(width<=800px)]:grid-cols-[36px_minmax(0,1fr)]',
+      )}
+    >
       <CvThumb />
-      <div className="pf-doc-main">
-        <strong>{label}</strong>
-        <span>
+      <div className="min-w-0">
+        <strong className="block font-semibold [overflow-wrap:anywhere]">{label}</strong>
+        <span className="text-[12.5px] text-muted">
           {doc.forJobs ? `For ${doc.forJobs} jobs` : `${ext} · ${Math.max(1, Math.round(doc.file.size / 1024))} KB`}
         </span>
       </div>
-      <span className="pf-doc-col">{doc.language ?? 'Not set'}</span>
-      <span className="pf-doc-col">{updatedText}</span>
-      <div className="profile-actions">
+      <span className={docColumn}>{doc.language ?? 'Not set'}</span>
+      <span className={docColumn}>{updatedText}</span>
+      <div className={cx(actionsRow, '[@media(width<=800px)]:col-span-full')}>
         <a
-          className="btn sm ghost"
+          className={ghostLinkButton}
           ref={download}
           download={doc.name}
           aria-label={`Download ${doc.name}`}
@@ -68,29 +79,31 @@ function DocumentRow({
         >
           {saving ? 'Saving…' : 'Download'}
         </a>
-        <button
-          className="btn sm ghost"
-          type="button"
-          disabled={busy}
-          onClick={onRemove}
-          aria-label={`Remove ${doc.name}`}
-        >
+        <PButton variant="ghost" disabled={busy} onClick={onRemove} aria-label={`Remove ${doc.name}`}>
           Remove
-        </button>
+        </PButton>
       </div>
     </li>
   );
 }
 
+const THUMB_LINE = 'block h-0.5 rounded-[1px] bg-[#dcdcdc]';
+
 /** Small CV preview. Always light: it depicts a printed page, in both themes. */
-function CvThumb() {
+function CvThumb({ large = false }: { large?: boolean }) {
   return (
-    <span className="pf-thumb" aria-hidden="true">
-      <i className="h" />
-      <i />
-      <i className="a" />
-      <i />
-      <i />
+    <span
+      className={cx(
+        'box-border flex flex-col gap-[2.5px] rounded-[4px] border border-[#dadada] bg-[#fcfcfb] px-1 py-[5px] shadow-[0_1px_2px_rgb(0_0_0/0.08)]',
+        large ? 'h-14 w-11' : 'h-9 w-7',
+      )}
+      aria-hidden="true"
+    >
+      <i className="block h-[3px] w-[62%] rounded-[1px] bg-[#3a3a3a]" />
+      <i className={THUMB_LINE} />
+      <i className="block h-0.5 w-[40%] rounded-[1px] bg-[#00846a]" />
+      <i className={THUMB_LINE} />
+      <i className={THUMB_LINE} />
     </span>
   );
 }
@@ -161,24 +174,27 @@ export function ProfileDocuments() {
     }
   };
   return (
-    <section className="pf-docs" aria-labelledby="your-documents-title">
-      <div className="pf-docs-head">
+    <section className="min-w-0" aria-labelledby="your-documents-title">
+      <div className="mb-3.5 flex items-end justify-between gap-4">
         <div>
-          <h2 id="your-documents-title">
-            CVs <span className="pf-count">{docs.length}</span>
+          <h2 id="your-documents-title" className={cx(sectionTitle, 'flex items-baseline gap-2.5 leading-[1.2]')}>
+            CVs{' '}
+            <span className="font-mono text-[11px] leading-[normal] font-medium tracking-[0.06em] text-muted">
+              {docs.length}
+            </span>
           </h2>
-          <p>The agent reads what each CV is for and picks one per job. Uploads stay on this device.</p>
+          <p className="mt-1 text-[13px] text-muted">The agent reads what each CV is for and picks one per job. Uploads stay on this device.</p>
         </div>
-        <button className="btn sm" type="button" disabled={loading || busy} onClick={() => input.current?.click()}>
+        <PButton className="gap-1.5!" disabled={loading || busy} onClick={() => input.current?.click()}>
           <Glyph name="upload" size={15} /> {busy ? 'Saving…' : 'Upload CV'}
-        </button>
+        </PButton>
       </div>
-      <p className="pf-banner">
+      <p className="mb-5 flex items-center gap-3 rounded-[14px] bg-brand-tint px-4 py-3.5 text-[13.5px] text-ink [&_svg]:flex-none [&_svg]:text-brand-text">
         <Glyph name="check" size={15} />
         <span>
           {name ? (
             <>
-              Employers always receive <b>{fileName}</b>. The names below are only for you.
+              Employers always receive <b className="font-[650] [overflow-wrap:anywhere]">{fileName}</b>. The names below are only for you.
             </>
           ) : (
             'Add your name in About me to set the file name employers receive. The names below are only for you.'
@@ -197,15 +213,21 @@ export function ProfileDocuments() {
       {loading ? (
         <p role="status">Loading your documents…</p>
       ) : docs.length ? (
-        <div className="pf-doclist">
-          <div className="pf-dochead" aria-hidden="true">
+        <div className="min-w-0">
+          <div
+            className={cx(
+              DOC_COLUMNS,
+              'px-5 pb-2 font-mono text-[11px] leading-none font-medium tracking-[0.06em] text-muted uppercase [@media(width<=800px)]:hidden',
+            )}
+            aria-hidden="true"
+          >
             <span />
             <span>CV</span>
             <span>Language</span>
             <span>Last change</span>
             <span />
           </div>
-          <ul>
+          <ul className="overflow-hidden rounded-[20px] border border-line bg-bg dark:bg-panel">
             {docs.map((doc) => (
               <DocumentRow
                 key={doc.id}
@@ -218,31 +240,35 @@ export function ProfileDocuments() {
           </ul>
         </div>
       ) : (
-        <div className="profile-upload-empty">
-          <CvThumb />
+        <div className="flex items-center gap-5 rounded-2xl border border-dashed border-line-2 bg-panel p-5">
+          <CvThumb large />
           <div>
-            <strong>Your next chapter starts with your CV.</strong>
-            <p>Add a CV, cover letter, or transcript. PDF or DOCX, up to 20 MB.</p>
+            <strong className="text-sm">Your next chapter starts with your CV.</strong>
+            <p className="my-1.5 text-xs leading-[1.6] text-muted">Add a CV, cover letter, or transcript. PDF or DOCX, up to 20 MB.</p>
           </div>
         </div>
       )}
       {pendingRemove && (
-        <div className="profile-remove-confirm" role="group" aria-label="Confirm document removal">
+        <div
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-bad-tint p-3.5 text-[13px]"
+          role="group"
+          aria-label="Confirm document removal"
+        >
           <span>Remove {docs.find((d) => d.id === pendingRemove)?.name} from this device?</span>
-          <div className="profile-actions">
-            <button type="button" className="btn sm ghost" disabled={busy} onClick={() => setPendingRemove(null)}>
+          <div className={actionsRow}>
+            <PButton variant="ghost" disabled={busy} onClick={() => setPendingRemove(null)}>
               Keep file
-            </button>
-            <button type="button" className="btn sm neg" disabled={busy} onClick={() => void remove(pendingRemove)}>
+            </PButton>
+            <PButton variant="danger" disabled={busy} onClick={() => void remove(pendingRemove)}>
               Remove file
-            </button>
+            </PButton>
           </div>
         </div>
       )}
-      <div className="profile-answer-footer">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4 text-xs text-muted">
         <span aria-live="polite">
           {error ? (
-            <span role="alert" className="profile-error">
+            <span role="alert" className="text-bad">
               {error}
             </span>
           ) : (
