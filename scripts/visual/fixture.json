@@ -1,0 +1,67 @@
+{
+  "jobpilot.profile.v1": {
+    "firstName": "Jordan",
+    "lastName": "Avery",
+    "preferredName": "Jordan",
+    "headline": "Full-stack engineer, early career",
+    "email": "jordan.avery@example.com",
+    "phone": "+15555550142",
+    "alternatePhone": "",
+    "address": "100 Example Street",
+    "city": "Austin",
+    "region": "TX",
+    "postalCode": "73301",
+    "country": "",
+    "countryCode": "US",
+    "website": "https://jordan.example.com",
+    "linkedin": "https://linkedin.com/in/jordan-avery-example",
+    "github": "https://github.com/jordan-avery-example",
+    "bio": "Computer science graduate who likes small, reliable systems and clear writing.",
+    "school": "Example State University",
+    "schoolStart": "2020-09",
+    "degree": "BSc",
+    "fieldOfStudy": "Computer Science",
+    "graduation": "2024-05",
+    "role": "Software Engineer",
+    "workMode": "Hybrid",
+    "locations": "Austin, Remote (US)",
+    "startDate": "",
+    "salary": "",
+    "salaryCurrency": "USD",
+    "salaryAmount": 95000,
+    "salaryPeriod": "year",
+    "notice": { "kind": "period", "days": 14 },
+    "career": [
+      {
+        "id": "c1",
+        "role": "Software Engineering Intern",
+        "organisation": "Example Labs",
+        "start": "2023-06",
+        "end": "2023-09"
+      },
+      { "id": "c2", "role": "Junior Developer", "organisation": "Sample Works", "start": "2024-06", "end": "present" }
+    ],
+    "languages": [
+      { "id": "l1", "language": "en", "level": "Native" },
+      { "id": "l2", "language": "fr", "level": "Professional" }
+    ]
+  },
+  "jobpilot.markets.v1": [
+    { "code": "US", "workAuth": "authorized", "currency": "USD", "salary": { "amount": 95000, "period": "year" } },
+    { "code": "DE", "workAuth": "sponsorship", "currency": "EUR", "cvLanguage": "English", "photo": false }
+  ],
+  "jobpilot.answers.v2": [
+    {
+      "id": "relocate",
+      "question": "Are you willing to relocate?",
+      "default": "Yes, within the US and to Germany with sponsorship.",
+      "overrides": {}
+    },
+    {
+      "id": "intro",
+      "question": "Tell us about yourself.",
+      "default": "I build small, dependable web services and enjoy turning vague problems into clear specs.",
+      "overrides": { "DE": "I am a software engineer looking to relocate to Germany." }
+    }
+  ]
+}

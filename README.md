@@ -57,3 +57,26 @@ Note: with the inspect fuse off, Playwright cannot attach to the _packaged_ app.
 ## Status
 
 Foundation done (shell, theme, tokens, fonts, packaging). Screens are being ported board by board; unported routes show a placeholder naming their board.
+
+## Visual regression
+
+Real-Electron screenshot comparison, used to verify the CSS to Tailwind migration with pixel parity.
+
+```bash
+# 1. build each tree you want to compare
+(cd <worktree> && npx electron-vite build)
+# 2. capture every screen, light and dark (fresh user-data dir, fixed 1440x900 window)
+npm run visual:capture -- --app <worktree> --out /tmp/vis/head [--only <substring>]
+# 3. compare against a baseline capture; exit code 1 if any screen FAILs
+npm run visual:diff -- --base /tmp/vis/base --head /tmp/vis/head --out /tmp/vis/report [--threshold 0.001]
+```
+
+- `scripts/visual/screens.mjs` declares screens and overlay actions; `scripts/visual/fixture.json` is the fake
+  localStorage seed (reapplied before every page load, so each screen starts from identical state).
+- Determinism: fresh `--user-data-dir` per launch, theme through the `theme-preference` file the main process reads,
+  `reducedMotion: reduce`, frozen `Date` (`page.clock.setFixedTime`), `document.fonts.ready` + network idle + two
+  animation frames before each shot, caret hidden through a constructed stylesheet (the CSP forbids inline `<style>`).
+- Report: `report.md` (FAIL first, by changed %), `report.html` (base | head | diff for FAIL rows). FAIL means more than
+  0.1% of pixels changed, a size mismatch, a missing file or a capture error.
+- Limits: screenshots are taken at the machine's device scale factor, so compare captures from the same machine;
+  `Date` is frozen but timers still run; a screen whose selector fails is recorded as ERROR and fails the diff.
