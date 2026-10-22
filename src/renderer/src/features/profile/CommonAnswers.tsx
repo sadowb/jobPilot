@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Card, Field, FieldGrid, Input, Select, Textarea } from '../../components/ui';
+import { PButton } from './buttons';
 import { CountryBadge, Glyph } from './icons';
 import { ProfileEditor } from './ProfileEditor';
 import {
@@ -28,6 +30,7 @@ import {
   type PersonalProfile,
 } from './personal';
 import { useLiveRead } from './useLiveRead';
+import { hintText, monoLabel, sectionTitle } from './styles';
 import { useSavedDraft } from './useSavedDraft';
 
 const readAnswersWithMigration = (raw: string | null) => readAnswersV2(raw, localStorage.getItem(ANSWERS_KEY));
@@ -46,6 +49,13 @@ function readLiveMarkets(): Market[] {
     return [];
   }
 }
+
+const answerList = 'grid grid-cols-2 gap-x-7 [@media(width<=800px)]:grid-cols-1';
+const answerRow = 'flex min-w-0 items-center justify-between gap-3 border-t border-line py-3';
+const answerQuestion = 'text-[13px] leading-[1.5] font-semibold';
+const overrideRow = 'grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3';
+const autoTag =
+  'ml-1.5 rounded-[5px] border border-line-2 px-1.5 py-px align-middle font-mono text-[9.5px] leading-[normal] font-medium tracking-[0.06em] text-muted uppercase';
 
 const openEditor = (detail: OpenEditorDetail) => window.dispatchEvent(new CustomEvent(OPEN_EDITOR_EVENT, { detail }));
 const nameOf = (code: string) => countryName(code) ?? code;
@@ -72,7 +82,9 @@ function MarketSwitch({
     refs.current[next]?.focus();
   };
   return (
-    <div className="pf-scope" role="radiogroup" aria-label="Show answers for">
+    <div
+      className="mb-3.5 inline-flex items-center gap-0.5 self-start rounded-full border border-line bg-panel p-[3px]"
+      role="radiogroup" aria-label="Show answers for">
       {ids.map((id, i) => {
         const market = markets.find((m) => m.code === id);
         return (
@@ -87,11 +99,19 @@ function MarketSwitch({
             aria-label={market ? `${market.name}${market.home ? ' (home)' : ''}` : 'All countries'}
             title={market ? `${market.name}${market.home ? ' · your country' : ''}` : undefined}
             tabIndex={scope === id ? 0 : -1}
-            className="pf-scope-opt"
+            className="group inline-flex min-h-8 items-center rounded-full bg-transparent px-3 text-[13px]! font-semibold! text-muted! aria-checked:bg-pri aria-checked:text-on-pri!"
             onClick={() => onScope(id)}
             onKeyDown={(e) => move(e, i)}
           >
-            {market ? <CountryBadge code={market.code} name={market.name} /> : 'All'}
+            {market ? (
+              <CountryBadge
+                code={market.code}
+                name={market.name}
+                className="group-aria-checked:border-current group-aria-checked:bg-transparent group-aria-checked:text-inherit"
+              />
+            ) : (
+              'All'
+            )}
           </button>
         );
       })}
@@ -108,15 +128,21 @@ interface LineData {
 
 function Lines({ lines }: { lines: LineData[] }) {
   return (
-    <div className="pf-lines">
+    <div className="mt-1 flex flex-col gap-1">
       {lines.map((l, i) => (
-        <div className="pf-line" key={`${l.code ?? 'main'}-${i}`}>
-          {l.code && <CountryBadge code={l.code} name={nameOf(l.code)} />}
-          <span className={l.text ? (l.action ? 'pf-warn' : '') : 'profile-missing'}>
+        <div
+          className="flex items-baseline gap-2 text-[12.5px] leading-[1.5] [overflow-wrap:anywhere] whitespace-pre-wrap text-ink-2"
+          key={`${l.code ?? 'main'}-${i}`}>
+          {l.code && <CountryBadge code={l.code} name={nameOf(l.code)} className="mt-0.5 self-start" />}
+          <span className={l.text ? (l.action ? 'text-need' : '') : 'text-muted'}>
             {l.text || 'No answer saved'}
           </span>
           {l.action && (
-            <button type="button" className="pf-warnbtn" onClick={l.action.onClick}>
+            <button
+              type="button"
+              className="min-h-6 flex-none rounded-full border border-need-line bg-need-tint px-2.5 [font-size:12px]! leading-[normal]! font-semibold! text-need! hover:brightness-[0.97]"
+              onClick={l.action.onClick}
+            >
               {l.action.label}
             </button>
           )}
@@ -128,9 +154,9 @@ function Lines({ lines }: { lines: LineData[] }) {
 
 function PencilButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button className="btn sm ghost ic" type="button" aria-label={label} onClick={onClick}>
+    <PButton variant="ghost" className="w-9 min-w-9 flex-none px-0!" aria-label={label} onClick={onClick}>
       <Glyph name="pencil" size={15} />
-    </button>
+    </PButton>
   );
 }
 
@@ -188,17 +214,24 @@ export function CommonAnswers() {
   });
   const start = startAnswer(profile);
   return (
-    <section className="profile-card profile-questions" id="common-answers" aria-labelledby="answers-title">
-      <div className="profile-card-heading">
-        <div>
-          <h2 id="answers-title">
-            Common answers <span className="profile-question-count">{summary.answered}</span>
+    <Card
+      role="region"
+      className="scroll-mt-6 px-[22px] py-[18px] [@media(width<=1190px)]:p-[18px]"
+      id="common-answers"
+      aria-labelledby="answers-title"
+    >
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 id="answers-title" className={`${sectionTitle} leading-[1.4]`}>
+            Common answers{' '}
+            <span className="ml-1.5 font-mono text-[11px] leading-[normal] font-normal text-muted">{summary.answered}</span>
           </h2>
-          <p>Write an answer once. Give a country its own wording only where it differs.</p>
+          <p className="mt-[3px] text-[12.5px] leading-[1.5] text-muted">
+            Write an answer once. Give a country its own wording only where it differs.
+          </p>
         </div>
-        <button
-          className="btn sm"
-          type="button"
+        <PButton
+          className="min-h-[30px]! gap-1.5! text-[12.5px]!"
           onClick={() => {
             const id = crypto.randomUUID();
             setDraft((all) => [...all, { id, question: '', default: '', overrides: {} }]);
@@ -206,35 +239,36 @@ export function CommonAnswers() {
           }}
         >
           <Glyph name="plus" size={14} /> Add answer
-        </button>
+        </PButton>
       </div>
       {markets.length > 0 ? (
         <MarketSwitch markets={markets} scope={scope} onScope={setScope} />
       ) : (
-        <p className="pf-hint">Add countries in Where you apply to give each one its own answers.</p>
+        <p className={hintText}>Add countries in Where you apply to give each one its own answers.</p>
       )}
-      <label className="profile-search">
+      <label className="mb-4 flex w-full max-w-[340px] items-center gap-2 rounded-full border border-line px-3 py-[7px] text-muted focus-within:outline-2 focus-within:outline-solid focus-within:outline-ink focus-within:outline-offset-2">
         <Glyph name="search" />
         <span className="sr-only">Search common answers</span>
         <input
           type="search"
+          className="w-full min-w-0 border-0 bg-transparent font-sans text-[12.5px] leading-[normal] text-ink outline-none!"
           placeholder="Search saved answers"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </label>
 
-      <div className="pf-autogroup">
-        <div className="pf-eyebrow-row">
-          <span className="v17x">Auto</span>
-          <span className="pf-auto-note">Filled from Where you apply and Job preferences. Edit them there, never twice.</span>
+      <div className="mb-[18px]">
+        <div className="mb-1 flex items-baseline gap-3">
+          <span className={monoLabel}>Auto</span>
+          <span className="[font-size:12px] text-muted">Filled from Where you apply and Job preferences. Edit them there, never twice.</span>
         </div>
-        <div className="profile-answer-list">
+        <div className={answerList}>
           {markets.length > 0 && (
-            <div className="profile-answer-summary">
-              <div>
-                <strong>
-                  {AUTHORIZATION_QUESTION} <span className="pf-autotag">auto</span>
+            <div className={answerRow}>
+              <div className="min-w-0">
+                <strong className={answerQuestion}>
+                  {AUTHORIZATION_QUESTION} <span className={autoTag}>auto</span>
                 </strong>
                 <Lines lines={visibleMarkets.map((m) => ({ code: m.code, text: authorizationAnswer(m.workAuth) }))} />
               </div>
@@ -254,10 +288,10 @@ export function CommonAnswers() {
               />
             </div>
           )}
-          <div className="profile-answer-summary">
-            <div>
-              <strong>
-                {SALARY_QUESTION} <span className="pf-autotag">auto</span>
+          <div className={answerRow}>
+            <div className="min-w-0">
+              <strong className={answerQuestion}>
+                {SALARY_QUESTION} <span className={autoTag}>auto</span>
               </strong>
               <Lines lines={salaryLines} />
             </div>
@@ -274,10 +308,10 @@ export function CommonAnswers() {
               }
             />
           </div>
-          <div className="profile-answer-summary">
-            <div>
-              <strong>
-                {START_QUESTION} <span className="pf-autotag">auto</span>
+          <div className={answerRow}>
+            <div className="min-w-0">
+              <strong className={answerQuestion}>
+                {START_QUESTION} <span className={autoTag}>auto</span>
               </strong>
               <Lines
                 lines={[
@@ -301,13 +335,13 @@ export function CommonAnswers() {
         </div>
       </div>
 
-      <div className="profile-answer-list">
+      <div className={answerList}>
         {shown.map((a) => {
           const hit = scope !== 'all' && hasOverride(a, scope);
           return (
-            <div className="profile-answer-summary" key={a.id}>
-              <div>
-                <strong>{a.question || 'New question'}</strong>
+            <div className={answerRow} key={a.id}>
+              <div className="min-w-0">
+                <strong className={answerQuestion}>{a.question || 'New question'}</strong>
                 {scope === 'all' ? (
                   <Lines
                     lines={[
@@ -320,7 +354,7 @@ export function CommonAnswers() {
                 )}
                 <button
                   type="button"
-                  className="pf-addlink pf-diff"
+                  className="mt-1.5 self-start bg-transparent p-0 disabled:cursor-not-allowed! disabled:text-muted!"
                   disabled={!free(a).length}
                   title={free(a).length ? undefined : 'Every country already has its own answer, or none is set up yet'}
                   onClick={() => startOverride(a)}
@@ -333,8 +367,8 @@ export function CommonAnswers() {
           );
         })}
       </div>
-      {!shown.length && <p className="s">{query ? 'No matching answers.' : 'Add your first answer.'}</p>}
-      <div className="profile-answers-meta">
+      {!shown.length && <p className="text-[13.5px] text-muted">{query ? 'No matching answers.' : 'Add your first answer.'}</p>}
+      <div className="flex justify-between gap-3 border-t border-line pt-3.5 text-[11.5px] text-muted">
         <span>
           {summary.answered} answered · {summary.total} questions
         </span>
@@ -351,47 +385,47 @@ export function CommonAnswers() {
             if (store.save(cleaned(draft))) setEditing(null);
           }}
         >
-          <div className="profile-fields">
-            <label className="profile-field profile-wide">
-              <span>Question</span>
-              <input
+          <FieldGrid>
+            <Field label="Question" wide>
+              <Input
                 required
                 pattern=".*\S.*"
                 value={current.question}
                 maxLength={500}
                 onChange={(e) => patch(current.id, { question: e.target.value })}
               />
-            </label>
-            <label className="profile-field profile-wide">
-              <span>Default answer</span>
-              <textarea
+            </Field>
+            <Field label="Default answer" wide>
+              <Textarea
                 rows={5}
                 value={current.default}
                 maxLength={10000}
                 placeholder="Your answer…"
                 onChange={(e) => patch(current.id, { default: e.target.value })}
               />
-            </label>
-          </div>
-          <div className="pf-overrides">
-            <div className="v17x">Different answers by country</div>
+            </Field>
+          </FieldGrid>
+          <div className="mt-6 flex flex-col gap-3.5 border-t border-line pt-[18px]">
+            <div className={monoLabel}>Different answers by country</div>
             {Object.entries(current.overrides).map(([code, text]) => (
-              <div className="pf-override" key={code}>
-                <label className="profile-field">
-                  <span className="pf-ovlabel">
-                    <CountryBadge code={code} name={nameOf(code)} /> {nameOf(code)}
-                  </span>
-                  <textarea
+              <div className={overrideRow} key={code}>
+                <Field
+                  label={
+                    <span className="flex items-center gap-2">
+                      <CountryBadge code={code} name={nameOf(code)} /> {nameOf(code)}
+                    </span>
+                  }
+                >
+                  <Textarea
                     rows={3}
                     value={text}
                     maxLength={10000}
                     placeholder={`What to answer for ${nameOf(code)}…`}
                     onChange={(e) => patch(current.id, { overrides: { ...current.overrides, [code]: e.target.value } })}
                   />
-                </label>
-                <button
-                  type="button"
-                  className="btn sm ghost"
+                </Field>
+                <PButton
+                  variant="ghost"
                   aria-label={`Remove the ${nameOf(code)} answer`}
                   onClick={() => {
                     patch(current.id, {
@@ -400,7 +434,7 @@ export function CommonAnswers() {
                   }}
                 >
                   Remove
-                </button>
+                </PButton>
               </div>
             ))}
             <OverrideAdder
@@ -408,41 +442,40 @@ export function CommonAnswers() {
               onAdd={(code) => patch(current.id, { overrides: { ...current.overrides, [code]: '' } })}
             />
           </div>
-          <button
-            className="btn sm neg profile-delete-answer"
-            type="button"
+          <PButton
+            variant="danger"
+            className="mt-6"
             onClick={() => {
               if (store.save(cleaned(draft.filter((a) => a.id !== current.id)))) setEditing(null);
             }}
           >
             Remove question
-          </button>
+          </PButton>
         </ProfileEditor>
       )}
-    </section>
+    </Card>
   );
 }
 
 /** Adds an override for one of the configured markets (never an arbitrary country). */
 function OverrideAdder({ options, onAdd }: { options: readonly AnswerMarket[]; onAdd: (code: string) => void }) {
   const [pick, setPick] = useState('');
-  if (!options.length) return <p className="pf-hint">Every country you apply in already has its own answer.</p>;
+  if (!options.length) return <p className={hintText}>Every country you apply in already has its own answer.</p>;
   const value = options.some((o) => o.code === pick) ? pick : options[0]!.code;
   return (
-    <div className="pf-override-add">
-      <label className="profile-field">
-        <span>Add a country</span>
-        <select value={value} onChange={(e) => setPick(e.target.value)}>
+    <div className={overrideRow}>
+      <Field label="Add a country">
+        <Select className="[&>svg]:text-[#8c8c8c]" value={value} onChange={(e) => setPick(e.target.value)}>
           {options.map((o) => (
             <option key={o.code} value={o.code}>
               {o.name}
             </option>
           ))}
-        </select>
-      </label>
-      <button type="button" className="btn sm" onClick={() => onAdd(value)}>
+        </Select>
+      </Field>
+      <PButton className="gap-1.5!" onClick={() => onAdd(value)}>
         <Glyph name="plus" size={14} /> Add
-      </button>
+      </PButton>
     </div>
   );
 }

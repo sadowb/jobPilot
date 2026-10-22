@@ -1,4 +1,5 @@
 import { useEffect, useState, type InputHTMLAttributes } from 'react';
+import { Field, FieldGrid, Input, Select, Textarea } from '../../components/ui';
 import { ProfileEditor } from './ProfileEditor';
 import {
   EDIT_IDENTITY_EVENT,
@@ -20,6 +21,7 @@ import { useDocumentCount } from './useDocumentCount';
 import { CareerCard, ContactCard, CvsCard, LanguagesLinksCard, PrefsCard, WhereCard } from './AboutCards';
 import { AddCountryDialog, CountryEditor, ManageCountriesDialog } from './MarketDialogs';
 import { CURRENCIES, EU_CODE, defaultCurrency, MARKETS_KEY, isEuMember, readMarkets, type Market } from './markets';
+import { selectChevron } from './styles';
 
 type Field = {
   label: string;
@@ -160,7 +162,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
   const status = profile.error || profile.message || markets.message;
   return (
     <>
-      <div className="pf-grid">
+      <div className="grid auto-rows-[minmax(300px,auto)] grid-cols-3 gap-5 [@media(width<=1190px)]:grid-cols-2 [@media(width<=800px)]:auto-rows-auto [@media(width<=800px)]:grid-cols-1">
         <ContactCard profile={draft} onEdit={() => setView({ type: 'profile', group: 'contact' })} />
         <WhereCard
           markets={markets.draft}
@@ -175,7 +177,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
         <PrefsCard profile={draft} onEdit={() => setView({ type: 'profile', group: 'preferences' })} />
         <LanguagesLinksCard profile={draft} onEdit={() => setView({ type: 'profile', group: 'languages-links' })} />
       </div>
-      <div className="profile-save-note" role="status">
+      <div className="mx-0.5 mt-3 mb-5 min-h-[18px] text-[11.5px] text-muted" role="status">
         {status || 'Only details you save appear in your profile.'}
       </div>
       {group && (
@@ -220,7 +222,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
               }}
             />
           )}
-          <div className="profile-fields">
+          <FieldGrid>
             {group.fields.map((key) => {
               const field = FIELDS[key];
               if (field.kind === 'phone')
@@ -281,9 +283,9 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
                 );
               if (field.kind === 'currency')
                 return (
-                  <label className="profile-field" key={key}>
-                    <span>{field.label}</span>
-                    <select
+                  <Field label={field.label} key={key}>
+                    <Select
+                      className={selectChevron}
                       value={draft[key] || effectiveSalaryCurrency(draft)}
                       onChange={(e) => update(key, e.target.value)}
                     >
@@ -293,14 +295,13 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
                           {c.name} ({c.code})
                         </option>
                       ))}
-                    </select>
-                  </label>
+                    </Select>
+                  </Field>
                 );
               return (
-                <label className={`profile-field${field.wide ? ' profile-wide' : ''}`} key={key}>
-                  <span>{field.label}</span>
+                <Field label={field.label} wide={field.wide} key={key}>
                   {field.multiline ? (
-                    <textarea
+                    <Textarea
                       value={draft[key]}
                       onChange={(e) => update(key, e.target.value)}
                       rows={5}
@@ -308,14 +309,14 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
                       placeholder={field.placeholder}
                     />
                   ) : field.options ? (
-                    <select value={draft[key]} onChange={(e) => update(key, e.target.value)}>
+                    <Select className={selectChevron} value={draft[key]} onChange={(e) => update(key, e.target.value)}>
                       <option value="">Not specified</option>
                       {field.options.map((o) => (
                         <option key={o}>{o}</option>
                       ))}
-                    </select>
+                    </Select>
                   ) : (
-                    <input
+                    <Input
                       type={field.type ?? 'text'}
                       value={draft[key]}
                       onChange={(e) => update(key, e.target.value)}
@@ -324,10 +325,10 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
                       maxLength={2000}
                     />
                   )}
-                </label>
+                </Field>
               );
             })}
-          </div>
+          </FieldGrid>
         </ProfileEditor>
       )}
       {view?.type === 'manage' && (

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Card as Surface, cx } from '../../components/ui';
 import { Glyph, CountryBadge, GlobeBadge, type GlyphName } from './icons';
 import { countryName, marketSummary, type Market } from './markets';
 import { PRESENT, sortCareer, yearRange } from './career';
@@ -6,11 +7,32 @@ import { CHECK_NUMBER, parsePhone, regionName, regionOf } from './phones';
 import { noticeLabel } from './notice';
 import { formatSalary } from './salary';
 import { languageName } from './languages';
+import { monoMeta } from './styles';
 import { cvFileName, effectiveSalaryCurrency, fullName, splitList, type PersonalProfile } from './personal';
 
 /** Rows shown in the card, home row included; the rest are one click away in Edit. */
 const MAX_COUNTRY_ROWS = 3;
 const MAX_CHIPS = 4;
+
+/** `.pf-li` row; `where` is the taller "Where you apply" variant. Rows that are buttons keep the inherited 15px. */
+const row = (o: { where?: boolean; tall?: boolean; button?: boolean } = {}) =>
+  cx(
+    'flex w-full min-w-0 items-center gap-2.5 border-t border-line text-left',
+    o.where ? 'min-h-11' : 'min-h-[42px]',
+    o.tall && 'items-start py-2.5',
+    !o.button && 'text-[13.5px] text-ink',
+  );
+/** First row of a list has no top rule, whether the `li` or the button inside it is the row. */
+const rowList = '[&>li:first-child]:border-t-0 [&>li:first-child>button]:border-t-0';
+const glyph = (tall?: boolean) => cx('grid w-[22px] flex-none place-items-center text-muted', tall && 'mt-0.5');
+const rowText = (where?: boolean) =>
+  cx('min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap', where && 'text-[15px]');
+const rowSub = 'mt-px block overflow-hidden [font-size:12px] text-ellipsis text-muted';
+const status = (need?: boolean) =>
+  cx('flex-none text-[13px] font-semibold whitespace-nowrap', need ? 'text-need' : 'text-brand-text');
+const moreButton =
+  'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5';
+const addPromptButton = 'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5';
 
 function Card({
   id,
@@ -19,7 +41,6 @@ function Card({
   meta,
   editLabel,
   onEdit,
-  className = '',
   children,
 }: {
   id: string;
@@ -28,31 +49,59 @@ function Card({
   meta: string;
   editLabel: string;
   onEdit: () => void;
-  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section className={`pf-card ${className}`.trim()} id={id} aria-labelledby={`${id}-title`}>
-      <div className="pf-chd">
-        <span className="pf-ico" aria-hidden="true">
+    <Surface
+      role="region"
+      className="flex scroll-mt-6 flex-col px-[22px] py-5"
+      id={id}
+      aria-labelledby={`${id}-title`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          className="grid size-9 flex-none place-items-center rounded-xl border border-line bg-ground text-ink-2"
+          aria-hidden="true"
+        >
           <Glyph name={icon} size={18} />
         </span>
-        <div>
-          <h2 id={`${id}-title`}>{title}</h2>
-          <span className="pf-meta">{meta}</span>
+        <div className="min-w-0 flex-1">
+          <h2
+            id={`${id}-title`}
+            className="m-0 overflow-hidden font-sans text-[15.5px] leading-[1.25] font-[650] tracking-[-0.01em] text-ellipsis whitespace-nowrap"
+          >
+            {title}
+          </h2>
+          <span
+            className={cx(monoMeta, 'mt-[3px] block overflow-hidden text-ellipsis whitespace-nowrap')}
+          >
+            {meta}
+          </span>
         </div>
-        <button type="button" className="pf-edit" aria-label={editLabel} onClick={onEdit}>
+        <button
+          type="button"
+          className="min-h-7 flex-none bg-transparent p-0 underline decoration-line-2 underline-offset-[3px] hover:text-ink!"
+          aria-label={editLabel}
+          onClick={onEdit}
+        >
           Edit
         </button>
       </div>
-      <div className="pf-cb">{children}</div>
-    </section>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col">{children}</div>
+    </Surface>
   );
 }
 
 function AddPrompt({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" className="pf-addprompt" onClick={onClick}>
+    <button
+      type="button"
+      className={cx(
+        addPromptButton,
+        'only:m-0 only:w-full only:justify-center only:rounded-[14px] only:border only:border-dashed only:border-line-2 only:px-4 only:py-3.5 only:text-ink-2!',
+      )}
+      onClick={onClick}
+    >
       <Glyph name="plus" size={14} /> {children}
     </button>
   );
@@ -80,41 +129,45 @@ export function ContactCard({ profile, onEdit }: { profile: PersonalProfile; onE
       {empty ? (
         <AddPrompt onClick={onEdit}>Add your email and phone</AddPrompt>
       ) : (
-        <ul className="pf-li-list">
+        <ul className={rowList}>
           {email && (
-            <li className="pf-li">
-              <span className="pf-gl">
+            <li className={row()}>
+              <span className={glyph()}>
                 <Glyph name="mail" size={15} />
               </span>
-              <span className="pf-t">{email}</span>
-              <span className="pf-pill">Primary</span>
+              <span className={rowText()}>{email}</span>
+              <span className="flex-none rounded-full bg-brand-tint px-[9px] py-0.5 text-[11.5px] font-semibold text-brand-text">
+                Primary
+              </span>
             </li>
           )}
           {phones.map((phone, i) => (
-            <li className="pf-li" key={`${i}-${phone.raw}`}>
+            <li className={row()} key={`${i}-${phone.raw}`}>
               {phone.valid && phone.region ? (
                 <CountryBadge code={phone.region} name={regionName(phone.region)} />
               ) : (
-                <span className="pf-gl">
+                <span className={glyph()}>
                   <Glyph name="phone" size={15} />
                 </span>
               )}
-              <span className="pf-t">{phone.international ?? phone.raw}</span>
+              <span className={rowText()}>{phone.international ?? phone.raw}</span>
               {!phone.valid ? (
-                <span className="pf-tag bad">{CHECK_NUMBER}</span>
+                <span className="flex-none font-sans text-[11.5px] leading-[normal] font-semibold text-bad">
+                  {CHECK_NUMBER}
+                </span>
               ) : phone.type ? (
-                <span className="pf-tag">{phone.type}</span>
+                <span className={cx(monoMeta, 'flex-none')}>{phone.type}</span>
               ) : null}
             </li>
           ))}
           {(line1 || line2) && (
-            <li className="pf-li tall">
-              <span className="pf-gl">
+            <li className={row({ tall: true })}>
+              <span className={glyph(true)}>
                 <Glyph name="pin" size={15} />
               </span>
-              <span className="pf-t">
+              <span className={rowText()}>
                 {line1 || line2}
-                {line1 && line2 && <small>{line2}</small>}
+                {line1 && line2 && <small className={rowSub}>{line2}</small>}
               </span>
             </li>
           )}
@@ -157,22 +210,21 @@ export function WhereCard({
       meta="Matched by job location"
       editLabel="Edit where you apply"
       onEdit={onEdit}
-      className="pf-where"
     >
       {error && (
-        <p className="pf-inline-error" role="status">
+        <p className="mb-2 text-xs leading-[1.45] text-bad" role="status">
           {error}
         </p>
       )}
-      <ul className="pf-li-list">
+      <ul className={rowList}>
         {showHome && (
-          <li className="pf-li">
+          <li className={row({ where: true })}>
             <CountryBadge code={homeCode} name={home} />
-            <span className="pf-t">
+            <span className={rowText(true)}>
               {home}
-              <small>{['Main details', homeCurrency].filter(Boolean).join(' · ')}</small>
+              <small className={rowSub}>{['Main details', homeCurrency].filter(Boolean).join(' · ')}</small>
             </span>
-            <span className="pf-status">Can work</span>
+            <span className={status()}>Can work</span>
           </li>
         )}
         {shown.map((m) => {
@@ -182,32 +234,37 @@ export function WhereCard({
             <li key={m.code}>
               <button
                 type="button"
-                className="pf-li pf-rowbtn"
+                className={cx(row({ where: true, button: true }), 'group')}
                 aria-label={`Edit ${name}`}
                 onClick={() => onOpen(m.code)}
               >
                 <CountryBadge code={m.code} name={name} />
-                <span className="pf-t">
+                <span
+                  className={cx(
+                    rowText(true),
+                    'group-hover:underline group-hover:decoration-line-2 group-hover:underline-offset-[3px]',
+                  )}
+                >
                   {name}
-                  <small>{sent || 'Uses your main details'}</small>
+                  <small className={rowSub}>{sent || 'Uses your main details'}</small>
                 </span>
-                <span className={m.workAuth === 'authorized' ? 'pf-status' : 'pf-status need'}>
+                <span className={status(m.workAuth !== 'authorized')}>
                   {m.workAuth === 'authorized' ? 'Can work' : 'Visa needed'}
                 </span>
               </button>
             </li>
           );
         })}
-        <li className="pf-li">
+        <li className={row({ where: true })}>
           <GlobeBadge />
-          <span className="pf-t">
+          <span className={rowText(true)}>
             Other countries
-            <small>Uses your main details</small>
+            <small className={rowSub}>Uses your main details</small>
           </span>
         </li>
       </ul>
       {hidden > 0 && (
-        <button type="button" className="pf-more" onClick={onEdit}>
+        <button type="button" className={moreButton} onClick={onEdit}>
           +{hidden} more
         </button>
       )}
@@ -215,22 +272,29 @@ export function WhereCard({
   );
 }
 
+/** The thumbnails depict printed paper, so they stay light in dark mode too. */
+const PAPER =
+  'absolute top-0 left-0 box-border h-[88px] w-[68px] rounded-[7px] border border-[#dadada] shadow-[0_1px_2px_rgb(0_0_0/0.08)]';
+const PAPER_LINE = 'block h-[3px] rounded-[2px] bg-[#dcdcdc]';
+const PAPER_HEAD = 'mb-[3px] block h-[5px] w-[62%] rounded-[2px] bg-[#3a3a3a]';
+const PAPER_ACCENT = 'mt-1 block h-[3px] w-[34%] rounded-[2px] bg-[#00846a]';
+
 function PaperStack({ empty }: { empty: boolean }) {
   return (
-    <div className={`pf-stack${empty ? ' empty' : ''}`} aria-hidden="true">
-      <i className="pf-paper b2" />
-      <i className="pf-paper b1" />
-      <div className="pf-paper f">
-        <i className="h" />
-        <i />
-        <i />
-        <i className="a" />
-        <i />
-        <i />
-        <i />
-        <i className="a" />
-        <i />
-        <i />
+    <div className={cx('relative mt-0.5 ml-0.5 h-[100px] w-[84px] flex-none', empty && 'opacity-55')} aria-hidden="true">
+      <i className={cx(PAPER, 'bg-[#f1f1ef] [transform:translate(8px,4px)_rotate(5deg)]')} />
+      <i className={cx(PAPER, 'bg-[#f6f6f4] [transform:translate(4px,2px)_rotate(2.5deg)]')} />
+      <div className={cx(PAPER, 'flex flex-col gap-[3.5px] bg-[#fcfcfb] px-2 py-[9px]')}>
+        <i className={PAPER_HEAD} />
+        <i className={PAPER_LINE} />
+        <i className={PAPER_LINE} />
+        <i className={PAPER_ACCENT} />
+        <i className={PAPER_LINE} />
+        <i className={PAPER_LINE} />
+        <i className={PAPER_LINE} />
+        <i className={PAPER_ACCENT} />
+        <i className={PAPER_LINE} />
+        <i className={PAPER_LINE} />
       </div>
     </div>
   );
@@ -249,15 +313,17 @@ export function CvsCard({
   const meta = count === null ? 'CVs on this device' : none ? 'No CVs yet' : plural(count, 'CV');
   return (
     <Card id="cvs" icon="doc" title="CVs" meta={meta} editLabel="Manage CVs" onEdit={onSeeAll}>
-      <div className="pf-cvtop">
+      <div className="flex min-w-0 gap-[18px]">
         <PaperStack empty={none} />
-        <div className="pf-cvinfo">
-          <strong>{none ? 'Add your first CV' : 'The agent picks one per job'}</strong>
-          <p>
+        <div className="min-w-0 flex-1 text-[12.5px] text-muted">
+          <strong className="block text-[15px] font-[650] text-ink">
+            {none ? 'Add your first CV' : 'The agent picks one per job'}
+          </strong>
+          <p className="mt-2 leading-[1.5]">
             {fullName(profile) ? (
               <>
                 Employers always see
-                <b>{cvFileName(profile)}</b>
+                <b className="block font-semibold text-ink [overflow-wrap:anywhere]">{cvFileName(profile)}</b>
               </>
             ) : (
               'Add your name to set the file name'
@@ -265,7 +331,10 @@ export function CvsCard({
           </p>
         </div>
       </div>
-      <button type="button" className="pf-rowlink" aria-label={none ? 'Add a CV' : 'See all CVs'} onClick={onSeeAll}>
+      <button
+        type="button"
+        className="mt-auto flex min-h-10 w-full items-center justify-between border-t border-line bg-transparent p-0"
+        aria-label={none ? 'Add a CV' : 'See all CVs'} onClick={onSeeAll}>
         <span>{none ? 'Add a CV' : 'See all CVs'}</span>
         <Glyph name="arrowRight" size={14} />
       </button>
@@ -305,19 +374,28 @@ export function CareerCard({ profile, onEdit }: { profile: PersonalProfile; onEd
     >
       {entries.length ? (
         <>
-          <ol className="pf-tl">
+          <ol className="flex flex-col gap-4 pt-0.5">
             {shown.map((e) => (
-              <li key={e.id} className={`pf-te${e.current ? '' : ' past'}`}>
-                <b aria-hidden="true" />
+              <li
+                key={e.id}
+                className="relative grid grid-cols-[14px_minmax(0,1fr)] gap-3 not-last:after:absolute not-last:after:top-4 not-last:after:bottom-[-18px] not-last:after:left-1.5 not-last:after:w-px not-last:after:bg-line not-last:after:content-['']"
+              >
+                <b
+                  className={cx(
+                    'mt-[3px] box-border size-[13px] rounded-full border-2 bg-bg dark:bg-panel',
+                    e.current ? 'border-brand' : 'border-line-2',
+                  )}
+                  aria-hidden="true"
+                />
                 <div>
-                  <strong>{e.title}</strong>
-                  {e.sub && <span>{e.sub}</span>}
+                  <strong className="block [font-size:14px] font-[620] [overflow-wrap:anywhere]">{e.title}</strong>
+                  {e.sub && <span className="mt-0.5 block text-[12.5px] text-muted">{e.sub}</span>}
                 </div>
               </li>
             ))}
           </ol>
           {entries.length > shown.length && (
-            <button type="button" className="pf-more" onClick={onEdit}>
+            <button type="button" className={moreButton} onClick={onEdit}>
               +{entries.length - shown.length} more
             </button>
           )}
@@ -329,16 +407,19 @@ export function CareerCard({ profile, onEdit }: { profile: PersonalProfile; onEd
   );
 }
 
+const CHIP =
+  'inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-ground px-[11px] text-[12.5px] font-[550] whitespace-nowrap text-ink-2';
+
 function Chips({ items, max = MAX_CHIPS }: { items: ReactNode[]; max?: number }) {
   const shown = items.slice(0, max);
   return (
-    <ul className="pf-chips">
+    <ul className="mb-1.5 flex flex-wrap gap-1.5">
       {shown.map((item, i) => (
-        <li className="pf-chip" key={i}>
+        <li className={CHIP} key={i}>
           {item}
         </li>
       ))}
-      {items.length > shown.length && <li className="pf-chip more">+{items.length - shown.length}</li>}
+      {items.length > shown.length && <li className={cx(CHIP, 'text-muted')}>+{items.length - shown.length}</li>}
     </ul>
   );
 }
@@ -379,17 +460,20 @@ export function PrefsCard({ profile, onEdit }: { profile: PersonalProfile; onEdi
       ) : (
         <>
           {roles.length > 0 && <Chips items={roles} />}
-          <dl className="pf-kv">
+          <dl className="mt-1">
             {rows.map(([label, value]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>
+              <div
+                key={label}
+                className="grid min-h-[35px] grid-cols-[92px_minmax(0,1fr)] items-center gap-2.5 border-t border-line text-[13px]"
+              >
+                <dt className="text-[12.5px] text-muted">{label}</dt>
+                <dd className="overflow-hidden text-ellipsis whitespace-nowrap">
                   {value.trim() ? (
                     value
                   ) : (
                     <button
                       type="button"
-                      className="pf-addlink"
+                      className="bg-transparent p-0 font-semibold! text-brand-text!"
                       aria-label={`Add ${label.toLowerCase()}`}
                       onClick={onEdit}
                     >
@@ -436,19 +520,19 @@ export function LanguagesLinksCard({ profile, onEdit }: { profile: PersonalProfi
             <Chips
               items={languages.map((l) => (
                 <>
-                  {l.name} {l.level && <span>{l.level}</span>}
+                  {l.name} {l.level && <span className="font-[450] text-muted">{l.level}</span>}
                 </>
               ))}
               max={3}
             />
           )}
-          <ul className="pf-li-list">
+          <ul className={rowList}>
             {links.slice(0, 3).map((link) => (
-              <li className="pf-li" key={link}>
-                <span className="pf-gl">
+              <li className={row()} key={link}>
+                <span className={glyph()}>
                   <Glyph name="link" size={15} />
                 </span>
-                <span className="pf-t">{link}</span>
+                <span className={rowText()}>{link}</span>
               </li>
             ))}
           </ul>

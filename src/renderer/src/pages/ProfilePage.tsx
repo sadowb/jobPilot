@@ -8,7 +8,6 @@ import { panelId, ProfileHeader, ProfileTabs, tabId, type ProfileTab } from '../
 import { useDocumentCount } from '../features/profile/useDocumentCount';
 import { migrateStartAnswer } from '../features/profile/startMigration';
 import { useProfileIdentity } from '../features/profile/useProfileIdentity';
-import '../features/profile/profile.css';
 
 const TABS: ProfileTab[] = ['about', 'documents', 'answers', 'knowledge'];
 
@@ -24,12 +23,12 @@ export function ProfilePage() {
   const { answersCount } = useProfileIdentity();
   const go = (next: ProfileTab) => setParams(next === 'about' ? {} : { section: next });
   const panel = (id: ProfileTab, children: React.ReactNode) => (
-    <div role="tabpanel" id={panelId(id)} aria-labelledby={tabId(id)} hidden={tab !== id} className="pf-panel">
+    <div role="tabpanel" id={panelId(id)} aria-labelledby={tabId(id)} hidden={tab !== id}>
       {children}
     </div>
   );
   return (
-    <div className="profile-layout">
+    <div className="mx-auto box-border max-w-[1320px] px-12 pt-8 pb-12 [@media(width<=1190px)]:px-7 [@media(width<=1190px)]:pt-7 [@media(width<=1190px)]:pb-10 [@media(width<=800px)]:p-5">
       <ProfileHeader />
       <ProfileTabs tab={tab} onTab={go} counts={{ documents, answers: answersCount, knowledge: facts.review.length }} />
       {panel('about', <AboutMe onSeeAllCvs={() => go('documents')} />)}

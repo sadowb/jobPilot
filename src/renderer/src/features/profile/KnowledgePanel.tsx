@@ -1,6 +1,8 @@
 import { useReducer, useState } from 'react';
-import { SegmentedChoice } from '../../components/SegmentedChoice';
+import { Segmented } from '../../components/ui';
+import { PButton } from './buttons';
 import { confirmedTotal, factsReducer, type FactsState } from './model';
+import { actionsRow, emptyText, sectionTitle } from './styles';
 
 /** Real facts will come from the agents; until then a user starts with none, never with sample data. */
 export const NO_FACTS: FactsState = { review: [], confirmed: [], priorConfirmed: 0 };
@@ -19,10 +21,11 @@ export function KnowledgePanel({
   const [tab, setTab] = useState<'review' | 'confirmed'>('review');
   const shown = tab === 'review' ? facts.review : facts.confirmed;
   return (
-    <section className="pf-knowledge" aria-labelledby="agent-knowledge-title">
-      <h2 id="agent-knowledge-title">What the agents know</h2>
-      <p className="pf-lede">Readable, editable, yours. Facts the agents infer wait here until you confirm them.</p>
-      <SegmentedChoice
+    <section className="flex flex-col items-start gap-3.5" aria-labelledby="agent-knowledge-title">
+      <h2 id="agent-knowledge-title" className={`${sectionTitle} leading-[1.2]`}>What the agents know</h2>
+      <p className="-mt-2 text-[13px] text-muted">Readable, editable, yours. Facts the agents infer wait here until you confirm them.</p>
+      <Segmented
+        className="w-[300px]"
         label="Facts filter"
         options={[
           { value: 'review', label: `To review ${facts.review.length}` },
@@ -30,30 +33,29 @@ export function KnowledgePanel({
         ]}
         value={tab}
         onChange={setTab}
-        width={300}
       />
-      <ul className="pf-factlist">
+      <ul className="w-full">
         {shown.map((f) => (
-          <li key={f.id}>
+          <li key={f.id} className="flex items-center justify-between gap-4 border-t border-line py-3">
             <div>
-              <strong>{f.text}</strong>
-              <span>{f.source}</span>
+              <strong className="block text-sm font-semibold">{f.text}</strong>
+              <span className="text-[13px] text-muted">{f.source}</span>
             </div>
             {tab === 'review' && (
-              <div className="profile-actions">
-                <button type="button" className="btn sm pri" onClick={() => dispatch({ type: 'confirm', id: f.id })}>
+              <div className={actionsRow}>
+                <PButton variant="primary" onClick={() => dispatch({ type: 'confirm', id: f.id })}>
                   Confirm
-                </button>
-                <button type="button" className="btn sm ghost" onClick={() => dispatch({ type: 'reject', id: f.id })}>
+                </PButton>
+                <PButton variant="ghost" onClick={() => dispatch({ type: 'reject', id: f.id })}>
                   Not true
-                </button>
+                </PButton>
               </div>
             )}
           </li>
         ))}
       </ul>
       {shown.length === 0 && (
-        <p className="pf-empty">
+        <p className={emptyText}>
           {tab === 'review'
             ? 'Nothing to review yet. The agents will ask here when they infer something new about you.'
             : 'Nothing confirmed yet. Facts you confirm will appear here.'}

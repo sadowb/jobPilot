@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cx } from '../../components/ui';
 
 /** Stroke glyphs used by the About me cards (24×24 grid, round caps and joins). */
 const GLYPHS = {
@@ -98,10 +99,13 @@ export function Glyph({ name, size = 16 }: { name: GlyphName; size?: number }) {
   );
 }
 
+const BADGE =
+  'inline-flex h-[18px] min-w-[26px] flex-none items-center justify-center rounded-[5px] border border-line-2 bg-bg px-[5px] align-middle font-mono text-[9.5px] leading-none font-semibold tracking-[0.06em] text-ink-2';
+
 /** Monochrome country code badge. The accessible name is the country, never an emoji flag. */
-export function CountryBadge({ code, name }: { code: string; name: string }) {
+export function CountryBadge({ code, name, className }: { code: string; name: string; className?: string }) {
   return (
-    <span className="pf-cc" role="img" aria-label={name}>
+    <span className={cx(BADGE, className)} role="img" aria-label={name}>
       {code}
     </span>
   );
@@ -110,7 +114,7 @@ export function CountryBadge({ code, name }: { code: string; name: string }) {
 /** Badge for "Other countries". */
 export function GlobeBadge() {
   return (
-    <span className="pf-cc" role="img" aria-label="Other countries">
+    <span className={BADGE} role="img" aria-label="Other countries">
       <Glyph name="globe" size={11} />
     </span>
   );
