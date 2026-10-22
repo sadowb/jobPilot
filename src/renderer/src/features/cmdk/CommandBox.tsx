@@ -12,7 +12,7 @@ import { CritterBot } from '../../components/CritterBot';
 import { KeyCap } from '../../components/KeyCap';
 import { Button, cx } from '../../components/ui';
 import { PILL, S, shellButton } from '../shared-ui';
-import { SAMPLE_JOBS, STATUS_CHIP, type JobRecord } from './jobs';
+import { SAMPLE_JOBS, type JobRecord } from './jobs';
 import {
   answerFor,
   buildResults,
@@ -31,6 +31,14 @@ const ICONS = {
 
 /** Small uppercase mono label (section captions, answer row tags). */
 const MONO_LABEL = 'font-mono text-[10.5px] tracking-[0.06em] whitespace-nowrap text-muted uppercase';
+const STATUS_CHIP_CLASSES: Record<JobRecord['status'], string> = {
+  Submitted: 'text-ink-2 bg-line',
+  Screening: 'text-[#0F766E] bg-[rgb(15_118_110/.14)]',
+  Interview: 'text-[#B45309] bg-[rgb(180_83_9/.16)]',
+  Offer: 'text-brand-text bg-brand-tint',
+  Rejected: 'text-[#B5412F] bg-[rgb(181_65_47/.14)]',
+  Withdrawn: 'text-muted bg-line',
+};
 
 function Icon({ size, children, className }: { size: number; children: ReactNode; className?: string }) {
   return (
@@ -52,10 +60,8 @@ function Icon({ size, children, className }: { size: number; children: ReactNode
 }
 
 function StatusChip({ status }: { status: JobRecord['status'] }) {
-  const c = STATUS_CHIP[status];
   return (
-    // Tone colours come from the status data (`STATUS_CHIP`), so they stay a dynamic style.
-    <span className={PILL} style={{ color: c.color, background: c.background }}>
+    <span className={`${PILL} ${STATUS_CHIP_CLASSES[status]}`}>
       {status}
     </span>
   );

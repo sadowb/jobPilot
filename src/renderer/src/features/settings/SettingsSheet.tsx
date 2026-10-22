@@ -1,8 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { SegmentedChoice, type SegmentOption } from '../../components/SegmentedChoice';
-import { SwitchToggle } from '../../components/SwitchToggle';
 import { KbdKey } from '../../components/KbdKey';
-import { Button, cx } from '../../components/ui';
+import { Button, cx, Segmented, type SegmentedOption } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
 import '../../styles/v17-surfaces.css'; // keyframes only (`v17Slide`)
@@ -12,13 +10,13 @@ import { DEFAULT_SETTINGS, SITES, SITE_LOGINS, SUBMIT_MODES } from './data';
 import { LimitField } from './LimitField';
 import { LIMIT_SPECS, autopilotStatus, type Limits, type SiteMode } from './model';
 
-const SITE_MODES: readonly SegmentOption<SiteMode>[] = [
+const SITE_MODES: readonly SegmentedOption<SiteMode>[] = [
   { value: 'auto', label: 'Auto' },
   { value: 'assisted', label: 'Assisted' },
   { value: 'manual', label: 'Manual' },
 ];
 
-const THEMES: readonly SegmentOption<ThemeSource>[] = [
+const THEMES: readonly SegmentedOption<ThemeSource>[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
   { value: 'system', label: 'System' },
@@ -101,7 +99,26 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <Section
           title="Autopilot"
           desc="Crew picks up queued jobs on its own. Off means nothing starts without you."
-          aside={<SwitchToggle label="Autopilot" on={autopilot} onChange={setAutopilot} />}
+          aside={
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autopilot}
+              aria-label="Autopilot"
+              onClick={() => setAutopilot((value) => !value)}
+              className={cx(
+                'relative h-[26px] w-11 flex-none cursor-pointer rounded-full border-0 p-0',
+                autopilot ? 'bg-brand' : 'bg-line-2',
+              )}
+            >
+              <i
+                className={cx(
+                  'absolute top-[3px] block size-5 rounded-full bg-white transition-[left] duration-[120ms]',
+                  autopilot ? 'left-[21px]' : 'left-[3px]',
+                )}
+              />
+            </button>
+          }
         >
           <div className={cx(S, 'flex items-center gap-2 text-[13px]')}>
             <i className={cx('block size-[7px] rounded-full', autopilot ? 'bg-brand' : 'bg-line-2')} />
@@ -169,12 +186,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <div className="text-[14px] font-semibold">{s.name}</div>
                 <div className={cx(S, 'text-[13px]')}>{s.stat}</div>
               </div>
-              <SegmentedChoice
+              <Segmented
                 label={`${s.name} mode`}
                 options={SITE_MODES}
                 value={sites[s.name] ?? s.mode}
                 onChange={(m) => setSites((cur) => ({ ...cur, [s.name]: m }))}
-                width={236}
+                className="w-[236px]"
               />
             </div>
           ))}
@@ -263,7 +280,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           ))}
         </Section>
         <Section title="Theme" desc="Follows your Mac when set to System.">
-          <SegmentedChoice label="Theme" options={THEMES} value={theme.source} onChange={setSource} width={300} />
+          <Segmented label="Theme" options={THEMES} value={theme.source} onChange={setSource} className="w-[300px]" />
           {themeError && (
             <p role="alert" className="text-[13px] text-bad">
               {themeError}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SegmentedChoice } from '../../components/SegmentedChoice';
+import { Segmented } from '../../components/ui';
 import { H1_STD, IT, V17X } from '../shared-ui';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { FunnelChart, RateTable, ReplyRateChart } from './AnalyticsCharts';
@@ -37,7 +37,7 @@ export function AnalyticsScreen({ onAsk }: { onAsk?: (topic: string) => void }) 
           </h1>
         </div>
         <div className="flex flex-none flex-col items-end gap-2">
-          <SegmentedChoice label="Range" options={RANGE_OPTIONS} value={range} onChange={setRange} width={300} />
+          <Segmented label="Range" options={RANGE_OPTIONS} value={range} onChange={setRange} className="w-[300px]" />
           <span className="font-mono text-[13px] whitespace-nowrap text-muted">{SPEND_LINE}</span>
         </div>
       </div>

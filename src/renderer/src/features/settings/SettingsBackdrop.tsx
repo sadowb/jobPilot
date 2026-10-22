@@ -1,9 +1,8 @@
 import { AgentBotArt } from '../../components/AgentBotArt';
-import { SegmentedChoice } from '../../components/SegmentedChoice';
-import { Card, cx } from '../../components/ui';
+import { Card, cx, Segmented } from '../../components/ui';
 import { H1_STD, PILL, S, V17X } from '../shared-ui';
 import { KpiStrip } from '../analytics/KpiStrip';
-import { BACKDROP_ROWS, CHIP_TONES } from './data';
+import { BACKDROP_ROWS } from './data';
 
 const ROW_GRID = 'grid grid-cols-[minmax(0,1.7fr)_150px_110px_90px] gap-3';
 const VIEWS = [
@@ -12,6 +11,13 @@ const VIEWS = [
 ] as const;
 
 const PAGE_CELL = 'inline-grid h-[30px] min-w-[30px] place-items-center text-[13px]';
+const CHIP_TONES = {
+  rejected: 'text-[#B5412F] bg-[rgb(181_65_47/.14)]',
+  screening: 'text-[#0F766E] bg-[rgb(15_118_110/.14)]',
+  submitted: 'text-ink-2 bg-line',
+  interview: 'text-[#B45309] bg-[rgb(180_83_9/.16)]',
+  withdrawn: 'text-muted bg-line',
+} as const;
 
 /** The dashboard as it sits behind the Settings sheet. Decorative: the live Dashboard screen owns the real table. */
 export function SettingsBackdrop() {
@@ -23,7 +29,7 @@ export function SettingsBackdrop() {
     >
       <div className="flex flex-none items-center gap-4">
         <h1 className={H1_STD}>Dashboard</h1>
-        <SegmentedChoice label="View" options={VIEWS} value="applied" onChange={() => undefined} width={260} />
+        <Segmented label="View" options={VIEWS} value="applied" onChange={() => undefined} className="w-[260px]" />
       </div>
       <div className="flex flex-none items-center justify-between gap-3">
         <div className="flex h-10 w-[340px] min-w-0 items-center gap-2.5 rounded-full border border-line-2 bg-bg px-3.5 text-[15px] text-muted">
@@ -61,8 +67,7 @@ export function SettingsBackdrop() {
                 <div className={cx(S, 'truncate text-[13px]')}>{r.role}</div>
               </div>
             </div>
-            {/* Tone colours come from the sample data (`CHIP_TONES`), so they stay a dynamic style. */}
-            <span className={PILL} style={CHIP_TONES[r.tone]}>
+            <span className={`${PILL} ${CHIP_TONES[r.tone]}`}>
               {r.status}
             </span>
             <span className="text-[13.5px] text-muted">{r.site}</span>
