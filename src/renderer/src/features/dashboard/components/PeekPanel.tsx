@@ -111,7 +111,7 @@ export function PeekPanel({
         </div>
         <div>
           <div className="flex flex-nowrap items-center gap-2">
-            <V17StatusChip fg={meta.fg} bg={meta.bg}>
+            <V17StatusChip className={meta.chipClass}>
               {meta.longLabel}
             </V17StatusChip>
             <svg

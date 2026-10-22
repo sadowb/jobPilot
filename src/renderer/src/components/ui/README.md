@@ -1,7 +1,7 @@
 # Shared UI primitives
 
-Import from `components/ui`. **feature code uses these + Tailwind utilities; no new feature .css files**.
-Colors follow the existing tokens and the `.dark` class on `<html>`. No inline styles or runtime CSS are needed.
+Import from `components/ui`. **Use Tailwind utilities and UI primitives only. Do not add `.css` files.** The only renderer stylesheets are `styles/index.css`, `styles/tokens.css`, and `styles/fonts.css`.
+Colors follow the existing tokens and the `.dark` class on `<html>`. Put static values in Tailwind utilities or design tokens; use inline styles only for runtime measurements and per-item animation delays.
 
 | Primitive                     | Props / purpose                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

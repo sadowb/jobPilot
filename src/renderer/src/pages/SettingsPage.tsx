@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SettingsBackdrop } from '../features/settings/SettingsBackdrop';
-import '../styles/v17-surfaces.css'; // keyframes only (`v17Fade`)
 import { SettingsSheet } from '../features/settings/SettingsSheet';
 
 /** /settings: the sheet over a dimmed dashboard. Close returns to the screen it was opened from. */

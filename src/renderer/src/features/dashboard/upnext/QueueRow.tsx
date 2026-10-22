@@ -1,10 +1,9 @@
 import { cx } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
-import '../../../components/v17-status.css';
 import { isReorderable, type QueueItem } from './queue';
 
-export const QUEUE_GRID = '36px 56px minmax(0,2.6fr) minmax(0,1.15fr) 80px 100px 184px';
+export const QUEUE_GRID = 'grid-cols-[36px_56px_minmax(0,2.6fr)_minmax(0,1.15fr)_80px_100px_184px]';
 
 export interface QueueRowProps {
   item: QueueItem;
@@ -45,11 +44,11 @@ export function QueueRow(p: QueueRowProps) {
       aria-selected={p.selected}
       className={cx(
         'grid min-h-[62px] items-center gap-x-3 border-t border-line px-3.5',
+        QUEUE_GRID,
         running && 'bg-panel',
         !running && p.selected && 'bg-brand-tint shadow-[inset_3px_0_0_var(--brand)]',
         !running && !p.selected && p.cursor && 'bg-hover',
       )}
-      style={{ gridTemplateColumns: QUEUE_GRID }}
       draggable={draggable}
       onMouseEnter={p.onCursor}
       onDragStart={draggable ? p.onDragStart : undefined}

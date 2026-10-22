@@ -191,8 +191,7 @@ export function UpNextView({
         >
           <div
             role="row"
-            className="grid items-center gap-x-3 border-b border-line bg-panel px-3.5"
-            style={{ gridTemplateColumns: QUEUE_GRID }}
+            className={cx('grid items-center gap-x-3 border-b border-line bg-panel px-3.5', QUEUE_GRID)}
           >
             {HEADERS.map((h, i) => (
               <div

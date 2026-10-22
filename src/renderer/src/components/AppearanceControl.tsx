@@ -1,6 +1,6 @@
 import { useTheme } from '../lib/theme';
 
-// `.app button` (board.css) forces `color: inherit` on every shell button, hence the `!`.
+// The explicit color utilities keep the icon contrast stable across both themes.
 const BUTTON =
   'grid size-8 flex-none place-items-center rounded-lg border-0 bg-transparent p-0 text-muted! hover:bg-hover hover:text-ink! ' +
   '[html[data-platform=darwin]_&]:[-webkit-app-region:no-drag] [html[data-platform=darwin]_&]:[app-region:no-drag]';

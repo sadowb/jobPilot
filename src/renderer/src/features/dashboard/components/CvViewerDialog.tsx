@@ -3,7 +3,7 @@ import { AppButton } from './AppButton';
 import { Eyebrow, cx } from '../../../components/ui';
 import { SegTabs } from './TabSwitch';
 import { V17Kbd } from '../../../components/V17Kbd';
-import { PAPER_TOKENS } from '../../../components/V17MiniPaper';
+import { PAPER_PALETTE } from '../../../components/V17MiniPaper';
 import type { CvLine, SentCv } from '../cv';
 
 const bodyLine = 'relative text-[12.5px] leading-[1.55] text-ink-2';
@@ -93,8 +93,7 @@ export function CvViewerDialog({ company, cv, onClose }: { company: string; cv: 
             </div>
             <div className="origin-center scale-90">
               <div
-                className="relative box-border h-[780px] w-[580px] overflow-hidden rounded-[4px] border border-line bg-bg px-[52px] pt-11 pb-9 font-sans text-ink shadow-float"
-                style={PAPER_TOKENS}
+                className={`relative box-border h-[780px] w-[580px] overflow-hidden rounded-[4px] border border-line bg-bg px-[52px] pt-11 pb-9 font-sans text-ink shadow-float ${PAPER_PALETTE}`}
               >
                 <div className="font-serif text-[40px] leading-none tracking-[-0.015em]">{cv.document.name}</div>
                 <div className="mt-2.5 text-[12px] text-ink-2">{cv.document.headline}</div>

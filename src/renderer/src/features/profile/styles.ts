@@ -1,9 +1,8 @@
 /**
  * Class strings shared by several profile components.
  *
- * Mind the unlayered globals (`button{font:inherit;color:inherit}` and `.app button`, `.app a`): they outrank every
- * layered Tailwind utility, so a font or colour utility on a button or link only takes effect with `!`. Where the old
- * profile.css relied on a single-class selector, those declarations never won over the globals and are not repeated.
+ * Keep interactive text colors and sizes explicit in utility strings. Where the old profile stylesheet relied on
+ * a single-class selector that never won against the globals, those declarations are not repeated.
  */
 
 /** Mono caps label (`.v17x`). */

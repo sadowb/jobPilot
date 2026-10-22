@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { AppearanceControl } from '../../components/AppearanceControl';
 import { Logo } from '../../components/Logo';
 import { Eyebrow, cx } from '../../components/ui';
-import '../../styles/motion.css'; // keyframes only (`v17rise`, `v17pop`, ...)
 import { GoButton, H1, IT, REDUCE_ALL, S, SPEC } from '../shared-ui';
 import { ONBOARDING_STEPS, dotState, type OnboardingStep } from './steps';
 

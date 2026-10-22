@@ -1,8 +1,6 @@
 import { Button, cx, type ButtonProps } from '../../../components/ui';
 
-// `.app button { font: inherit; color: inherit }` in board.css is unlayered, so it beats every layered
-// utility the ui/Button sets, and (specificity 0,1,1) it also beats the board's plain `.btn` weight and size.
-// The shipped look is therefore weight 400, and 15px for md; these important utilities reproduce it exactly.
+// App buttons inherit the board's 400 weight and 15px default size, with compact controls at 13.5px.
 const fixVariant: Record<NonNullable<ButtonProps['variant']>, string> = {
   default: 'text-ink!',
   primary: 'text-on-pri!',
@@ -17,7 +15,7 @@ const fixSize: Record<NonNullable<ButtonProps['size']>, string> = {
   'icon-sm': 'text-[13.5px]!',
 };
 
-/** ui/Button with its font and colour pinned against the unlayered global button reset. */
+/** ui/Button with the app shell's inherited font sizes and colors. */
 export function AppButton({ variant = 'default', size = 'md', className, ...rest }: ButtonProps) {
   return (
     <Button

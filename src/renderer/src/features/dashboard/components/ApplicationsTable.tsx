@@ -37,9 +37,11 @@ export function ApplicationsTable({
       aria-label="Applications"
     >
       <div
-        className="grid min-h-10 items-center gap-4 px-5 font-mono text-[11.5px] font-medium tracking-[0.08em] text-muted uppercase"
+        className={cx(
+          'grid min-h-10 items-center gap-4 px-5 font-mono text-[11.5px] font-medium tracking-[0.08em] text-muted uppercase',
+          APPLICATION_GRID,
+        )}
         role="row"
-        style={{ gridTemplateColumns: APPLICATION_GRID }}
       >
         {HEADERS.map((h) => (
           <div key={h} role="columnheader">

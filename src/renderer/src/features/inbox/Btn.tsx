@@ -1,12 +1,7 @@
 import { Button, cx, type ButtonProps, type ButtonSize, type ButtonVariant } from '../../components/ui';
 
 /**
- * `ui/Button` plus `!` on its font and colour utilities.
- *
- * board.css still ships `.app button { font: inherit; color: inherit }` (unlayered), which beats every layered
- * Tailwind utility on a `<button>`, so today's buttons render at the inherited weight (400) with only the
- * `.btn.sm` size applied. This wrapper reproduces that look. Once the rule is gone, switch to `Button` directly
- * (semibold, 14.5px md) if the design is meant to follow the board CSS.
+ * `ui/Button` with inbox-specific 400 weight, 15px default and 13.5px compact sizes.
  */
 const COLOR: Record<ButtonVariant, string> = {
   default: 'text-ink!',

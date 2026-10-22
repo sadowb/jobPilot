@@ -1,7 +1,6 @@
 import { CapDartArt } from '../../components/CapDartArt';
 import { KbdKey } from '../../components/KbdKey';
 import { Button, Eyebrow, cx } from '../../components/ui';
-import '../../styles/motion.css'; // keyframes only (`v17rise`, `v17ring`, `flypath`)
 import { A_RISE, BUBBLE, CELL, H1, REDUCE_ALL, S, SPEC } from '../shared-ui';
 import { SETUP_CHECKLIST } from './data';
 import { ChecklistRow } from './SetupChecklist';

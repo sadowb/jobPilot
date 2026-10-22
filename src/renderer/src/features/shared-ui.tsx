@@ -32,8 +32,7 @@ export const CELL = 'flex min-w-0 flex-col rounded-3xl border border-line bg-bg'
 export const PILL = 'inline-block rounded-full px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap';
 
 /*
- * V17 motion. The keyframes (v17rise, v17pop, ...) still live in styles/motion.css and styles/v17-surfaces.css, which
- * are imported only for them; `--d` (delay) and `--dur` are set per element with `[--d:.3s]` or cssVars.
+ * V17 motion. Keyframes live in the Tailwind entry stylesheet; `--d` (delay) and `--dur` are set per element with `[--d:.3s]` or cssVars.
  */
 export const A_RISE = 'animate-[v17rise_0.3s_cubic-bezier(0.2,0.8,0.2,1)_var(--d,0s)_both] motion-reduce:animate-none';
 export const A_POP = 'animate-[v17pop_0.3s_cubic-bezier(0.34,1.56,0.64,1)_var(--d,0s)_both] motion-reduce:animate-none';
@@ -56,11 +55,7 @@ export const A_GUST =
 /** `.v17` under reduced motion: every animation and transition in the subtree stops. */
 export const REDUCE_ALL = 'motion-reduce:**:animate-none! motion-reduce:**:transition-none!';
 
-/*
- * The shell wraps every route in `.app` (board.css), whose unlayered `.app button { font: inherit; color: inherit }`
- * beats layered utilities. These `!` utilities give the Button primitive back its own font and colour inside the
- * shell. Remove them together with board.css.
- */
+/* The shell buttons use the V17 board's inherited weight and size, with explicit variant colors. */
 const SHELL_BUTTON: Record<NonNullable<ButtonProps['variant']>, string> = {
   default: 'text-ink!',
   primary: 'text-on-pri! hover:border-pri!',

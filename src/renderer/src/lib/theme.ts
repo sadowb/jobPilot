@@ -61,6 +61,7 @@ export function useTheme(): {
   }, []);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', state.dark);
+    document.documentElement.style.colorScheme = state.dark ? 'dark' : 'light';
   }, [state.dark]);
   const setSource = (source: ThemeSource) => {
     if (source === state.source) return;

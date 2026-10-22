@@ -3,7 +3,6 @@ import { KbdKey } from '../../components/KbdKey';
 import { Button, cx, Segmented, type SegmentedOption } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
-import '../../styles/v17-surfaces.css'; // keyframes only (`v17Slide`)
 import { IT, S, V17N, V17X, shellButton } from '../shared-ui';
 import { CrewSlider } from './CrewSlider';
 import { DEFAULT_SETTINGS, SITES, SITE_LOGINS, SUBMIT_MODES } from './data';

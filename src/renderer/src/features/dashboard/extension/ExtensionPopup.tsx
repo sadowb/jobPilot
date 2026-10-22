@@ -3,7 +3,6 @@ import { AppButton } from '../components/AppButton';
 import { cx } from '../../../components/ui';
 import { V17CapDart } from '../../../components/V17CapDart';
 import { V17Icon } from '../../../components/V17Icon';
-import '../../../components/v17-status.css';
 import { shortDate } from '../format';
 import { initialPopupState, isSelectable, popupReducer, type PageLink, type PageScan, type PopupState } from './model';
 

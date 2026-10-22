@@ -1,5 +1,5 @@
 // Speed lines trailing Cap's dart. They only animate inside a `.v17` screen (the wrapper the screens put around their content) and fade
-// out a second after a `.v17-land` / `.v17-lift` flight starts. `v17gust` / `v17gustoff` keyframes live in styles/motion.css.
+// out a second after a `.v17-land` / `.v17-lift` flight starts. `v17gust` / `v17gustoff` keyframes live in styles/index.css.
 // The second line starts 0.2s late; that delay also replaces the fade-out delay, as the old inline `animationDelay` did.
 const BASE = '[.v17_&]:[stroke-dasharray:8_5] motion-reduce:[.v17_&]:opacity-0!';
 

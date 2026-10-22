@@ -4,42 +4,37 @@ export interface StatusMeta {
   label: string;
   /** Label in the status menu and the peek panel, where the cause helps ("got contacted"). */
   longLabel: string;
-  fg: string;
-  bg: string;
+  chipClass: string;
   filter: Exclude<StatusFilter, 'all'>;
 }
 
 export const STATUS_META: Record<ApplicationStatus, StatusMeta> = {
-  submitted: { label: 'Submitted', longLabel: 'Submitted', fg: 'var(--ink-2)', bg: 'var(--line)', filter: 'submitted' },
+  submitted: { label: 'Submitted', longLabel: 'Submitted', chipClass: 'text-ink-2 bg-line', filter: 'submitted' },
   screening: {
     label: 'Screening',
     longLabel: 'Screening · got contacted',
-    fg: 'var(--st-teal-fg)',
-    bg: 'var(--st-teal-bg)',
+    chipClass: 'text-[var(--st-teal-fg)] bg-[var(--st-teal-bg)]',
     filter: 'screening',
   },
   interview: {
     label: 'Interview',
     longLabel: 'Interview',
-    fg: 'var(--st-amber-fg)',
-    bg: 'var(--st-amber-bg)',
+    chipClass: 'text-[var(--st-amber-fg)] bg-[var(--st-amber-bg)]',
     filter: 'interview',
   },
-  offer: { label: 'Offer', longLabel: 'Offer', fg: 'var(--work)', bg: 'var(--work-tint)', filter: 'offer' },
+  offer: { label: 'Offer', longLabel: 'Offer', chipClass: 'text-work bg-work-tint', filter: 'offer' },
   rejected: {
     label: 'Rejected',
     longLabel: 'Rejected',
-    fg: 'var(--st-bad-fg)',
-    bg: 'var(--st-bad-bg)',
+    chipClass: 'text-[var(--st-bad-fg)] bg-[var(--st-bad-bg)]',
     filter: 'rejected',
   },
-  withdrawn: { label: 'Withdrawn', longLabel: 'Withdrawn', fg: 'var(--muted)', bg: 'var(--line)', filter: 'withdrawn' },
+  withdrawn: { label: 'Withdrawn', longLabel: 'Withdrawn', chipClass: 'text-muted bg-line', filter: 'withdrawn' },
   // "Closed · no reply" is a withdrawn-style close, so the Withdrawn chip counts it too.
   closed: {
     label: 'Closed',
     longLabel: 'Closed · no reply',
-    fg: 'var(--muted)',
-    bg: 'var(--line)',
+    chipClass: 'text-muted bg-line',
     filter: 'withdrawn',
   },
 };

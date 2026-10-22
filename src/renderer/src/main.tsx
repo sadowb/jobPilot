@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { WINDOW_LAYOUT } from '../../shared/window-layout';
 import './styles/index.css';
-import './styles/window.css';
 
 document.documentElement.dataset.platform = window.jobpilot?.platform ?? 'web';
 document.documentElement.style.setProperty(

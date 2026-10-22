@@ -18,7 +18,7 @@ function Shell() {
   useSettingsShortcut();
   const navigate = useNavigate();
   return (
-    <div className="app min-h-full">
+    <div className="relative min-h-full bg-ground font-sans text-[15px] leading-[1.45] text-ink antialiased">
       <TopBar onAsk={openCommandBox} onSettings={() => void navigate('/settings')} />
       <Outlet />
       <CommandBoxHost />

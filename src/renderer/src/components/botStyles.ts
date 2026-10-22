@@ -1,6 +1,6 @@
 // Shared utilities for the row-avatar bots (V17AgentBot, AgentBotArt, CritterBot). The art tags its parts with the hook classes
 // `body`, `eye`, `pupil`, `prop` and `chkpop`; the per-state wrapper animates them through arbitrary child variants.
-// The keyframes (`blink`, `dart`, `hop`, `pop`, `shake`, `ping`) are defined in styles/board.css. Reduced motion is handled by
+// The keyframes (`blink`, `dart`, `hop`, `pop`, `shake`, `ping`) are defined in styles/index.css. Reduced motion is handled by
 // the global `animation: none !important` rule in styles/index.css.
 type BotState = 'idle' | 'work' | 'need' | 'block' | 'done';
 

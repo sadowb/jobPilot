@@ -8,7 +8,7 @@ import type { Application } from '../types';
 import { Highlighted } from './Highlighted';
 
 export const APPLICATION_GRID =
-  'minmax(0,2.5fr) minmax(0,1.5fr) minmax(0,1.25fr) minmax(0,.95fr) minmax(0,.9fr) minmax(0,.7fr)';
+  'grid-cols-[minmax(0,2.5fr)_minmax(0,1.5fr)_minmax(0,1.25fr)_minmax(0,.95fr)_minmax(0,.9fr)_minmax(0,.7fr)]';
 
 export function ApplicationRow({
   app,
@@ -34,10 +34,10 @@ export function ApplicationRow({
       data-row-id={app.id}
       className={cx(
         'grid min-h-[46px] cursor-pointer items-center gap-4 border-t border-line px-5 text-[13.5px] hover:bg-panel',
+        APPLICATION_GRID,
         selected && 'bg-panel shadow-[inset_3px_0_0_var(--ink)]',
       )}
       onClick={onSelect}
-      style={{ gridTemplateColumns: APPLICATION_GRID }}
     >
       <div className="flex min-w-0 flex-nowrap items-center gap-3">
         <V17AgentBot name={app.company} state={app.agent} />
@@ -69,7 +69,7 @@ export function ApplicationRow({
             onOpenStatus();
           }}
         >
-          <V17StatusChip fg={meta.fg} bg={meta.bg}>
+          <V17StatusChip className={meta.chipClass}>
             {meta.label}
           </V17StatusChip>
           <svg

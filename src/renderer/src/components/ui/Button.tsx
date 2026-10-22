@@ -5,7 +5,7 @@ export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'danger
 export type ButtonSize = 'md' | 'sm' | 'icon' | 'icon-sm';
 
 const base =
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border-[1.5px] font-semibold ' +
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border-[1.5px] font-normal ' +
   'transition-colors duration-[120ms] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-[18px]';
 
 const variants: Record<ButtonVariant, string> = {

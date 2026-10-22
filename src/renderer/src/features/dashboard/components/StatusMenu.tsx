@@ -74,7 +74,7 @@ export function StatusMenu({
                 )}
                 onClick={() => onPick(s)}
               >
-                <V17StatusChip fg={meta.fg} bg={meta.bg}>
+                <V17StatusChip className={meta.chipClass}>
                   {meta.longLabel}
                 </V17StatusChip>
                 <span className="flex-1" />

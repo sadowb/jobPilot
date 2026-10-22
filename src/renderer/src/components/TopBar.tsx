@@ -37,7 +37,7 @@ const BADGE =
   'grid h-5 min-w-5 place-items-center rounded-full bg-need-dot px-1.5 text-[12px] font-bold text-[#1a1300]';
 const RIGHT =
   'flex items-center justify-self-end gap-2 [html[data-platform=darwin]_&]:col-start-3 [html[data-platform=darwin]_&]:row-start-1';
-// `.app button` (board.css) resets font and colour on every button in the shell, hence the `!`s.
+// Keep the compact keyboard and icon controls explicitly colored and sized.
 const GHOST_BTN =
   'flex min-h-[34px] items-center justify-center gap-2 whitespace-nowrap rounded-full border-[1.5px] border-transparent bg-transparent px-3.5 ' +
   'text-[12px]! font-mono! text-ink-2! [html[data-platform=darwin]_&]:h-8 [html[data-platform=darwin]_&]:min-h-8 ' +

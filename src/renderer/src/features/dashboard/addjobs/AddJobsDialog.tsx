@@ -4,7 +4,6 @@ import { Eyebrow, cx } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
 import { V17Kbd } from '../../../components/V17Kbd';
-import '../../../components/v17-status.css';
 import { shortDate } from '../format';
 import { formatCrewTime } from '../upnext/queue';
 import { parsePaste, summarize, type ParsedLink, type PasteContext } from './parse';
@@ -218,7 +217,7 @@ export function AddJobsDialog({
         <div className="mt-[18px] flex flex-nowrap items-center justify-between gap-3 rounded-2xl border-[1.5px] border-dashed border-line-2 px-4 py-3">
           {empty ? (
             <textarea
-              className="min-h-11 w-full resize-none border-0 bg-transparent font-sans text-[13.5px] text-ink outline-0 placeholder:text-muted"
+              className="min-h-11 w-full resize-none border-0 bg-transparent font-sans text-[13.5px] text-ink outline-0 focus-visible:outline-3 focus-visible:outline-ink focus-visible:outline-offset-2 placeholder:text-muted"
               aria-label="Paste links, an email, or a sheet"
               placeholder="Paste links, an email, or a sheet here (⌘V)"
               rows={2}
