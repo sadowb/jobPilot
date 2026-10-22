@@ -163,7 +163,7 @@ export function Inbox() {
           title="Cap"
           sub="Your pilot · reads your profile, rules and history every turn"
         >
-          <span className="s" style={{ fontSize: 12.5 }}>
+          <span className="text-[12.5px] text-muted" >
             Memory · 42 keys · 5 rules
           </span>
         </ThreadHeader>
@@ -203,15 +203,7 @@ export function Inbox() {
       );
     const thread = (
       <section
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-          minHeight: 0,
-          position: 'relative',
-          background: 'var(--ground)',
-        }}
+        className="flex-1 flex flex-col min-w-[0px] min-h-[0px] relative bg-ground"
       >
         {header}
         {stream}
@@ -221,14 +213,7 @@ export function Inbox() {
     if (!driving) return thread;
     return (
       <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-          minHeight: 0,
-          position: 'relative',
-          background: 'var(--ground)',
-        }}
+        className="flex flex-col min-w-[0px] min-h-[0px] relative bg-ground"
       >
         <ControlBanner agent={selectedItem!.agent} />
         {thread}
@@ -260,7 +245,7 @@ export function Inbox() {
   };
 
   return (
-    <div ref={rootRef} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div ref={rootRef} className="flex flex-col min-h-[0px]">
       <div
         className="inbox-grid"
         data-pane={pane}
@@ -283,7 +268,7 @@ export function Inbox() {
           onQuery={setQuery}
           onSelect={(id) => dispatch({ type: 'select', id })}
         />
-        <div className="inbox-pane-tabs" role="group" aria-label="Inbox view">
+        <div className="hidden [@media(width<=1194px)]:flex col-start-2 row-start-1 gap-1.5 items-center px-5 bg-bg border-b border-line [&_button]:bg-transparent [&_button]:border-0 [&_button]:rounded-lg [&_button]:py-[5px] [&_button]:px-3 [&_button]:text-muted! [&_button]:text-[12.5px]! [&_button[aria-pressed=true]]:bg-panel [&_button[aria-pressed=true]]:text-ink! [&_button[aria-pressed=true]]:font-semibold!" role="group" aria-label="Inbox view">
           <button type="button" aria-pressed={pane === 'chat'} onClick={() => setPane('chat')}>
             Conversation
           </button>
@@ -291,8 +276,8 @@ export function Inbox() {
             {driving ? 'Live tab' : 'Details & review'}
           </button>
         </div>
-        <div className="inbox-conversation">{center()}</div>
-        <div className="inbox-details">{right()}</div>
+        <div className="flex min-w-[0px] min-h-[0px] [&>*]:flex-1 [&>*]:min-w-0 [@media(width<=1194px)]:col-start-2 [@media(width<=1194px)]:row-start-2 [@media(width<=1194px)]:[[data-pane=details]_&]:hidden">{center()}</div>
+        <div className="flex min-w-[0px] min-h-[0px] [&>*]:flex-1 [&>*]:min-w-0 [&>aside]:overflow-y-auto! [&>aside>*]:shrink-0 [@media(width<=1194px)]:col-start-2 [@media(width<=1194px)]:row-start-2 [@media(width<=1194px)]:overflow-y-auto [@media(width<=1194px)]:[[data-pane=chat]_&]:hidden">{right()}</div>
       </div>
       <ShortcutBar shortcuts={SHORTCUTS_BY_VIEW[view]} />
     </div>

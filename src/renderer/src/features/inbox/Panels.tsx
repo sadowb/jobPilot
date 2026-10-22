@@ -21,7 +21,7 @@ const PANEL: CSSProperties = {
 };
 
 export function PanelFrame({ children }: { children: ReactNode }) {
-  return <aside style={PANEL}>{children}</aside>;
+  return <aside className="relative bg-bg [border-left:1px_solid_var(--line)] p-[22px_24px_28px] flex flex-col gap-[18px] min-w-[0px] min-h-[0px] overflow-hidden">{children}</aside>;
 }
 
 // ---------------------------------------------------------------- Figma review
@@ -38,26 +38,19 @@ function Collapsible({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div
-      style={{
-        flex: 'none',
-        borderTop: '1px solid var(--line)',
-        paddingTop: 12,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-      }}
+      className="flex-none [border-top:1px_solid_var(--line)] pt-[12px] flex flex-col gap-[6px]"
     >
       <button
         type="button"
-        className="row sp nw"
+        className="flex items-center gap-[12px] flex-nowrap justify-between [background:none] [border:0] p-[0px] w-[100%] text-left"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        style={{ background: 'none', border: 0, padding: 0, width: '100%', textAlign: 'left' }}
+        
       >
-        <span className="eyebrow" style={{ fontSize: 11 }}>
+        <span className="font-mono text-[11px] font-[500] tracking-[.08em] uppercase text-muted" >
           {label}
         </span>
-        <span className="s" style={{ fontSize: 12.5 }}>
+        <span className="text-[12.5px] text-muted" >
           {open ? 'Hide ▴' : 'Show ▾'}
         </span>
       </button>
@@ -81,20 +74,7 @@ function CvThumb() {
   return (
     <div
       aria-hidden="true"
-      style={{
-        width: 54,
-        height: 72,
-        flex: 'none',
-        borderRadius: 6,
-        border: '1px solid rgb(228 224 214)',
-        background: 'rgb(255 255 255)',
-        padding: '8px 7px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        boxShadow: '0 1px 2px rgb(0 0 0/.08)',
-      }}
+      className="w-[54px] h-[72px] flex-none rounded-[6px] [border:1px_solid_rgb(228_224_214)] [background:rgb(255_255_255)] p-[8px_7px] box-border flex flex-col gap-[4px] shadow-[0_1px_2px_rgb(0_0_0/.08)]"
     >
       {line(0, '55%', 6, 'rgb(17 17 17)')}
       {['92%', '100%', '84%', '96%', '70%', '100%', '88%'].map((w, i) => line(i + 1, w))}
@@ -115,55 +95,46 @@ export function ReviewPanel({ words, editing, onAccept, onToggleEdit }: ReviewPa
   const r = FIGMA_REVIEW;
   return (
     <PanelFrame>
-      <div className="row sp nw" style={{ flex: 'none' }}>
-        <span className="eyebrow">What will be sent · {r.fieldCount}</span>
-        <span className="s" style={{ fontSize: 12.5 }}>
+      <div className="flex items-center gap-[12px] flex-nowrap justify-between flex-none" >
+        <span className="font-mono text-[11.5px] font-[500] tracking-[.08em] uppercase text-muted">What will be sent · {r.fieldCount}</span>
+        <span className="text-[12.5px] text-muted" >
           {r.site}
         </span>
       </div>
-      <div className="s" style={{ flex: 'none', fontSize: 12.5, lineHeight: 1.5, marginTop: -6 }}>
+      <div className="text-[12.5px] text-muted flex-none leading-[1.5] mt-[-6px]" >
         Exactly what the form receives. Nothing is sent until you accept.
       </div>
       <div
-        className="mcell"
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 18, flex: 'none' }}
+        className="min-w-[0px] bg-bg [border:1px_solid_var(--line)] rounded-[18px] p-[14px] flex flex-row gap-[14px] items-center flex-none"
+        
       >
         <CvThumb />
-        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{ fontWeight: 600, fontSize: 14.5 }}>{r.cv.name}</div>
-          <div className="s" style={{ fontSize: 12.5 }}>
+        <div className="min-w-[0px] flex flex-col gap-[3px]">
+          <div className="font-[600] text-[14.5px]">{r.cv.name}</div>
+          <div className="text-[12.5px] text-muted" >
             {r.cv.meta}
           </div>
-          <div className="s" style={{ fontSize: 12.5, textDecoration: 'underline', marginTop: 4 }}>
+          <div className="text-[12.5px] text-muted underline mt-[4px]" >
             Change CV before sending
           </div>
         </div>
       </div>
       <div
-        style={{
-          flex: 'none',
-          border: '1.5px solid var(--need-line)',
-          background: 'var(--need-tint)',
-          borderRadius: 18,
-          padding: '14px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
+        className="flex-none [border:1.5px_solid_var(--need-line)] bg-need-tint rounded-[18px] p-[14px_16px] flex flex-col gap-[8px]"
       >
-        <div className="row sp nw">
-          <span className="st need" style={{ height: 24, fontSize: 12, padding: '0 10px 0 8px' }}>
+        <div className="flex items-center gap-[12px] flex-nowrap justify-between">
+          <span className="st need h-[24px] text-[12px] p-[0_10px_0_8px]" >
             Draft to review
           </span>
-          <span className="s" style={{ fontSize: 12 }}>
+          <span className="text-[12px] text-muted" >
             1 of {r.fieldCount} fields
           </span>
         </div>
-        <div style={{ fontWeight: 600, fontSize: 14.5 }}>{r.question}</div>
-        <div className="s" style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.45 }}>
+        <div className="font-[600] text-[14.5px]">{r.question}</div>
+        <div className="text-[13px] text-ink-2 leading-[1.45]" >
           Cap’s draft, {words} words. Accept it, edit it, or skip it.
         </div>
-        <div className="row nw" style={{ gap: 8, marginTop: 2 }}>
+        <div className="flex items-center gap-[8px] flex-nowrap mt-[2px]" >
           <button className="btn sm pri" type="button" onClick={onAccept}>
             Accept <KeyCap>↵</KeyCap>
           </button>
@@ -175,43 +146,30 @@ export function ReviewPanel({ words, editing, onAccept, onToggleEdit }: ReviewPa
       <Collapsible label={`Filled from profile · ${r.filled.length}`} summary={r.filled.join(', ')} />
       <Collapsible label={`Files · ${r.files.length}`} summary={`${r.files.join(', ')} · ${r.filesNote}`} />
       <div
-        style={{
-          flex: 'none',
-          borderTop: '1px solid var(--line)',
-          paddingTop: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-        }}
+        className="flex-none [border-top:1px_solid_var(--line)] pt-[12px] flex flex-col gap-[6px]"
       >
-        <div className="row sp nw">
-          <span className="eyebrow" style={{ fontSize: 11 }}>
+        <div className="flex items-center gap-[12px] flex-nowrap justify-between">
+          <span className="font-mono text-[11px] font-[500] tracking-[.08em] uppercase text-muted" >
             Saved answers · {r.saved.length}
           </span>
-          <span className="s" style={{ fontSize: 12.5 }}>
+          <span className="text-[12.5px] text-muted" >
             Hide ▴
           </span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <div className="flex flex-col gap-[7px]">
           {r.saved.map((a) => (
-            <div key={a.label} className="row sp nw" style={{ gap: 10, fontSize: 13.5, minWidth: 0 }}>
-              <span className="s" style={{ whiteSpace: 'nowrap' }}>
+            <div key={a.label} className="flex items-center gap-[10px] flex-nowrap justify-between text-[13.5px] min-w-[0px]" >
+              <span className="text-[13.5px] text-muted whitespace-nowrap" >
                 {a.label}
               </span>
               {a.note ? (
-                <span className="row nw" style={{ gap: 6, whiteSpace: 'nowrap' }}>
+                <span className="flex items-center gap-[6px] flex-nowrap whitespace-nowrap" >
                   <span
-                    style={{
-                      fontSize: 12.5,
-                      color: 'var(--ink-2)',
-                      border: '1px dashed var(--line-2)',
-                      borderRadius: 8,
-                      padding: '1px 8px',
-                    }}
+                    className="text-[12.5px] text-ink-2 [border:1px_dashed_var(--line-2)] rounded-[8px] p-[1px_8px]"
                   >
                     {a.value}
                   </span>
-                  <MonoLabel style={{ color: 'var(--need)' }}>{a.note}</MonoLabel>
+                  <MonoLabel className="text-need">{a.note}</MonoLabel>
                 </span>
               ) : (
                 <span>{a.value}</span>
@@ -220,7 +178,7 @@ export function ReviewPanel({ words, editing, onAccept, onToggleEdit }: ReviewPa
           ))}
         </div>
       </div>
-      <div className="row nw" style={{ flex: 'none', gap: 8, marginTop: 'auto' }}>
+      <div className="flex items-center gap-[8px] flex-nowrap flex-none mt-[auto]" >
         <button className="btn sm grow" type="button">
           Open CV
         </button>
@@ -237,35 +195,26 @@ export function ReviewPanel({ words, editing, onAccept, onToggleEdit }: ReviewPa
 export function ConsentPanel({ onAnswer }: { onAnswer: (allow: boolean) => void }) {
   return (
     <PanelFrame>
-      <div className="row sp nw" style={{ flex: 'none' }}>
-        <span className="eyebrow">What Cap needs · 1</span>
-        <span className="s" style={{ fontSize: 12.5 }}>
+      <div className="flex items-center gap-[12px] flex-nowrap justify-between flex-none" >
+        <span className="font-mono text-[11.5px] font-[500] tracking-[.08em] uppercase text-muted">What Cap needs · 1</span>
+        <span className="text-[12.5px] text-muted" >
           Notion · Ashby
         </span>
       </div>
       <div
-        style={{
-          flex: 'none',
-          border: '1.5px solid var(--need-line)',
-          background: 'var(--need-tint)',
-          borderRadius: 18,
-          padding: '14px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
+        className="flex-none [border:1.5px_solid_var(--need-line)] bg-need-tint rounded-[18px] p-[14px_16px] flex flex-col gap-[8px]"
       >
         <span
-          className="st need"
-          style={{ height: 24, fontSize: 12, padding: '0 10px 0 8px', alignSelf: 'flex-start' }}
+          className="st need h-[24px] text-[12px] p-[0_10px_0_8px] self-start"
+          
         >
           Consent
         </span>
-        <div style={{ fontWeight: 600, fontSize: 14.5 }}>Allow an AI notetaker in your Oct 23 interview?</div>
-        <div className="s" style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.45 }}>
+        <div className="font-[600] text-[14.5px]">Allow an AI notetaker in your Oct 23 interview?</div>
+        <div className="text-[13px] text-ink-2 leading-[1.45]" >
           Cap won’t answer this for you. Nothing is sent until you choose.
         </div>
-        <div className="row nw" style={{ gap: 8, marginTop: 2 }}>
+        <div className="flex items-center gap-[8px] flex-nowrap mt-[2px]" >
           <button className="btn sm pri" type="button" onClick={() => onAnswer(true)}>
             Allow
           </button>
@@ -291,15 +240,15 @@ const CHIP: CSSProperties = {
 export function PilotPanel() {
   return (
     <PanelFrame>
-      <div className="row sp nw">
-        <span className="eyebrow" style={{ fontSize: 11 }}>
+      <div className="flex items-center gap-[12px] flex-nowrap justify-between">
+        <span className="font-mono text-[11px] font-[500] tracking-[.08em] uppercase text-muted" >
           Rules · {PILOT_RULES.filter((r) => !r.suggested).length}
         </span>
         <button className="btn sm ghost" type="button">
           Add rule
         </button>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div className="flex flex-wrap gap-[8px]">
         {PILOT_RULES.map((rule) => (
           <span
             key={rule.text}
@@ -310,34 +259,34 @@ export function PilotPanel() {
                 : { ...CHIP, border: '1px solid var(--line-2)', background: 'var(--bg)' }
             }
           >
-            <i style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)', display: 'block' }}></i>
+            <i className="w-[7px] h-[7px] rounded-[50%] bg-brand block"></i>
             {rule.text}
             {rule.suggested && (
               <>
                 {' '}
-                <MonoLabel style={{ color: 'var(--brand-text)' }}>suggested</MonoLabel>
+                <MonoLabel className="text-brand-text">suggested</MonoLabel>
               </>
             )}
           </span>
         ))}
       </div>
       <div
-        style={{ borderTop: '1px solid var(--line)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}
+        className="[border-top:1px_solid_var(--line)] pt-[16px] flex flex-col gap-[8px]"
       >
-        <span className="eyebrow" style={{ fontSize: 11 }}>
+        <span className="font-mono text-[11px] font-[500] tracking-[.08em] uppercase text-muted" >
           What Cap can do
         </span>
-        <div className="s" style={{ fontSize: 13, lineHeight: 1.6 }}>
+        <div className="text-[13px] text-muted leading-[1.6]" >
           Add jobs · create and edit rules · change crew size · answer from Analytics · write the brief · open any job
         </div>
       </div>
       <div
-        style={{ borderTop: '1px solid var(--line)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}
+        className="[border-top:1px_solid_var(--line)] pt-[16px] flex flex-col gap-[8px]"
       >
-        <span className="eyebrow" style={{ fontSize: 11 }}>
+        <span className="font-mono text-[11px] font-[500] tracking-[.08em] uppercase text-muted" >
           What Cap remembers
         </span>
-        <div className="s" style={{ fontSize: 13, lineHeight: 1.6 }}>
+        <div className="text-[13px] text-muted leading-[1.6]" >
           42 profile keys · 27 facts · 182 saved answers · 9 pilot notes. Stored records, not chat history.
         </div>
       </div>
@@ -349,21 +298,14 @@ export function PilotPanel() {
 
 function FilledField({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div className="flex flex-col gap-[5px]">
       <MonoLabel>{label}</MonoLabel>
       <div
-        className="row sp nw"
-        style={{
-          height: 34,
-          padding: '0 11px',
-          border: '1px solid var(--line-2)',
-          borderRadius: 9,
-          fontSize: 13.5,
-          background: 'var(--bg)',
-        }}
+        className="flex items-center gap-[12px] flex-nowrap justify-between h-[34px] p-[0_11px] [border:1px_solid_var(--line-2)] rounded-[9px] text-[13.5px] bg-bg"
+        
       >
         <span>{value}</span>
-        <span style={{ color: 'var(--brand-text)', fontWeight: 700 }}>✓</span>
+        <span className="text-brand-text font-[700]">✓</span>
       </div>
     </div>
   );
@@ -373,90 +315,51 @@ function FilledField({ label, value }: { label: string; value: string }) {
 function TabSnapshot({ driving }: { driving: boolean }) {
   return (
     <div
-      style={{
-        flex: 'none',
-        border: '1px solid var(--line-2)',
-        borderRadius: 16,
-        overflow: 'hidden',
-        background: 'var(--bg)',
-        boxShadow: 'var(--float)',
-      }}
+      className="flex-none [border:1px_solid_var(--line-2)] rounded-[16px] overflow-hidden bg-bg shadow-[var(--float)]"
     >
       <div
-        className="row nw"
-        style={{ gap: 7, padding: '10px 12px', borderBottom: '1px solid var(--line)', background: 'var(--panel)' }}
+        className="flex items-center gap-[7px] flex-nowrap p-[10px_12px] [border-bottom:1px_solid_var(--line)] bg-panel"
+        
       >
         {[0, 1, 2].map((i) => (
           <i
             key={i}
-            style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--line-2)', display: 'block' }}
+            className="w-[9px] h-[9px] rounded-[50%] bg-line-2 block"
           ></i>
         ))}
         <span
-          style={{
-            marginLeft: 6,
-            flex: 1,
-            minWidth: 0,
-            fontFamily: 'var(--mono)',
-            fontSize: 11.5,
-            color: 'var(--muted)',
-            height: 24,
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 10px',
-            borderRadius: 99,
-            background: 'var(--bg)',
-            border: '1px solid var(--line)',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
+          className="ml-[6px] flex-1 min-w-[0px] font-mono text-[11.5px] text-muted h-[24px] flex items-center p-[0_10px] rounded-[99px] bg-bg [border:1px_solid_var(--line)] whitespace-nowrap overflow-hidden text-ellipsis"
         >
           job-boards.greenhouse.io/brex/jobs/81…
         </span>
       </div>
-      <div style={{ padding: '18px 18px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="p-[18px_18px_16px] flex flex-col gap-[12px]">
         <div>
-          <div style={{ fontFamily: 'var(--serif)', fontSize: 24, lineHeight: 1.1 }}>Software Engineer, New Grad</div>
-          <div className="s" style={{ fontSize: 12.5 }}>
+          <div className="font-serif text-[24px] leading-[1.1]">Software Engineer, New Grad</div>
+          <div className="text-[12.5px] text-muted" >
             Brex · New York, NY
           </div>
         </div>
         <FilledField label="Full name" value="Abdelhadi Marjane" />
         <FilledField label="Email" value="a•••••98@gmail.com" />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, position: 'relative' }}>
+        <div className="flex flex-col gap-[5px] relative">
           <MonoLabel>Education *</MonoLabel>
           <div
-            className="row sp nw"
-            style={{
-              height: 34,
-              padding: '0 11px',
-              border: '1.5px solid var(--bad)',
-              borderRadius: 9,
-              fontSize: 13.5,
-              color: 'var(--muted)',
-              background: 'var(--bg)',
-            }}
+            className="flex items-center gap-[12px] flex-nowrap justify-between h-[34px] p-[0_11px] [border:1.5px_solid_var(--bad)] rounded-[9px] text-[13.5px] text-muted bg-bg"
+            
           >
             <span>Select…</span>
             <span>▾</span>
           </div>
           <div
-            style={{
-              border: '1px solid var(--line)',
-              borderRadius: 10,
-              padding: '10px 12px',
-              fontSize: 12.5,
-              color: 'var(--muted)',
-              background: 'var(--panel)',
-            }}
+            className="[border:1px_solid_var(--line)] rounded-[10px] p-[10px_12px] text-[12.5px] text-muted bg-panel"
           >
             No options loaded · <u>retry</u>
           </div>
           {driving && (
             <>
               <svg
-                style={{ position: 'absolute', left: '56%', top: 44 }}
+                className="absolute left-[56%] top-[44px]"
                 width="22"
                 height="22"
                 viewBox="0 0 24 24"
@@ -471,16 +374,7 @@ function TabSnapshot({ driving }: { driving: boolean }) {
                 />
               </svg>
               <span
-                style={{
-                  position: 'absolute',
-                  left: 'calc(56% + 20px)',
-                  top: 50,
-                  fontSize: 11,
-                  padding: '2px 8px',
-                  borderRadius: 99,
-                  background: 'var(--pri)',
-                  color: 'var(--on-pri)',
-                }}
+                className="absolute left-[calc(56%_+_20px)] top-[50px] text-[11px] p-[2px_8px] rounded-[99px] bg-pri text-on-pri"
               >
                 you
               </span>
@@ -488,7 +382,7 @@ function TabSnapshot({ driving }: { driving: boolean }) {
           )}
         </div>
         <FilledField label="Resume" value="AI / ML CV v4.pdf" />
-        <div className="btn" style={{ justifyContent: 'center', opacity: 0.4, marginTop: 4 }}>
+        <div className="btn justify-center opacity-[0.4] mt-[4px]" >
           Submit application
         </div>
       </div>
@@ -522,41 +416,25 @@ export function LiveTabPanel({ itemId, agent, driving, onHandBack, onFinish }: L
   const live = slot.render({ itemId, url: 'https://job-boards.greenhouse.io/brex/jobs/81', driving });
   return (
     <PanelFrame>
-      <div className="row sp nw" style={{ flex: 'none' }}>
-        <span className="eyebrow v17live">Live · {agent} tab</span>
-        <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--muted)' }}>1 s ago · 2 s refresh</span>
+      <div className="flex items-center gap-[12px] flex-nowrap justify-between flex-none" >
+        <span className="font-mono text-[11.5px] font-[500] tracking-[.08em] uppercase text-muted before:content-[''] before:inline-block before:size-[7px] before:mr-2 before:rounded-full before:bg-brand before:align-[1px] before:animate-jp-pulse">Live · {agent} tab</span>
+        <span className="font-mono text-[11.5px] text-muted">1 s ago · 2 s refresh</span>
       </div>
       {live ?? <TabSnapshot driving={driving} />}
-      <div className="s" style={{ flex: 'none', fontSize: 12.5, lineHeight: 1.5 }}>
+      <div className="text-[12.5px] text-muted flex-none leading-[1.5]" >
         A screenshot, not video. When you hand back, the agent re-reads this page before its next step.
       </div>
       {driving && (
         <div
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: 24,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            padding: '6px 6px 6px 16px',
-            borderRadius: 99,
-            background: 'var(--pri)',
-            color: 'var(--on-pri)',
-            boxShadow: 'var(--float)',
-            whiteSpace: 'nowrap',
-            zIndex: 4,
-          }}
+          className="absolute left-[16px] right-[16px] bottom-[24px] flex items-center justify-between gap-[8px] p-[6px_6px_6px_16px] rounded-[99px] bg-pri text-on-pri shadow-[var(--float)] whitespace-nowrap z-[4]"
         >
-          <b style={{ fontSize: 13.5 }}>You’re driving</b>
-          <button type="button" style={DRIVE_BTN} onClick={onHandBack}>
+          <b className="text-[13.5px]">You’re driving</b>
+          <button type="button" className="[font:inherit]! text-[13px]! font-[600]! p-[8px_14px] rounded-[99px] cursor-pointer bg-transparent [color:inherit]! [border:1px_solid_currentColor]" onClick={onHandBack}>
             Hand back&nbsp;<KeyCap>H</KeyCap>
           </button>
           <button
             type="button"
-            style={{ ...DRIVE_BTN, background: 'var(--on-pri)', color: 'var(--pri)', borderColor: 'var(--on-pri)' }}
+            className="[font:inherit]! text-[13px]! font-[600]! p-[8px_14px] rounded-[99px] cursor-pointer bg-on-pri text-pri! [border:1px_solid_currentColor] border-on-pri"
             onClick={onFinish}
           >
             I’ll finish it
@@ -576,50 +454,43 @@ export function UpNextPanel() {
       {UP_NEXT.map((q) => (
         <div
           key={q.agent}
-          className="row nw"
-          style={{ gap: 12, padding: '10px 0', borderTop: '1px solid var(--line)', flex: 'none' }}
+          className="flex items-center gap-[12px] flex-nowrap p-[10px_0] [border-top:1px_solid_var(--line)] flex-none"
+          
         >
           <CritterBot agent={q.agent} state={q.critter} size={34} />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 14, whiteSpace: 'nowrap' }}>
-              <b style={{ fontWeight: 600 }}>{q.agent}</b>
-              <span className="s" style={{ fontSize: 12.5 }}>
+          <div className="min-w-[0px] flex-1">
+            <div className="text-[14px] whitespace-nowrap">
+              <b className="font-[600]">{q.agent}</b>
+              <span className="text-[12.5px] text-muted" >
                 {' '}
                 · {q.site}
               </span>
             </div>
             <div
-              className="s"
-              style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              className="text-[12.5px] text-muted whitespace-nowrap overflow-hidden text-ellipsis"
+              
             >
               {q.role}
             </div>
           </div>
-          <span className="s" style={{ fontSize: 12, flex: 'none' }}>
+          <span className="text-[12px] text-muted flex-none" >
             {q.status}
           </span>
         </div>
       ))}
       <div
-        style={{
-          flex: 'none',
-          borderTop: '1px solid var(--line)',
-          paddingTop: 14,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
+        className="flex-none [border-top:1px_solid_var(--line)] pt-[14px] flex items-center gap-[12px]"
       >
-        <span style={{ display: 'inline-flex' }}>
+        <span className="inline-flex">
           {UP_NEXT.filter((q) => q.critter === 'work').map((q, i) => (
             <span key={q.agent} style={{ marginLeft: i === 0 ? 0 : -10, display: 'inline-flex', borderRadius: '50%' }}>
               <CritterBot agent={q.agent} state="work" size={26} />
             </span>
           ))}
         </span>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>2 working · 7 queued</div>
-          <div className="s" style={{ fontSize: 12.5 }}>
+        <div className="min-w-[0px]">
+          <div className="font-[600] text-[14px]">2 working · 7 queued</div>
+          <div className="text-[12.5px] text-muted" >
             Open Up next to reorder or hold
           </div>
         </div>
@@ -631,40 +502,20 @@ export function UpNextPanel() {
 export function ClearCenter({ onDashboard, onAddJobs }: { onDashboard: () => void; onAddJobs: () => void }) {
   return (
     <section
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 26,
-        padding: '32px 48px',
-        minWidth: 0,
-        minHeight: 0,
-        background: 'var(--ground)',
-        textAlign: 'center',
-      }}
+      className="flex flex-col items-center justify-center gap-[26px] p-[32px_48px] min-w-[0px] min-h-[0px] bg-ground text-center"
     >
       <div
-        style={{
-          position: 'relative',
-          width: 'min(600px,100%)',
-          height: 300,
-          borderRadius: 28,
-          border: '1px solid var(--line)',
-          background: 'var(--bg)',
-          overflow: 'hidden',
-          flex: 'none',
-        }}
+        className="relative w-[min(600px,100%)] h-[300px] rounded-[28px] [border:1px_solid_var(--line)] bg-bg overflow-hidden flex-none"
       >
         <svg
           viewBox="0 0 600 300"
           width="100%"
           height="100%"
-          style={{ position: 'absolute', inset: 0 }}
+          className="absolute inset-[0px]"
           aria-hidden="true"
         >
           <path
-            className="v17path"
+            className="animate-[v17Dash_3s_linear_infinite]"
             d="M-20 236 C 110 214, 190 120, 300 150 S 470 58, 620 46"
             fill="none"
             stroke="var(--line-2)"
@@ -675,35 +526,35 @@ export function ClearCenter({ onDashboard, onAddJobs }: { onDashboard: () => voi
           <ellipse cx="96" cy="72" rx="48" ry="13" fill="var(--panel)" />
           <ellipse cx="500" cy="236" rx="62" ry="14" fill="var(--panel)" />
         </svg>
-        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }}>
-          <div className="v17fly">
+        <div className="absolute left-[50%] top-[50%] [transform:translate(-50%,-50%)]">
+          <div className="animate-[v17Bob_3.4s_ease-in-out_infinite]">
             <CapOnDartArt size={190} flying />
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-        <div className="eyebrow">Inbox · all clear</div>
-        <h1 className="h1" style={{ fontSize: 64 }}>
-          All clear, <span className="it">for now.</span>
+      <div className="flex flex-col gap-[12px] items-center">
+        <div className="font-mono text-[11.5px] font-[500] tracking-[.08em] uppercase text-muted">Inbox · all clear</div>
+        <h1 className="font-serif font-[350] text-[64px] tracking-[-.025em] leading-[1.02] m-[0px]" >
+          All clear, <span className="font-serif italic font-[300] text-[1em] tracking-[-.01em]">for now.</span>
         </h1>
-        <p className="s" style={{ fontSize: 16, lineHeight: 1.6, maxWidth: 520, margin: 0 }}>
+        <p className="text-[16px] text-muted leading-[1.6] max-w-[520px] m-[0px]" >
           Nothing needs you. The crew is filling 2 applications with 7 more lined up. I’ll flag the next question the
           moment it comes in.
         </p>
       </div>
-      <div className="row nw" style={{ gap: 12, width: 'min(560px,100%)' }}>
+      <div className="flex items-center gap-[12px] flex-nowrap w-[min(560px,100%)]" >
         {CLEAR_STATS.map((s) => (
           <div
             key={s.label}
-            className="mcell"
-            style={{ flex: 1, gap: 4, padding: '16px 18px', alignItems: 'flex-start' }}
+            className="min-w-[0px] bg-bg [border:1px_solid_var(--line)] rounded-[24px] p-[16px_18px] flex flex-col gap-[4px] flex-1 items-start"
+            
           >
             <MonoLabel>{s.label}</MonoLabel>
-            <b style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 34, lineHeight: 1 }}>{s.value}</b>
+            <b className="font-serif font-[400] text-[34px] leading-[1]">{s.value}</b>
           </div>
         ))}
       </div>
-      <div className="row nw" style={{ gap: 10, justifyContent: 'center' }}>
+      <div className="flex items-center gap-[10px] flex-nowrap justify-center" >
         <button className="btn pri" type="button" onClick={onDashboard}>
           Back to Dashboard
         </button>

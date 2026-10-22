@@ -6,16 +6,16 @@ import type { MessageAction, ThreadMessage } from './model';
 function Steps({ title, rows }: { title: string; rows: Extract<ThreadMessage, { kind: 'steps' }>['rows'] }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="steps">
+    <div className="self-start w-[78%] [border:1px_solid_var(--line)] rounded-[16px] bg-bg p-[6px_14px]">
       <button
         type="button"
-        className="sh"
+        className="flex justify-between items-center min-h-[40px] text-[13.5px]! font-[600]! text-ink-2! w-[100%] [background:none] [border:0] p-[0px] text-left"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        style={{ width: '100%', background: 'none', border: 0, padding: 0, textAlign: 'left' }}
+        
       >
         <span>{title}</span>
-        <span className="s">&rsaquo;</span>
+        <span className="text-[13.5px] text-muted">&rsaquo;</span>
       </button>
       {open &&
         rows.map((r) => (
@@ -31,7 +31,7 @@ function Steps({ title, rows }: { title: string; rows: Extract<ThreadMessage, { 
 
 function ActionButtons({ actions }: { actions: readonly MessageAction[] }) {
   return (
-    <div className="row nw" style={{ gap: 8, marginTop: 12 }}>
+    <div className="flex items-center gap-[8px] flex-nowrap mt-[12px]" >
       {actions.map((a) => (
         <button key={a.label} className={a.variant === 'plain' ? 'btn sm ' : `btn sm ${a.variant}`} type="button">
           {a.label}
@@ -43,7 +43,7 @@ function ActionButtons({ actions }: { actions: readonly MessageAction[] }) {
 
 function WidgetHead({ head }: { head: [string, string] }) {
   return (
-    <div className="wh">
+    <div className="flex justify-between items-center p-[12px_18px] [border-bottom:1px_solid_var(--line)] text-[13px] text-muted">
       <span>{head[0]}</span>
       <span>{head[1]}</span>
     </div>
@@ -52,16 +52,16 @@ function WidgetHead({ head }: { head: [string, string] }) {
 
 function Brief({ head, stats }: Extract<ThreadMessage, { kind: 'brief' }>) {
   return (
-    <div className="wid" style={{ width: '100%' }}>
+    <div className="self-start w-[100%] bg-bg [border:1px_solid_var(--line)] rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgb(0_0_0/.04)]" >
       <WidgetHead head={head} />
-      <div className="wb2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 18 }}>
+      <div className="p-[18px] grid grid-cols-[repeat(3,minmax(0,1fr))] gap-[18px]" >
         {stats.map((s) => (
-          <div key={s.title} style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 52, lineHeight: 1, letterSpacing: '-.02em' }}>
+          <div key={s.title} className="flex flex-col gap-[4px] min-w-[0px]">
+            <div className="font-serif text-[52px] leading-[1] tracking-[-.02em]">
               {s.value}
             </div>
-            <div style={{ fontWeight: 600, fontSize: 14.5 }}>{s.title}</div>
-            <div className="s" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
+            <div className="font-[600] text-[14.5px]">{s.title}</div>
+            <div className="text-[12.5px] text-muted leading-[1.4]" >
               {s.sub}
             </div>
           </div>
@@ -73,18 +73,18 @@ function Brief({ head, stats }: Extract<ThreadMessage, { kind: 'brief' }>) {
 
 function Bars({ head, rows }: Extract<ThreadMessage, { kind: 'bars' }>) {
   return (
-    <div className="wid" style={{ width: '100%' }}>
+    <div className="self-start w-[100%] bg-bg [border:1px_solid_var(--line)] rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgb(0_0_0/.04)]" >
       <WidgetHead head={head} />
-      <div className="wb2" style={{ display: 'flex', flexDirection: 'column', gap: 11, padding: '14px 18px' }}>
+      <div className="p-[14px_18px] flex flex-col gap-[11px]" >
         {rows.map((r) => (
-          <div key={r.label} className="row nw" style={{ gap: 12, fontSize: 13 }}>
-            <span style={{ width: 88, flex: 'none' }}>{r.label}</span>
-            <div style={{ flex: 1, height: 8, borderRadius: 9, background: 'var(--line)', overflow: 'hidden' }}>
+          <div key={r.label} className="flex items-center gap-[12px] flex-nowrap text-[13px]" >
+            <span className="w-[88px] flex-none">{r.label}</span>
+            <div className="flex-1 h-[8px] rounded-[9px] bg-line overflow-hidden">
               <div style={{ height: 8, width: `${r.pct}%`, borderRadius: 9, background: 'var(--brand)' }}></div>
             </div>
             <span
-              className="s"
-              style={{ width: 98, textAlign: 'right', fontSize: 12, flex: 'none', fontVariantNumeric: 'tabular-nums' }}
+              className="text-[12px] text-muted w-[98px] text-right flex-none tabular-nums"
+              
             >
               {r.value}
             </span>
@@ -97,17 +97,17 @@ function Bars({ head, rows }: Extract<ThreadMessage, { kind: 'bars' }>) {
 
 function Evidence({ head, rows }: Extract<ThreadMessage, { kind: 'evidence' }>) {
   return (
-    <div className="wid" style={{ width: '100%' }}>
+    <div className="self-start w-[100%] bg-bg [border:1px_solid_var(--line)] rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgb(0_0_0/.04)]" >
       <WidgetHead head={head} />
-      <div className="wb2" style={{ padding: '2px 18px 6px' }}>
+      <div className="p-[2px_18px_6px]" >
         {rows.map((r) => (
           <div
             key={r.source}
-            className="row nw"
-            style={{ gap: 14, alignItems: 'flex-start', padding: '10px 0', borderTop: '1px solid var(--line)' }}
+            className="flex items-start gap-[14px] flex-nowrap p-[10px_0] [border-top:1px_solid_var(--line)]"
+            
           >
-            <MonoLabel style={{ width: 112, flex: 'none' }}>{r.source}</MonoLabel>
-            <span style={{ fontSize: 13.5, lineHeight: 1.5 }}>{r.text}</span>
+            <MonoLabel className="w-[112px] flex-none">{r.source}</MonoLabel>
+            <span className="text-[13.5px] leading-[1.5]">{r.text}</span>
           </div>
         ))}
       </div>
@@ -125,18 +125,18 @@ export function ConsentWidget({
   onAnswer: (allow: boolean) => void;
 }) {
   return (
-    <div className="wid" style={{ width: '100%', outline: '2px solid var(--ink)', outlineOffset: 3 }}>
-      <div className="wh">
+    <div className="self-start w-[100%] bg-bg [border:1px_solid_var(--line)] rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgb(0_0_0/.04)] [outline:2px_solid_var(--ink)] [outline-offset:3px]" >
+      <div className="flex justify-between items-center p-[12px_18px] [border-bottom:1px_solid_var(--line)] text-[13px] text-muted">
         <span className="st need">Consent · required</span>
         <span>Your call</span>
       </div>
-      <div className="wb2">
-        <div style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.35, letterSpacing: '-.01em' }}>{question}</div>
-        <div className="s" style={{ fontSize: 12.5, marginTop: 8 }}>
+      <div className="p-[18px]">
+        <div className="font-[600] text-[17px] leading-[1.35] tracking-[-.01em]">{question}</div>
+        <div className="text-[12.5px] text-muted mt-[8px]" >
           {detail}
         </div>
       </div>
-      <div className="wf">
+      <div className="flex justify-end gap-[8px] p-[12px_18px] [border-top:1px_solid_var(--line)] bg-panel">
         <button className="btn sm ghost" type="button" onClick={() => onAnswer(false)}>
           Don’t allow
         </button>
@@ -169,13 +169,13 @@ export function ReviewWidget({ d }: { d: ReviewDraft }) {
     if (d.editing) areaRef.current?.focus();
   }, [d.editing]);
   return (
-    <div className="wid" style={{ width: '100%', outline: '2px solid var(--ink)', outlineOffset: 3 }}>
-      <div className="wh">
+    <div className="self-start w-[100%] bg-bg [border:1px_solid_var(--line)] rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgb(0_0_0/.04)] [outline:2px_solid_var(--ink)] [outline-offset:3px]" >
+      <div className="flex justify-between items-center p-[12px_18px] [border-bottom:1px_solid_var(--line)] text-[13px] text-muted">
         <span className="st need">Question 1 of 1 · required</span>
         <span>{d.wordLimit} words max</span>
       </div>
-      <div className="wb2">
-        <div style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.35, letterSpacing: '-.01em' }}>{d.title}</div>
+      <div className="p-[18px]">
+        <div className="font-[600] text-[17px] leading-[1.35] tracking-[-.01em]">{d.title}</div>
         <div
           style={{
             marginTop: 12,
@@ -191,31 +191,31 @@ export function ReviewWidget({ d }: { d: ReviewDraft }) {
           {d.editing ? (
             <textarea
               ref={areaRef}
-              className="jp-inbox-draft"
+              className="block w-[100%] resize-none [font:inherit] [outline:0] bg-transparent [color:inherit] [border:0] p-[0px] leading-[inherit] focus-visible:outline-none!"
               rows={7}
               value={d.text}
               aria-label={`Answer: ${d.title}`}
               aria-invalid={over}
               onChange={(e) => d.onText(e.target.value)}
-              style={{ background: 'transparent', color: 'inherit', border: 0, padding: 0, lineHeight: 'inherit' }}
+              
             />
           ) : (
             <>
               {d.text}
-              <span className="v17caret"></span>
+              <span className="inline-block w-[2px] h-[1.05em] ml-[2px] align-[-.18em] bg-ink animate-[v17Caret_1s_steps(1)_infinite]"></span>
             </>
           )}
         </div>
-        <div className="row sp nw" style={{ marginTop: 9 }}>
+        <div className="flex items-center gap-[12px] flex-nowrap justify-between mt-[9px]" >
           <span className="s" style={{ fontSize: 12.5, color: over ? 'var(--bad)' : undefined }}>
             Cap’s draft · {d.words} / {d.wordLimit} words
           </span>
-          <span className="s" style={{ fontSize: 12.5 }}>
+          <span className="text-[12.5px] text-muted" >
             {d.provenance}
           </span>
         </div>
       </div>
-      <div className="wf">
+      <div className="flex justify-end gap-[8px] p-[12px_18px] [border-top:1px_solid_var(--line)] bg-panel">
         <button className="btn sm ghost" type="button" onClick={d.onSkip}>
           Skip&nbsp;<KeyCap>S</KeyCap>
         </button>
@@ -242,7 +242,7 @@ function renderMessage(m: ThreadMessage, i: number, props: MessageStreamProps): 
   switch (m.kind) {
     case 'day':
       return (
-        <span key={i} className="day">
+        <span key={i} className="self-center font-mono text-[11px] tracking-[.08em] uppercase text-muted">
           {m.label}
         </span>
       );
@@ -257,7 +257,7 @@ function renderMessage(m: ThreadMessage, i: number, props: MessageStreamProps): 
       );
     case 'event':
       return (
-        <div key={i} className="evt">
+        <div key={i} className="self-center inline-flex gap-[8px] items-center text-[13px] text-muted p-[6px_12px] rounded-[99px] bg-panel [&_b]:text-ink [&_b]:font-semibold">
           {m.text}
         </div>
       );
@@ -282,7 +282,7 @@ export function MessageStream(props: MessageStreamProps) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [threadKey, messages.length]);
   return (
-    <div ref={ref} className="msgs v17msgs" role="log" aria-label="Thread">
+    <div ref={ref} className="flex-1 overflow-hidden p-[24px_48px] flex flex-col gap-[14px] max-w-[820px] w-[100%] m-[0_auto] overflow-y-auto [mask-image:linear-gradient(to_bottom,_transparent,_rgb(0_0_0)_36px)] [&>*]:flex-none before:mt-auto before:content-['']" role="log" aria-label="Thread">
       {messages.map((m, i) => renderMessage(m, i, props))}
     </div>
   );

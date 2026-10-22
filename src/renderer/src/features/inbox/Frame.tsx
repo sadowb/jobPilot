@@ -17,28 +17,21 @@ export function ThreadHeader({
 }) {
   return (
     <div
-      className="row sp nw"
-      style={{
-        flex: 'none',
-        gap: 16,
-        padding: '16px 28px',
-        borderBottom: '1px solid var(--line)',
-        background: 'var(--bg)',
-        minWidth: 0,
-      }}
+      className="flex items-center gap-[16px] flex-nowrap justify-between flex-none p-[16px_28px] [border-bottom:1px_solid_var(--line)] bg-bg min-w-[0px]"
+      
     >
-      <div className="row nw" style={{ gap: 12, minWidth: 0 }}>
+      <div className="flex items-center gap-[12px] flex-nowrap min-w-[0px]" >
         {lead}
-        <div style={{ minWidth: 0 }}>
-          <div className="t" style={ELLIPSIS}>
+        <div className="min-w-[0px]">
+          <div className="font-[600] text-[15px] whitespace-nowrap overflow-hidden text-ellipsis" >
             {title}
           </div>
-          <div className="s" style={{ fontSize: 12.5, ...ELLIPSIS }}>
+          <div className="text-[12.5px] text-muted whitespace-nowrap overflow-hidden text-ellipsis" >
             {sub}
           </div>
         </div>
       </div>
-      <div className="row nw" style={{ gap: 8, flex: 'none' }}>
+      <div className="flex items-center gap-[8px] flex-nowrap flex-none" >
         {children}
       </div>
     </div>
@@ -49,21 +42,12 @@ export function ThreadHeader({
 export function ControlBanner({ agent }: { agent: string }) {
   return (
     <div
-      className="row nw"
+      className="flex items-center gap-[12px] flex-nowrap flex-none p-[12px_28px] bg-pri text-on-pri"
       role="status"
-      style={{ flex: 'none', gap: 12, padding: '12px 28px', background: 'var(--pri)', color: 'var(--on-pri)' }}
+      
     >
       <span
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: '50%',
-          display: 'grid',
-          placeItems: 'center',
-          background: 'var(--on-pri)',
-          color: 'var(--pri)',
-          flex: 'none',
-        }}
+        className="w-[26px] h-[26px] rounded-[50%] grid place-items-center bg-on-pri text-pri flex-none"
       >
         <svg
           width="14"
@@ -79,8 +63,8 @@ export function ControlBanner({ agent }: { agent: string }) {
           <path d="M5 3l14 8-6 2-3 6z" />
         </svg>
       </span>
-      <b style={{ fontSize: 14.5 }}>You have control of {agent} · its agent is paused</b>
-      <span style={{ fontSize: 13, opacity: 0.75, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+      <b className="text-[14.5px]">You have control of {agent} · its agent is paused</b>
+      <span className="text-[13px] opacity-[0.75] ml-[auto] whitespace-nowrap">
         The rest of the crew keeps working
       </span>
     </div>
@@ -95,22 +79,10 @@ export interface Shortcut {
 export function ShortcutBar({ shortcuts }: { shortcuts: readonly Shortcut[] }) {
   return (
     <div
-      style={{
-        flex: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 22,
-        padding: '11px 24px',
-        borderTop: '1px solid var(--line)',
-        background: 'var(--bg)',
-        fontSize: 12.5,
-        color: 'var(--muted)',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-      }}
+      className="flex-none flex items-center gap-[22px] p-[11px_24px] [border-top:1px_solid_var(--line)] bg-bg text-[12.5px] text-muted whitespace-nowrap overflow-hidden"
     >
       {shortcuts.map((s) => (
-        <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+        <span key={s.label} className="inline-flex items-center gap-[7px]">
           {s.keys.map((k) => (
             <KeyCap key={k}>{k}</KeyCap>
           ))}

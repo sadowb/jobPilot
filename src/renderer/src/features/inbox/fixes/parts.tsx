@@ -15,20 +15,8 @@ export function SetByChip({ by }: { by: SetBy }) {
   const s = SET_BY[by];
   return (
     <span
-      className="nw"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        fontFamily: 'var(--mono)',
-        fontSize: 11,
-        color: 'var(--ink-2)',
-        border: '1px solid var(--line-2)',
-        borderRadius: 99,
-        padding: '3px 9px 3px 7px',
-        whiteSpace: 'nowrap',
-        flex: 'none',
-      }}
+      className="flex-nowrap inline-flex items-center gap-[6px] font-mono text-[11px] text-ink-2 [border:1px_solid_var(--line-2)] rounded-[99px] p-[3px_9px_3px_7px] whitespace-nowrap flex-none"
+      
     >
       <i style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flex: 'none' }}></i>
       {s.label}
@@ -52,7 +40,7 @@ export function StatusPill({ status }: { status: JobStatus }) {
 
 /** Neutral pill for states that are not a job status (e.g. "Back in Up next"). */
 export function NeutralPill({ children }: { children: ReactNode }) {
-  return <span style={{ ...PILL, color: 'var(--muted)', background: 'var(--line)' }}>{children}</span>;
+  return <span className="inline-block text-[12px] font-[600] rounded-[99px] p-[3px_10px] whitespace-nowrap text-muted bg-line">{children}</span>;
 }
 
 export function Icon({
@@ -75,7 +63,7 @@ export function Icon({
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      style={{ flex: 'none', display: 'block' }}
+      className="flex-none block"
     >
       {children}
     </svg>
@@ -85,18 +73,8 @@ export function Icon({
 export function DonePill({ children }: { children: ReactNode }) {
   return (
     <span
-      className="row nw"
-      style={{
-        gap: 5,
-        fontSize: 12,
-        fontWeight: 600,
-        color: 'var(--brand-text)',
-        background: 'var(--brand-tint)',
-        borderRadius: 99,
-        padding: '3px 10px 3px 8px',
-        whiteSpace: 'nowrap',
-        flex: 'none',
-      }}
+      className="flex items-center gap-[5px] flex-nowrap text-[12px] font-[600] text-brand-text bg-brand-tint rounded-[99px] p-[3px_10px_3px_8px] whitespace-nowrap flex-none"
+      
     >
       <Icon size={12} strokeWidth={2.6}>
         <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -131,8 +109,8 @@ const SPEC: CSSProperties = { fontSize: 10.5, letterSpacing: '.06em' };
 
 export function BeforeBox({ children }: { children: ReactNode }) {
   return (
-    <div style={{ ...BOX, border: '1px solid var(--line)', background: 'var(--panel)' }}>
-      <span className="spec" style={{ ...SPEC, color: 'var(--muted)' }}>
+    <div className="flex flex-col gap-[8px] rounded-[16px] p-[10px_12px] min-w-[0px] [border:1px_solid_var(--line)] bg-panel">
+      <span className="font-mono text-[10.5px] text-muted tracking-[.06em]" >
         BEFORE · AUTO
       </span>
       {children}
@@ -142,8 +120,8 @@ export function BeforeBox({ children }: { children: ReactNode }) {
 
 export function AfterBox({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ ...BOX, border: '1px solid var(--brand)', background: 'var(--bg)' }}>
-      <span className="spec" style={{ ...SPEC, color: 'var(--brand-text)' }}>
+    <div className="flex flex-col gap-[8px] rounded-[16px] p-[10px_12px] min-w-[0px] [border:1px_solid_var(--brand)] bg-bg">
+      <span className="font-mono text-[10.5px] text-brand-text tracking-[.06em]" >
         AFTER · SET BY YOU · {label}
       </span>
       {children}
@@ -152,28 +130,21 @@ export function AfterBox({ label, children }: { label: string; children: ReactNo
 }
 
 export const Note = ({ children }: { children: ReactNode }) => (
-  <span className="s" style={{ fontSize: 12, lineHeight: 1.4 }}>
+  <span className="text-[12px] text-muted leading-[1.4]" >
     {children}
   </span>
 );
 
 export const ItemTitle = ({ children }: { children: ReactNode }) => (
   <div
-    style={{
-      fontSize: 13.5,
-      fontWeight: 600,
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-      minWidth: 0,
-    }}
+    className="text-[13.5px] font-[600] overflow-hidden text-ellipsis whitespace-nowrap min-w-[0px]"
   >
     {children}
   </div>
 );
 
 export const WrapRow = ({ children }: { children: ReactNode }) => (
-  <div className="row sp" style={{ gap: '6px 8px', minWidth: 0, flexWrap: 'wrap' }}>
+  <div className="flex items-center gap-[6px_8px] flex-wrap justify-between min-w-[0px]" >
     {children}
   </div>
 );
@@ -195,35 +166,25 @@ export function FixCard({
 }) {
   return (
     <div
-      style={{
-        background: 'var(--bg)',
-        border: '1px solid var(--line)',
-        borderRadius: 22,
-        padding: 16,
-        display: 'grid',
-        gridTemplateRows: 'subgrid',
-        gridRow: 'span 5',
-        rowGap: 10,
-        minWidth: 0,
-      }}
+      className="bg-bg [border:1px_solid_var(--line)] rounded-[22px] p-[16px] grid grid-rows-[subgrid] row-[span_5] gap-y-[10px] min-w-[0px]"
     >
-      <div className="row sp nw" style={{ gap: 8 }}>
-        <span className="spec" style={{ letterSpacing: '.06em' }}>
+      <div className="flex items-center gap-[8px] flex-nowrap justify-between" >
+        <span className="font-mono text-[11.5px] text-muted tracking-[.06em]" >
           {n}
         </span>
         <SetByChip by={by} />
       </div>
       <div>
-        <div style={{ fontWeight: 650, fontSize: 15.5, lineHeight: 1.25 }}>{title}</div>
-        <div className="s" style={{ fontSize: 13, lineHeight: 1.45, marginTop: 4 }}>
+        <div className="font-[650] text-[15.5px] leading-[1.25]">{title}</div>
+        <div className="text-[13px] text-muted leading-[1.45] mt-[4px]" >
           {body}
         </div>
       </div>
       {before}
       <div
-        className="spec"
+        className="font-mono text-[11px] text-muted tracking-[.06em] text-center leading-[1]"
         aria-hidden="true"
-        style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11, lineHeight: 1 }}
+        
       >
         ↓
       </div>
