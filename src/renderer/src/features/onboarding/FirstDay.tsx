@@ -2,7 +2,7 @@ import { CapDartArt } from '../../components/CapDartArt';
 import { KbdKey } from '../../components/KbdKey';
 import { Button, Eyebrow, cx } from '../../components/ui';
 import '../../styles/motion.css'; // keyframes only (`v17rise`, `v17ring`, `flypath`)
-import { A_RISE, BUBBLE, CELL, H1, REDUCE_ALL, S, SPEC, shellButton } from '../shared-ui';
+import { A_RISE, BUBBLE, CELL, H1, REDUCE_ALL, S, SPEC } from '../shared-ui';
 import { SETUP_CHECKLIST } from './data';
 import { ChecklistRow } from './SetupChecklist';
 
@@ -56,17 +56,21 @@ export function FirstDay() {
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
           <div className="flex flex-none items-end justify-between gap-6">
             <div className="flex min-w-0 items-center gap-[18px]">
-              <h1 className={cx(H1, 'text-[42px]')}>Dashboard</h1>
+              <h1 className={cx(H1, 'text-[42px] leading-[1.02]')}>Dashboard</h1>
               <div className="inline-flex flex-none gap-0.5 rounded-full border border-line bg-bg p-1">
-                <span className="flex items-center gap-2 rounded-full bg-pri px-3.5 py-[7px] text-sm font-semibold text-on-pri">
+                <span className="flex items-center gap-2 rounded-full bg-pri px-3.5 py-[7px] text-sm leading-[1.45] font-semibold text-on-pri">
                   Applied <b className="rounded-full bg-[color-mix(in_srgb,var(--on-pri)_18%,transparent)] px-[7px] text-[12.5px]">0</b>
                 </span>
-                <span className="flex items-center gap-2 rounded-full px-3.5 py-[7px] text-sm font-semibold text-muted">
+                <span className="flex items-center gap-2 rounded-full px-3.5 py-[7px] text-sm leading-[1.45] font-semibold text-muted">
                   Up next <b className="rounded-full bg-hover px-[7px] text-[12.5px] text-ink-2">{total}</b>
                 </span>
               </div>
             </div>
-            <Button variant="primary" size="sm" className={cx('flex-none', shellButton('primary'))}>
+            <Button
+              variant="primary"
+              size="sm"
+              className="flex-none font-normal! text-[13.5px]! text-on-pri! hover:border-pri!"
+            >
               Add jobs
               <span className="ml-2 font-mono text-xs opacity-60">⌘V</span>
             </Button>
@@ -74,7 +78,7 @@ export function FirstDay() {
           <div className="flex flex-none gap-3">
             {KPIS.map((k) => (
               <div key={k.label} className={cx(CELL, 'flex-1 gap-1 px-[18px] py-4')}>
-                <span className={cx(SPEC, 'text-muted')}>{k.label}</span>
+                <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>{k.label}</span>
                 <b className="text-[28px] font-semibold text-muted">{k.value}</b>
                 <span className={cx(S, 'text-[13px]')}>{k.note}</span>
               </div>
@@ -118,7 +122,7 @@ export function FirstDay() {
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] border border-line bg-bg">
             <div className={cx(GRID, 'flex-none border-b border-line text-[13.5px]')}>
               {COLUMNS.map((c) => (
-                <div key={c} className={cx(SPEC, 'px-2 py-2.5 text-muted')}>
+                <div key={c} className={cx(SPEC, 'px-2 py-2.5 text-muted tracking-[0.02em]!')}>
                   {c}
                 </div>
               ))}
@@ -161,7 +165,7 @@ export function FirstDay() {
         </div>
         <aside className="flex w-[340px] flex-none flex-col gap-4">
           <div className={cx(CELL, 'gap-3.5 p-6')}>
-            <div className="flex gap-[18px]">
+            <div className="flex items-center gap-[18px]">
               <svg width="104" height="104" viewBox="0 0 104 104" aria-hidden="true" className="flex-none">
                 <circle cx="52" cy="52" r="40" fill="none" stroke="var(--line)" strokeWidth="8" />
                 <circle
@@ -183,7 +187,7 @@ export function FirstDay() {
               </svg>
               <div>
                 <Eyebrow>Setup</Eyebrow>
-                <b className="text-lg">{total} of {total} done</b>
+                <b className="text-lg leading-[1.45]">{total} of {total} done</b>
                 <div className={cx(S, 'text-[13px]')}>Up next {total} · Mercury being filled now</div>
               </div>
             </div>

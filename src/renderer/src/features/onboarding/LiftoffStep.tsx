@@ -51,13 +51,13 @@ export function LiftoffStep() {
           <div className={cx(BUBBLE, 'absolute top-9 left-9 max-w-[360px] px-4 py-3 text-[16px] [--d:.9s]', A_RISE)}>
             Mercury first. I’ll tell you when it’s sent.
           </div>
-          <div className={cx(SPEC, 'absolute bottom-6 left-7 text-muted')}>Take-off · first application</div>
+          <div className={cx(SPEC, 'absolute bottom-6 left-7 text-muted tracking-[0.02em]!')}>Take-off · first application</div>
         </div>
         <div className="flex min-w-0 flex-col gap-3.5">
           <div className={cx(CELL, 'gap-1 px-[22px] py-5')}>
             <div className="flex items-center justify-between gap-3">
               <b className="text-[17px]">Checklist</b>
-              <span className={cx(SPEC, 'text-brand-text')}>
+              <span className={cx(SPEC, 'text-brand-text tracking-[0.02em]!')}>
                 {n} of {n} done
               </span>
             </div>
@@ -71,7 +71,7 @@ export function LiftoffStep() {
           <div className={cx(CELL, 'gap-2 px-[22px] py-5')}>
             <div className="flex items-center justify-between gap-3">
               <b className="text-[17px]">Up next</b>
-              <span className={cx(SPEC, 'text-muted')}>{FIRST_JOBS.length} in Up next · about 6 min</span>
+              <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>{FIRST_JOBS.length} in Up next · about 6 min</span>
             </div>
             {FIRST_JOBS.map((j, i) => (
               <div
@@ -101,7 +101,7 @@ export function LiftoffStep() {
             ))}
           </div>
           <div className="flex flex-col gap-2">
-            <GoButton to={nextPath(5)} variant="primary" className="min-h-[52px]! w-full text-[16px]!">
+            <GoButton to={nextPath(5)} variant="primary" className="min-h-[52px]! w-full text-[16px]! text-on-pri!">
               Go to Dashboard →
             </GoButton>
             <div className={cx(S, 'text-center text-[13px]')}>

@@ -70,7 +70,7 @@ export function CvStep() {
               </div>
             </div>
             {/* `.btn.ghost` never had a hover fill, unlike the primitive's ghost variant. */}
-            <Button variant="ghost" size="sm" className="cursor-pointer hover:bg-transparent!">
+            <Button variant="ghost" size="sm" className="cursor-pointer hover:bg-transparent! text-[13.5px]!">
               Replace file
             </Button>
             <div className={cx(S, 'text-[13px]')}>Dropping another file replaces this one.</div>
@@ -87,7 +87,7 @@ export function CvStep() {
                 <div className="mt-0.5 text-[19px] font-semibold">{CV_FILE.name}</div>
               </div>
             </div>
-            <span className={cx(SPEC, 'flex-none text-muted')}>{CV_FIELDS.length} fields found</span>
+            <span className={cx(SPEC, 'flex-none text-muted tracking-[0.02em]!')}>{CV_FIELDS.length} fields found</span>
           </div>
           <div className="mx-[26px] h-1 flex-none overflow-hidden rounded-[9px] bg-line">
             <div className={cx('h-1 bg-brand [--d:.1s] [--dur:1s]', A_BAR)} />
@@ -103,7 +103,7 @@ export function CvStep() {
                 // Stagger delay comes from the sample data.
                 style={cssVars({ '--d': `${f.delay}s` })}
               >
-                <span className={cx(SPEC, 'text-muted')}>{f.label}</span>
+                <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>{f.label}</span>
                 <div className="min-w-0 text-[15.5px] leading-[1.45]">
                   {f.chips ? (
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -142,10 +142,15 @@ export function CvStep() {
               </div>
             </div>
             <div className="flex items-center gap-2.5">
-              <GoButton to={nextPath(2)} variant="primary" size="sm" className="min-h-11! px-[22px]!">
+              <GoButton
+                to={nextPath(2)}
+                variant="primary"
+                size="sm"
+                className="min-h-11! px-[22px]! text-[13.5px]! text-on-pri!"
+              >
                 Looks right
               </GoButton>
-              <Button size="sm" className="min-h-11! cursor-pointer px-5!">
+              <Button size="sm" className="min-h-11! cursor-pointer px-5! text-[13.5px]!">
                 Edit fields
               </Button>
             </div>

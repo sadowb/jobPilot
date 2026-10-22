@@ -18,6 +18,7 @@ import {
 import { KpiStrip } from './KpiStrip';
 
 const RANGE_OPTIONS = RANGES.map(({ value, label }) => ({ value, label }));
+const RANGE_CONTROL = 'w-[300px] inline-flex! self-end! gap-0.5! [&>span]:rounded-full!';
 
 /**
  * V17 Analytics. The range control only changes the caption: the sample data covers one 8-week window,
@@ -37,7 +38,7 @@ export function AnalyticsScreen({ onAsk }: { onAsk?: (topic: string) => void }) 
           </h1>
         </div>
         <div className="flex flex-none flex-col items-end gap-2">
-          <Segmented label="Range" options={RANGE_OPTIONS} value={range} onChange={setRange} className="w-[300px]" />
+          <Segmented label="Range" options={RANGE_OPTIONS} value={range} onChange={setRange} className={RANGE_CONTROL} />
           <span className="font-mono text-[13px] whitespace-nowrap text-muted">{SPEND_LINE}</span>
         </div>
       </div>

@@ -37,7 +37,7 @@ export function WelcomeStep() {
             You decide what gets sent.
           </p>
           <div className="mt-9 flex items-center gap-[18px]">
-            <GoButton to={stepPath(2)} variant="primary" className="min-h-[58px]! px-[30px]! text-[18px]!">
+            <GoButton to={stepPath(2)} variant="primary" className="min-h-[58px]! px-[30px]! text-[18px]! text-on-pri!">
               Let’s start →
             </GoButton>
             <span className={cx(S, 'text-[13.5px]')}>5 short steps · skip any</span>
@@ -119,7 +119,7 @@ export function WelcomeStep() {
           >
             Ready when you are.
           </div>
-          <div className={cx(SPEC, 'absolute bottom-6 left-7 text-muted')}>Route · your first application</div>
+          <div className={cx(SPEC, 'absolute bottom-6 left-7 text-muted tracking-[0.02em]!')}>Route · your first application</div>
         </div>
       </div>
     </OnboardingFrame>

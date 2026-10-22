@@ -62,8 +62,8 @@ export function LinksStep() {
         <div className="flex min-w-0 flex-col gap-[22px]">
           <div className="flex min-w-0 flex-col gap-3 rounded-3xl border-[1.5px] border-ink bg-bg px-6 py-[22px] shadow-[0_0_0_5px_var(--brand-tint)]">
             <div className="flex items-center justify-between gap-3">
-              <span className={cx(SPEC, 'text-muted')}>Paste here · any job board</span>
-              <span className={cx(SPEC, 'text-muted')}>⌘V</span>
+              <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>Paste here · any job board</span>
+              <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>⌘V</span>
             </div>
             {FIRST_JOBS.map((j) => (
               <div
@@ -77,7 +77,7 @@ export function LinksStep() {
             <span className="block h-[18px] w-0.5 animate-[v17caret_1s_steps(1)_infinite] bg-ink motion-reduce:animate-none" />
           </div>
           <div className="flex items-center gap-3.5">
-            <GoButton to={nextPath(3)} variant="primary" className="min-h-[52px]! px-[26px]! text-[16px]!">
+            <GoButton to={nextPath(3)} variant="primary" className="min-h-[52px]! px-[26px]! text-[16px]! text-on-pri!">
               Add {n} jobs · ↵
             </GoButton>
             <span className={cx(S, 'text-[13.5px]')}>Duplicates and non-job pages are skipped.</span>
@@ -91,8 +91,8 @@ export function LinksStep() {
             <CapDartArt size={64} />
             <div className="flex min-w-0 flex-col gap-2">
               <div className="flex items-center gap-2.5">
-                <span className={cx(SPEC, 'text-brand-text')}>Tip</span>
-                <span className={cx(SPEC, 'text-muted')}>Browser extension</span>
+                <span className={cx(SPEC, 'text-brand-text tracking-[0.02em]!')}>Tip</span>
+                <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>Browser extension</span>
               </div>
               <b className="text-[18px]">Send a whole page of jobs at once</b>
               <div className={cx(S, 'text-[13.5px] leading-[1.6]')}>
@@ -111,7 +111,7 @@ export function LinksStep() {
         <div className={cx(CELL, 'gap-[18px] p-7')}>
           <div className="flex items-center justify-between gap-3">
             <b className="text-[17px]">Reading each link</b>
-            <span className={cx(SPEC, 'text-muted')}>link → company card</span>
+            <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>link → company card</span>
           </div>
           <div className="flex flex-col">
             {FIRST_JOBS.map((j, i) => (

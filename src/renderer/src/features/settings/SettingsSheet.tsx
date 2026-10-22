@@ -21,6 +21,7 @@ const THEMES: readonly SegmentedOption<ThemeSource>[] = [
   { value: 'dark', label: 'Dark' },
   { value: 'system', label: 'System' },
 ];
+const SITE_SEGMENTED = 'w-[236px] inline-flex! gap-0.5! [&>span]:rounded-full!';
 
 const stroke = { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
@@ -191,7 +192,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                 options={SITE_MODES}
                 value={sites[s.name] ?? s.mode}
                 onChange={(m) => setSites((cur) => ({ ...cur, [s.name]: m }))}
-                className="w-[236px]"
+                className={SITE_SEGMENTED}
               />
             </div>
           ))}
