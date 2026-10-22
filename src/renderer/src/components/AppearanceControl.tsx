@@ -1,12 +1,17 @@
 import { useTheme } from '../lib/theme';
 
+// `.app button` (board.css) forces `color: inherit` on every shell button, hence the `!`.
+const BUTTON =
+  'grid size-8 flex-none place-items-center rounded-lg border-0 bg-transparent p-0 text-muted! hover:bg-hover hover:text-ink! ' +
+  '[html[data-platform=darwin]_&]:[-webkit-app-region:no-drag] [html[data-platform=darwin]_&]:[app-region:no-drag]';
+
 export function AppearanceControl() {
   const { state, setSource, error } = useTheme();
   const action = `Switch to ${state.dark ? 'light' : 'dark'} mode`;
   return (
     <>
       <button
-        className="appearance-button"
+        className={BUTTON}
         type="button"
         onClick={() => setSource(state.dark ? 'light' : 'dark')}
         onKeyDown={(event) => {

@@ -1,3 +1,5 @@
+import { GUST_LINE, GUST_LINE_LATE } from './gustLine';
+
 /** Cap riding the paper dart (design/brand/cap-and-dart.svg), as drawn on the V17 boards. Colours are fixed; the dart follows --ink. */
 export function CapDartArt({ size, gust = false }: { size: number; gust?: boolean }) {
   return (
@@ -17,8 +19,8 @@ export function CapDartArt({ size, gust = false }: { size: number; gust?: boolea
       <path d="M55 67 L107.5 12.5" stroke="var(--panel,#fff)" strokeWidth="4.5" strokeLinecap="round" opacity=".5" />
       {gust && (
         <g fill="none" stroke="#1A1A1A" strokeWidth="2.4" strokeLinecap="round">
-          <path className="gust" d="M20 44 q-8 2 -14 -2" />
-          <path className="gust" d="M22 52 q-10 4 -18 2" style={{ animationDelay: '.2s' }} />
+          <path className={GUST_LINE} d="M20 44 q-8 2 -14 -2" />
+          <path className={GUST_LINE_LATE} d="M22 52 q-10 4 -18 2" />
         </g>
       )}
       <g transform="translate(44 60) rotate(22) scale(1.2) translate(-24 -26)">

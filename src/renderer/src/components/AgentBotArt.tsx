@@ -1,14 +1,9 @@
 import type { ReactNode } from 'react';
+import { BOT, BOT_BADGE, BOT_MOTION, BOT_ORB } from './botStyles';
+import { cx } from './ui';
 
 /** Agent mascots ("Grok bots") as drawn on the V17 boards: one body shape per company, state carried by the wrapper classes. */
 export type AgentBotState = 'work' | 'idle' | 'done' | 'need';
-
-const STATE_CLASS: Record<AgentBotState, string> = {
-  work: 'bot mv m-work m-blink',
-  idle: 'bot mv m-blink',
-  done: 'bot mv m-done',
-  need: 'bot mv m-need',
-};
 
 const SHAPES: Record<string, ReactNode> = {
   Mercury: (
@@ -795,22 +790,19 @@ export const AGENT_BOT_COMPANIES = Object.keys(SHAPES);
 export function AgentBotArt({ company, state, size }: { company: string; state: AgentBotState; size: number }) {
   const shape = SHAPES[company] ?? SHAPES.Vercel;
   return (
-    <span
-      className={STATE_CLASS[state]}
-      style={{ width: size, height: size, position: 'relative', display: 'inline-block' }}
-    >
+    <span className={cx(BOT, BOT_MOTION[state])} style={{ width: size, height: size }}>
       <svg
         width={size}
         height={size}
         viewBox="-1 -3 50 50"
         role="img"
         aria-label={`${company} agent, ${state}`}
-        style={{ overflow: 'visible' }}
+        className="overflow-visible"
       >
         {shape}
       </svg>
-      {state === 'work' && <i className="orb" aria-hidden="true" style={{ inset: -5, borderWidth: 3 }} />}
-      {state === 'need' && <i className="wb" aria-hidden="true" style={{ width: 10, height: 10 }} />}
+      {state === 'work' && <i className={BOT_ORB} aria-hidden="true" />}
+      {state === 'need' && <i className={BOT_BADGE} aria-hidden="true" />}
     </span>
   );
 }

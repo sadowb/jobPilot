@@ -1,5 +1,5 @@
-import './v17-agent-bot.css';
-
+import { BOT, BOT_BADGE, BOT_INK, BOT_MOTION, BOT_ORB } from './botStyles';
+import { cx } from './ui';
 import type { AgentState } from './v17-agent-state';
 
 export type { AgentState };
@@ -244,17 +244,9 @@ function Hat({ hat }: { hat: AgentHat }) {
   }
 }
 
-const STATE_CLASS: Record<AgentState, string> = {
-  idle: 'm-blink',
-  work: 'm-work m-blink',
-  need: 'm-need',
-  block: 'm-block',
-  done: 'm-done',
-};
-
 /**
  * Row avatar for a job's agent ("bot"). Colours are fixed art; only the outline follows the theme.
- * `work` adds the orbiting ring, `need` the waiting badge (both styled by board.css).
+ * `work` adds the orbiting ring, `need` the waiting badge .
  */
 export function V17AgentBot({
   name,
@@ -270,17 +262,14 @@ export function V17AgentBot({
   const { body, hat, fill } = look ?? agentLook(name);
   const g = GEOMETRY[body];
   return (
-    <span
-      className={`bot mv ${STATE_CLASS[state]}`}
-      style={{ width: size, height: size, position: 'relative', display: 'inline-block' }}
-    >
+    <span className={cx(BOT, BOT_INK, BOT_MOTION[state])} style={{ width: size, height: size }}>
       <svg
         width={size}
         height={size}
         viewBox="-1 -3 50 50"
         role="img"
         aria-label={`${name} agent, ${state}`}
-        style={{ overflow: 'visible' }}
+        className="overflow-visible"
       >
         <g className="body">
           <path d={g.path} fill={fill} stroke={INK} strokeWidth="2.4" {...round} />
@@ -294,8 +283,8 @@ export function V17AgentBot({
           )}
         </g>
       </svg>
-      {state === 'work' && <i className="orb" aria-hidden="true" style={{ inset: -5, borderWidth: 3 }} />}
-      {state === 'need' && <i className="wb" aria-hidden="true" style={{ width: 10, height: 10 }} />}
+      {state === 'work' && <i className={BOT_ORB} aria-hidden="true" />}
+      {state === 'need' && <i className={BOT_BADGE} aria-hidden="true" />}
     </span>
   );
 }
