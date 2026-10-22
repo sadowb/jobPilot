@@ -1,4 +1,5 @@
-import '../../styles/v17-surfaces.css';
+import { Card, cx } from '../../components/ui';
+import { S, V17N, V17X } from '../shared-ui';
 
 export interface Kpi {
   label: string;
@@ -17,27 +18,14 @@ export const KPIS: readonly Kpi[] = [
 /** Four-up metric strip shared by the Analytics board and the dashboard backdrop of the Settings board. */
 export function KpiStrip() {
   return (
-    <div className="v17c" style={{ display: 'flex', overflow: 'hidden', flex: 'none' }}>
+    <Card className="flex flex-none overflow-hidden">
       {KPIS.map((k, i) => (
-        <div
-          key={k.label}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            padding: '16px 24px',
-            boxSizing: 'border-box',
-            ...(i > 0 ? { borderLeft: '1px solid var(--line)' } : {}),
-          }}
-        >
-          <div className="v17x">{k.label}</div>
-          <div className="v17n" style={{ fontSize: 44, marginTop: 10 }}>
-            {k.value}
-          </div>
-          <div className="s" style={{ fontSize: 13, marginTop: 8 }}>
-            {k.note}
-          </div>
+        <div key={k.label} className={cx('min-w-0 flex-1 px-6 py-4', i > 0 && 'border-l border-line')}>
+          <div className={V17X}>{k.label}</div>
+          <div className={cx(V17N, 'mt-2.5 text-[44px]')}>{k.value}</div>
+          <div className={cx(S, 'mt-2 text-[13px]')}>{k.note}</div>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }

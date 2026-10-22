@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { cx } from '../../components/ui';
+import { S } from '../shared-ui';
 import { parseLimit, type LimitSpec } from './model';
 
 /** One hard limit: a bold numeric field with its unit. Typing is free-form; the value is clamped into range on commit. */
@@ -17,10 +19,10 @@ export function LimitField({
     setDraft(null);
   };
   return (
-    <label style={{ minWidth: 0, display: 'block' }}>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, whiteSpace: 'nowrap' }}>{spec.label}</div>
-      <div className="inp" style={{ height: 40, padding: '0 12px', justifyContent: 'space-between', borderRadius: 12 }}>
-        <span className="row nw" style={{ gap: 0, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+    <label className="block min-w-0">
+      <div className="mb-1.5 text-[13px] font-semibold whitespace-nowrap">{spec.label}</div>
+      <div className="flex h-10 min-w-0 items-center justify-between gap-2.5 rounded-xl border border-line-2 bg-bg px-3 text-[15px] text-ink">
+        <span className="flex items-center font-semibold tabular-nums">
           {spec.prefix}
           <input
             inputMode="numeric"
@@ -29,20 +31,11 @@ export function LimitField({
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
             onKeyDown={(e) => e.key === 'Enter' && commit()}
-            style={{
-              width: `${Math.max(2, String(value).length + 1)}ch`,
-              border: 0,
-              outline: 0,
-              background: 'transparent',
-              padding: 0,
-              font: 'inherit',
-              color: 'inherit',
-            }}
+            className="border-0 bg-transparent p-0 outline-none focus-visible:outline-none!"
+            style={{ width: `${Math.max(2, String(value).length + 1)}ch` }}
           />
         </span>
-        <span className="s" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-          {spec.unit}
-        </span>
+        <span className={cx(S, 'text-[13px] whitespace-nowrap')}>{spec.unit}</span>
       </div>
     </label>
   );

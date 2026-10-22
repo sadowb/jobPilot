@@ -1,8 +1,8 @@
 import { CapDartArt } from '../../components/CapDartArt';
 import { KbdKey } from '../../components/KbdKey';
-import { cssVars } from '../../lib/css-vars';
-import '../../styles/motion.css';
-import '../../styles/v17-surfaces.css';
+import { Button, Eyebrow, cx } from '../../components/ui';
+import '../../styles/motion.css'; // keyframes only (`v17rise`, `v17ring`, ...)
+import { A_RISE, BUBBLE, CELL, H1, REDUCE_ALL, S, SPEC, shellButton } from '../shared-ui';
 import { SETUP_CHECKLIST } from './data';
 import { ChecklistRow } from './SetupChecklist';
 

@@ -1,4 +1,6 @@
+import { cx } from '../../components/ui';
 import { cssVars } from '../../lib/css-vars';
+import { A_RISE, S } from '../shared-ui';
 import type { ChecklistItem } from './data';
 
 const CHECK = (
@@ -19,17 +21,21 @@ const CHECK = (
 
 /** One done row of the setup checklist. `compact` is the dashboard's side-card density; otherwise the Liftoff step's. */
 export function ChecklistRow({ item, delay, compact }: { item: ChecklistItem; delay?: string; compact?: boolean }) {
-  const common = { gap: compact ? 12 : 14, padding: compact ? '12px 0' : '6px 0', borderTop: '1px solid var(--line)' };
   return (
-    <div className={delay ? 'row nw v17-rise' : 'row nw'} style={delay ? cssVars({ '--d': delay }, common) : common}>
-      <span className="chk on" style={{ flex: 'none' }}>
+    <div
+      className={cx(
+        'flex items-center border-t border-line',
+        compact ? 'gap-3 py-3' : 'gap-3.5 py-1.5',
+        delay && A_RISE,
+      )}
+      style={delay ? cssVars({ '--d': delay }) : undefined}
+    >
+      <span className="grid size-5 flex-none place-items-center rounded-md border-2 border-ink bg-ink text-ground">
         {CHECK}
       </span>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: compact ? 14.5 : 15, fontWeight: 600 }}>{item.title}</div>
-        <div className="s" style={{ fontSize: 13 }}>
-          {compact ? (item.shortDetail ?? item.detail) : item.detail}
-        </div>
+      <div className="min-w-0">
+        <div className={cx('font-semibold', compact ? 'text-[14.5px]' : 'text-[15px]')}>{item.title}</div>
+        <div className={cx(S, 'text-[13px]')}>{compact ? (item.shortDetail ?? item.detail) : item.detail}</div>
       </div>
     </div>
   );

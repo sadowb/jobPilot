@@ -1,20 +1,28 @@
 import type { ReactNode } from 'react';
-import { NavButton } from '../../components/NavButton';
-import { Logo } from '../../components/Logo';
 import { AppearanceControl } from '../../components/AppearanceControl';
-import '../../styles/motion.css';
-import '../../styles/v17-surfaces.css';
+import { Logo } from '../../components/Logo';
+import { Eyebrow, cx } from '../../components/ui';
+import '../../styles/motion.css'; // keyframes only (`v17rise`, `v17pop`, ...)
+import { GoButton, H1, IT, REDUCE_ALL, S, SPEC } from '../shared-ui';
 import { ONBOARDING_STEPS, dotState, type OnboardingStep } from './steps';
 
-const dotStyle = (state: ReturnType<typeof dotState>) => ({
-  display: 'block',
-  height: 8,
-  borderRadius: 99,
-  width: state === 'current' ? 28 : 8,
-  background: state === 'ahead' ? 'var(--line-2)' : 'var(--brand)',
-});
+const DARWIN = 'in-[html[data-platform=darwin]]';
 
-/** Header (logo, 5-dot progress, skip) plus the `.v17` content area every onboarding step sits in. */
+/**
+ * Setup header. On macOS it becomes the sticky, draggable toolbar strip behind the native window controls
+ * (80px spacer in column 1, progress in column 2, actions in column 3); everywhere else it is a plain 3-column grid.
+ */
+const HEADER = cx(
+  'grid grid-cols-[1fr_auto_1fr] items-center gap-6 bg-transparent px-14 py-[22px]',
+  `${DARWIN}:sticky ${DARWIN}:top-0 ${DARWIN}:z-1 ${DARWIN}:h-(--app-toolbar-height) ${DARWIN}:min-h-(--app-toolbar-height) ${DARWIN}:gap-4 ${DARWIN}:bg-ground ${DARWIN}:px-6 ${DARWIN}:py-1.5`,
+  `${DARWIN}:[-webkit-app-region:drag] ${DARWIN}:[app-region:drag] ${DARWIN}:select-none`,
+  `${DARWIN}:before:col-start-1 ${DARWIN}:before:row-start-1 ${DARWIN}:before:h-8 ${DARWIN}:before:w-20 ${DARWIN}:before:content-['']`,
+  `${DARWIN}:[&_:is(a,button,input,select,textarea,[role=button],[role=radio])]:[-webkit-app-region:no-drag] ${DARWIN}:[&_:is(a,button,input,select,textarea,[role=button],[role=radio])]:[app-region:no-drag]`,
+);
+const PLACE_COL_2 = `${DARWIN}:[grid-column:2] ${DARWIN}:[grid-row:1]`;
+const PLACE_COL_3 = `${DARWIN}:[grid-column:3] ${DARWIN}:[grid-row:1]`;
+
+/** Header (logo, 5-dot progress, skip) plus the content area every onboarding step sits in. */
 export function OnboardingFrame({
   step,
   minHeight,
@@ -27,38 +35,36 @@ export function OnboardingFrame({
 }) {
   return (
     <>
-      <header className="top onboarding-top">
+      <header className={HEADER}>
         {window.jobpilot?.platform !== 'darwin' && <Logo label="JobPilot, setup" />}
         <div
-          className="row nw setup-progress"
-          style={{ gap: 8, justifySelf: 'center' }}
+          className={cx('flex items-center gap-2 justify-self-center', PLACE_COL_2)}
           role="img"
           aria-label={`Step ${step} of 5`}
         >
-          {ONBOARDING_STEPS.map((i) => (
-            <i key={i} style={dotStyle(dotState(i, step))} />
-          ))}
-          <span className="spec" style={{ marginLeft: 10, color: 'var(--muted)' }}>
-            {step} / 5
-          </span>
+          {ONBOARDING_STEPS.map((i) => {
+            const state = dotState(i, step);
+            return (
+              <i
+                key={i}
+                className={cx('block h-2 rounded-full', state === 'current' ? 'w-7' : 'w-2', state === 'ahead' ? 'bg-line-2' : 'bg-brand')}
+              />
+            );
+          })}
+          <span className={cx(SPEC, 'ml-2.5 text-muted')}>{step} / 5</span>
         </div>
-        <div className="row nw setup-actions" style={{ justifySelf: 'end', gap: 8 }}>
+        <div className={cx('flex items-center gap-2 justify-self-end', PLACE_COL_3)}>
           <AppearanceControl />
-          <NavButton className="btn ghost sm" to="/">
+          {/* `.btn.ghost` never had a hover fill, unlike the primitive's ghost variant. */}
+          <GoButton to="/" variant="ghost" size="sm" className={`hover:bg-transparent! ${DARWIN}:h-8 ${DARWIN}:min-h-8`}>
             Skip for now
-          </NavButton>
+          </GoButton>
         </div>
       </header>
       <div
-        className="v17"
-        style={{
-          boxSizing: 'border-box',
-          minHeight,
-          padding: '8px 56px 48px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 28,
-        }}
+        className={cx('flex flex-col gap-7 px-14 pt-2 pb-12', REDUCE_ALL)}
+        // The minimum height is a per-step prop (the board's content height).
+        style={{ minHeight }}
       >
         {children}
       </div>
@@ -79,14 +85,12 @@ export function StepHeading({
   lede: string;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="eyebrow">{eyebrow}</div>
-      <h1 className="h1" style={{ fontSize: 56, lineHeight: 1.04, margin: 0 }}>
-        {lead} <span className="it">{tail}</span>
+    <div className="flex flex-col gap-2.5">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h1 className={cx(H1, 'text-[56px] leading-[1.04]')}>
+        {lead} <span className={IT}>{tail}</span>
       </h1>
-      <p className="mut" style={{ margin: 0, fontSize: 17, lineHeight: 1.5, maxWidth: 760 }}>
-        {lede}
-      </p>
+      <p className={cx(S, 'm-0 max-w-[760px] text-[17px] leading-normal')}>{lede}</p>
     </div>
   );
 }

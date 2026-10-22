@@ -1,6 +1,7 @@
-import { NavButton } from '../../components/NavButton';
 import { CapDartArt } from '../../components/CapDartArt';
+import { Button, Eyebrow, cx } from '../../components/ui';
 import { cssVars } from '../../lib/css-vars';
+import { A_BAR, A_RISE, GoButton, S, SPEC } from '../shared-ui';
 import { CV_FIELDS, CV_FILE } from './data';
 import { OnboardingFrame, StepHeading } from './OnboardingFrame';
 import { nextPath } from './steps';
@@ -21,32 +22,14 @@ const PENCIL = (
   </svg>
 );
 
-const THUMB_LINES = ['90%', '70%', '84%', '56%', '80%', '88%', '62%'];
+const THUMB_LINES = ['w-[90%]', 'w-[70%]', 'w-[84%]', 'w-[56%]', 'w-[80%]', 'w-[88%]', 'w-[62%]'];
 
 /** The CV thumbnail is always white paper, in both themes (it depicts a document). */
 function PaperThumb() {
   return (
-    <div
-      style={{
-        flex: 'none',
-        width: 92,
-        height: 118,
-        borderRadius: 9,
-        border: '1px solid var(--line-2)',
-        background: 'rgb(255 255 255)',
-        padding: '12px 10px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-        boxShadow: '0 6px 18px color-mix(in srgb,var(--ink) 12%,transparent)',
-      }}
-    >
+    <div className="flex h-[118px] w-[92px] flex-none flex-col gap-1.5 rounded-[9px] border border-line-2 bg-[rgb(255_255_255)] px-2.5 py-3 shadow-[0_6px_18px_color-mix(in_srgb,var(--ink)_12%,transparent)]">
       {THUMB_LINES.map((w, i) => (
-        <i
-          key={i}
-          style={{ display: 'block', height: 4, borderRadius: 2, background: 'rgb(17 17 17 / .22)', width: w }}
-        />
+        <i key={i} className={cx('block h-1 rounded-xs bg-[rgb(17_17_17/0.22)]', w)} />
       ))}
     </div>
   );
@@ -61,36 +44,13 @@ export function CvStep() {
         tail="I’ll read it, so you never retype it."
         lede="PDF or DOCX. Every field I find can be checked, and answers update when it changes."
       />
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)',
-          gap: 32,
-        }}
-      >
-        <div style={{ minHeight: 0 }}>
-          <div
-            style={{
-              height: '100%',
-              boxSizing: 'border-box',
-              border: '2px dashed var(--line-2)',
-              borderRadius: 28,
-              background: 'var(--panel)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 18,
-              padding: 32,
-              textAlign: 'center',
-            }}
-          >
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-8">
+        <div className="min-h-0">
+          <div className="flex h-full flex-col items-center justify-center gap-[18px] rounded-[28px] border-2 border-dashed border-line-2 bg-panel p-8 text-center">
             <PaperThumb />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>{CV_FILE.name}</div>
-              <div className="row nw" style={{ gap: 8, color: 'var(--brand-text)', fontSize: 14, fontWeight: 600 }}>
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-[24px] font-semibold tracking-[-0.02em]">{CV_FILE.name}</div>
+              <div className="flex items-center gap-2 text-[14px] font-semibold text-brand-text">
                 <svg
                   width="14"
                   height="14"
@@ -109,98 +69,46 @@ export function CvStep() {
                 </span>
               </div>
             </div>
-            <button className="btn ghost sm" type="button">
+            {/* `.btn.ghost` never had a hover fill, unlike the primitive's ghost variant. */}
+            <Button variant="ghost" size="sm" className="cursor-pointer hover:bg-transparent!">
               Replace file
-            </button>
-            <div className="s" style={{ fontSize: 13 }}>
-              Dropping another file replaces this one.
-            </div>
+            </Button>
+            <div className={cx(S, 'text-[13px]')}>Dropping another file replaces this one.</div>
           </div>
         </div>
-        <div
-          style={{
-            border: '1px solid var(--line)',
-            borderRadius: 28,
-            background: 'var(--bg)',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: 0,
-          }}
-        >
-          <div className="row sp nw" style={{ flex: 'none', padding: '18px 26px 14px', gap: 16 }}>
-            <div className="row nw" style={{ gap: 14, minWidth: 0 }}>
-              <span
-                style={{
-                  flex: 'none',
-                  width: 52,
-                  height: 52,
-                  borderRadius: 14,
-                  background: 'var(--brand-tint)',
-                  display: 'grid',
-                  placeItems: 'center',
-                }}
-              >
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-[28px] border border-line bg-bg">
+          <div className="flex flex-none items-center justify-between gap-4 px-[26px] pt-[18px] pb-3.5">
+            <div className="flex min-w-0 items-center gap-3.5">
+              <span className="grid size-[52px] flex-none place-items-center rounded-[14px] bg-brand-tint">
                 <CapDartArt size={40} />
               </span>
-              <div style={{ minWidth: 0 }}>
-                <div className="eyebrow">Cap is reading</div>
-                <div style={{ fontSize: 19, fontWeight: 600, marginTop: 2 }}>{CV_FILE.name}</div>
+              <div className="min-w-0">
+                <Eyebrow>Cap is reading</Eyebrow>
+                <div className="mt-0.5 text-[19px] font-semibold">{CV_FILE.name}</div>
               </div>
             </div>
-            <span className="spec" style={{ color: 'var(--muted)', flex: 'none' }}>
-              {CV_FIELDS.length} fields found
-            </span>
+            <span className={cx(SPEC, 'flex-none text-muted')}>{CV_FIELDS.length} fields found</span>
           </div>
-          <div
-            style={{
-              flex: 'none',
-              height: 4,
-              background: 'var(--line)',
-              margin: '0 26px',
-              borderRadius: 9,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              className="v17-bar"
-              style={cssVars({ '--dur': '1s', '--d': '.1s' }, { height: 4, background: 'var(--brand)' })}
-            />
+          <div className="mx-[26px] h-1 flex-none overflow-hidden rounded-[9px] bg-line">
+            <div className={cx('h-1 bg-brand [--d:.1s] [--dur:1s]', A_BAR)} />
           </div>
-          <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', paddingBottom: 4 }}>
+          <div className="flex min-h-0 flex-[1_1_auto] flex-col pb-1">
             {CV_FIELDS.map((f) => (
               <div
                 key={f.label}
-                className="v17-rise"
-                style={cssVars(
-                  { '--d': `${f.delay}s` },
-                  {
-                    flex: 'none',
-                    display: 'grid',
-                    gridTemplateColumns: '120px minmax(0,1fr) 20px',
-                    gap: 14,
-                    alignItems: 'center',
-                    padding: '7px 26px',
-                    borderTop: '1px solid var(--line)',
-                  },
+                className={cx(
+                  'grid flex-none grid-cols-[120px_minmax(0,1fr)_20px] items-center gap-3.5 border-t border-line px-[26px] py-[7px]',
+                  A_RISE,
                 )}
+                // Stagger delay comes from the sample data.
+                style={cssVars({ '--d': `${f.delay}s` })}
               >
-                <span className="spec" style={{ color: 'var(--muted)' }}>
-                  {f.label}
-                </span>
-                <div style={{ minWidth: 0, fontSize: 15.5, lineHeight: 1.45 }}>
+                <span className={cx(SPEC, 'text-muted')}>{f.label}</span>
+                <div className="min-w-0 text-[15.5px] leading-[1.45]">
                   {f.chips ? (
-                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {f.chips.map((c) => (
-                        <span
-                          key={c}
-                          style={{
-                            fontSize: 13,
-                            border: '1px solid var(--line)',
-                            borderRadius: 99,
-                            padding: '4px 10px',
-                          }}
-                        >
+                        <span key={c} className="rounded-full border border-line px-2.5 py-1 text-[13px]">
                           {c}
                         </span>
                       ))}
@@ -211,42 +119,35 @@ export function CvStep() {
                       {f.secondary && (
                         <>
                           <br />
-                          <span className="s">{f.secondary}</span>
+                          <span className={cx(S, 'text-[13.5px]')}>{f.secondary}</span>
                         </>
                       )}
                     </>
                   )}
                 </div>
-                <span style={{ color: 'var(--muted)', display: 'grid' }}>{PENCIL}</span>
+                <span className="grid text-muted">{PENCIL}</span>
               </div>
             ))}
           </div>
           <div
-            className="v17-rise"
-            style={cssVars(
-              { '--d': '0s' },
-              {
-                flex: 'none',
-                padding: '14px 26px 18px',
-                borderTop: '1px solid var(--line)',
-                background: 'var(--panel)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              },
+            className={cx(
+              'flex flex-none flex-col gap-2.5 border-t border-line bg-panel px-[26px] pt-3.5 pb-[18px] [--d:0s]',
+              A_RISE,
             )}
           >
             <div>
-              <b style={{ fontSize: 18 }}>Looks right?</b>
-              <div className="s">Every field can be changed. Fix one and I re-check the forms that use it.</div>
+              <b className="text-[18px]">Looks right?</b>
+              <div className={cx(S, 'text-[13.5px]')}>
+                Every field can be changed. Fix one and I re-check the forms that use it.
+              </div>
             </div>
-            <div className="row nw" style={{ gap: 10 }}>
-              <NavButton className="btn pri sm" to={nextPath(2)} style={{ minHeight: 44, padding: '0 22px' }}>
+            <div className="flex items-center gap-2.5">
+              <GoButton to={nextPath(2)} variant="primary" size="sm" className="min-h-11! px-[22px]!">
                 Looks right
-              </NavButton>
-              <button className="btn sm" type="button" style={{ minHeight: 44, padding: '0 20px' }}>
+              </GoButton>
+              <Button size="sm" className="min-h-11! cursor-pointer px-5!">
                 Edit fields
-              </button>
+              </Button>
             </div>
           </div>
         </div>

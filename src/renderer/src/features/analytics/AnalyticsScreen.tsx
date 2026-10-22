@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SegmentedChoice } from '../../components/SegmentedChoice';
+import { H1_STD, IT, V17X } from '../shared-ui';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { FunnelChart, RateTable, ReplyRateChart } from './AnalyticsCharts';
 import {
@@ -27,33 +28,21 @@ export function AnalyticsScreen({ onAsk }: { onAsk?: (topic: string) => void }) 
   const caption = RANGES.find((r) => r.value === range)?.caption ?? '';
   const [applied, replies, interviews, offers] = FUNNEL_STAGES.map((s) => s.value);
   return (
-    <main
-      style={{
-        flex: 1,
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        padding: '24px 40px 40px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div className="row sp nw" style={{ alignItems: 'flex-end', gap: 24, flex: 'none' }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="v17x">Analytics · {caption}</div>
-          <h1 className="h1" style={{ margin: '6px 0 0' }}>
-            What’s <span className="it">working.</span>
+    <main className="flex min-h-0 flex-1 flex-col gap-3.5 px-10 pt-6 pb-10">
+      <div className="flex flex-none items-end justify-between gap-6">
+        <div className="min-w-0">
+          <div className={V17X}>Analytics · {caption}</div>
+          <h1 className={`${H1_STD} mt-1.5`}>
+            What’s <span className={IT}>working.</span>
           </h1>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flex: 'none' }}>
+        <div className="flex flex-none flex-col items-end gap-2">
           <SegmentedChoice label="Range" options={RANGE_OPTIONS} value={range} onChange={setRange} width={300} />
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-            {SPEND_LINE}
-          </span>
+          <span className="font-mono text-[13px] whitespace-nowrap text-muted">{SPEND_LINE}</span>
         </div>
       </div>
       <KpiStrip />
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.3fr)', gap: 16, flex: '0 0 auto' }}>
+      <div className="grid flex-none grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-4">
         <AnalyticsPanel
           title="Funnel"
           sub={`Jobs that reached each stage · ${APPLICATIONS} applications`}
@@ -78,7 +67,7 @@ export function AnalyticsScreen({ onAsk }: { onAsk?: (topic: string) => void }) 
           />
         </AnalyticsPanel>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 16, flex: '0 0 auto' }}>
+      <div className="grid flex-none grid-cols-3 gap-4">
         {BREAKDOWNS.map((b) => (
           <AnalyticsPanel key={b.id} title={b.title} sub={b.sub} read={b.read} onAsk={() => onAsk?.(b.id)}>
             <RateTable rows={b.rows} />
