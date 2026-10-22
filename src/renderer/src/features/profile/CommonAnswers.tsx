@@ -99,7 +99,7 @@ function MarketSwitch({
             aria-label={market ? `${market.name}${market.home ? ' (home)' : ''}` : 'All countries'}
             title={market ? `${market.name}${market.home ? ' · your country' : ''}` : undefined}
             tabIndex={scope === id ? 0 : -1}
-            className="group inline-flex min-h-8 items-center rounded-full bg-transparent px-3 aria-checked:bg-pri aria-checked:text-on-pri!"
+            className="group inline-flex min-h-8 items-center rounded-full bg-transparent px-3 text-[13px]! font-semibold! text-muted! aria-checked:bg-pri aria-checked:text-on-pri!"
             onClick={() => onScope(id)}
             onKeyDown={(e) => move(e, i)}
           >
@@ -140,7 +140,7 @@ function Lines({ lines }: { lines: LineData[] }) {
           {l.action && (
             <button
               type="button"
-              className="min-h-6 flex-none rounded-full border border-need-line bg-need-tint px-2.5 hover:brightness-[0.97]"
+              className="min-h-6 flex-none rounded-full border border-need-line bg-need-tint px-2.5 text-xs! font-semibold! text-need! hover:brightness-[0.97]"
               onClick={l.action.onClick}
             >
               {l.action.label}

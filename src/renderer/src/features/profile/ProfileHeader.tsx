@@ -105,7 +105,7 @@ export function ProfileTabs({
             aria-selected={tab === item.id}
             aria-controls={panelId(item.id)}
             tabIndex={tab === item.id ? 0 : -1}
-            className="-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 border-b-transparent bg-transparent p-0 whitespace-nowrap aria-selected:border-b-ink aria-selected:font-[650]!"
+            className="-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 border-b-transparent bg-transparent p-0 text-[14px]! font-medium! text-ink-2! whitespace-nowrap aria-selected:border-b-ink aria-selected:font-[650]! aria-selected:text-ink!"
             onClick={() => onTab(item.id)}
             onKeyDown={(e) => move(e, i)}
           >

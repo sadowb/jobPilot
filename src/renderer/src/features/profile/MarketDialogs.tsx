@@ -50,7 +50,7 @@ function normalise(m: Market): Market {
 }
 
 const pickButton =
-  'flex min-h-[46px] w-full items-center gap-3 rounded-xl bg-transparent px-3 text-left hover:bg-hover';
+  'flex min-h-[46px] w-full items-center gap-3 rounded-xl bg-transparent px-3 text-sm! text-left hover:bg-hover';
 const countryStatus = (workAuth: WorkAuth) =>
   workAuth === 'authorized' ? (
     <span className="flex-none text-[13px] font-semibold whitespace-nowrap text-brand-text">Can work</span>
