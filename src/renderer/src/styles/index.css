@@ -57,28 +57,6 @@
   --animate-jp-dash: jp-dash 3s linear infinite;
   --animate-jp-dialog-rise: jp-dialog-rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-jp-dialog-fade: jp-dialog-fade 160ms ease-out both;
-  @keyframes jp-caret {
-    0%,
-    49% {
-      opacity: 1;
-    }
-    50%,
-    100% {
-      opacity: 0;
-    }
-  }
-  @keyframes jp-bob {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-8px);
-    }
-  }
-  @keyframes jp-dash {
-    to {
-      stroke-dashoffset: -60;
   --animate-jp-cv-in: jp-cv-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-jp-cv-fade: jp-cv-fade 0.2s ease-out both;
   --animate-jp-peek-in: jp-peek-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -144,6 +122,30 @@
     100% {
       opacity: 0;
       transform: scaleX(1);
+    }
+  }
+  @keyframes jp-caret {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes jp-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  @keyframes jp-dash {
+    to {
+      stroke-dashoffset: -60;
     }
   }
   @keyframes jp-dialog-rise {
