@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { Button, Eyebrow, cx } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { V17MiniPaper } from '../../../components/V17MiniPaper';
@@ -7,51 +7,36 @@ import { longDate, shortDate } from '../format';
 import { STATUS_META } from '../status';
 import type { Application, TimelineEvent } from '../types';
 
-const factCell: CSSProperties = { padding: '4px 0 3px', borderTop: '1px solid var(--line)', minWidth: 0 };
-const factLabel: CSSProperties = { fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase' };
-const factValue: CSSProperties = { fontSize: 13, lineHeight: 1.3, marginTop: 1 };
-const dot: CSSProperties = { position: 'absolute', left: 0, top: 6, width: 9, height: 9, borderRadius: '50%' };
-
 function Fact({ label, children }: { label: string; children: string }) {
   return (
-    <div style={factCell}>
-      <div className="spec" style={factLabel}>
-        {label}
-      </div>
-      <div className="cut" style={factValue}>
-        {children}
-      </div>
+    <div className="min-w-0 border-t border-line pt-1 pb-[3px]">
+      <div className="font-mono text-[10.5px] tracking-[0.06em] text-muted uppercase">{label}</div>
+      <div className="mt-px truncate text-[13px] leading-[1.3]">{children}</div>
     </div>
   );
 }
 
 function Timeline({ events }: { events: TimelineEvent[] }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div className="flex flex-col gap-2">
       {events.map((ev, i) => (
-        <div key={i} style={{ position: 'relative', paddingLeft: 20 }}>
-          {i < events.length - 1 && (
-            <i style={{ position: 'absolute', left: 4, top: 15, bottom: -12, width: 1.5, background: 'var(--line)' }} />
-          )}
+        <div key={i} className="relative pl-5">
+          {i < events.length - 1 && <i className="absolute top-[15px] -bottom-3 left-1 w-[1.5px] bg-line" />}
           <i
-            style={{
-              ...dot,
-              background: ev.tone === 'screening' ? 'var(--st-teal-fg)' : 'var(--muted)',
-              boxShadow: '0 0 0 3px var(--bg)',
-            }}
+            className={cx(
+              'absolute top-1.5 left-0 size-[9px] rounded-full shadow-[0_0_0_3px_var(--bg)]',
+              ev.tone === 'screening' ? 'bg-[var(--st-teal-fg)]' : 'bg-muted',
+            )}
           />
-          <div className="row sp nw" style={{ gap: 10, fontSize: 13, lineHeight: '20px' }}>
-            <span className="cut">{ev.title}</span>
+          <div className="flex flex-nowrap items-center justify-between gap-2.5 text-[13px] leading-5">
+            <span className="truncate">{ev.title}</span>
             {ev.undoLabel && (
-              <a
-                href="#"
-                style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'underline', whiteSpace: 'nowrap' }}
-              >
+              <a href="#" className="text-xs whitespace-nowrap text-muted underline">
                 {ev.undoLabel}
               </a>
             )}
           </div>
-          <div className="s" style={{ fontSize: 12, lineHeight: '16px' }}>
+          <div className="text-xs leading-4 text-muted">
             {shortDate(ev.on)} · {ev.by === 'the agent' ? 'by the agent' : `set by ${ev.by}`}
           </div>
         </div>
@@ -92,27 +77,14 @@ export function PeekPanel({
   return (
     <aside
       aria-label="Application peek"
-      className="pkr"
-      style={{
-        width: 400,
-        flex: 'none',
-        boxSizing: 'border-box',
-        padding: '18px 24px 24px',
-        borderLeft: '1px solid var(--line)',
-        background: 'var(--bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        minHeight: 0,
-        overflow: 'hidden',
-      }}
+      className="box-border flex min-h-0 w-[400px] flex-none animate-jp-peek-in flex-col gap-2 overflow-hidden border-l border-line bg-bg px-6 pt-[18px] pb-6"
     >
-      <div className="row sp nw" style={{ flex: 'none' }}>
-        <span className="spec">
+      <div className="flex flex-none flex-nowrap items-center justify-between gap-3">
+        <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">
           Peek · {position} of {total}
         </span>
-        <span className="row nw" style={{ gap: 8 }}>
-          <span className="row nw s" style={{ gap: 4, fontSize: 12 }}>
+        <span className="flex flex-nowrap items-center gap-2">
+          <span className="flex flex-nowrap items-center gap-1 text-xs text-muted">
             <V17Kbd>J</V17Kbd>
             <V17Kbd>K</V17Kbd>
           </span>
@@ -120,41 +92,24 @@ export function PeekPanel({
             type="button"
             aria-label="Close peek"
             onClick={onClose}
-            style={{
-              flex: 'none',
-              width: 28,
-              height: 28,
-              borderRadius: 99,
-              border: 0,
-              background: 'var(--hover)',
-              color: 'var(--ink-2)',
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 12,
-              padding: 0,
-            }}
+            className="grid size-7 flex-none place-items-center rounded-full border-0 bg-hover p-0 text-xs text-ink-2"
           >
             ✕
           </button>
         </span>
       </div>
-      <div
-        className="pkbody"
-        style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 6 }}
-      >
-        <div className="row nw" style={{ gap: 14, alignItems: 'center' }}>
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden [&>*]:flex-none">
+        <div className="flex flex-nowrap items-center gap-3.5">
           <V17AgentBot name={app.company} state={app.agent} size={44} />
-          <div style={{ minWidth: 0 }}>
-            <div className="h2" style={{ fontSize: 22, lineHeight: 1.15 }}>
-              {app.role}
-            </div>
-            <div className="s" style={{ fontSize: 13, marginTop: 3 }}>
+          <div className="min-w-0">
+            <div className="font-serif text-[22px] leading-[1.15] font-normal tracking-[-0.015em]">{app.role}</div>
+            <div className="mt-[3px] text-[13px] text-muted">
               {app.company} · {app.location} · {app.site}
             </div>
           </div>
         </div>
         <div>
-          <div className="row nw" style={{ gap: 8 }}>
+          <div className="flex flex-nowrap items-center gap-2">
             <V17StatusChip fg={meta.fg} bg={meta.bg}>
               {meta.longLabel}
             </V17StatusChip>
@@ -168,27 +123,22 @@ export function PeekPanel({
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden="true"
-              style={{ flex: 'none' }}
+              className="flex-none"
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
-          <div className="row nw s" style={{ gap: 8, fontSize: 12.5, marginTop: 6 }}>
+          <div className="mt-1.5 flex flex-nowrap items-center gap-2 text-[12.5px] text-muted">
             set by {app.statusSource} · {shortDate(app.statusSetOn)}
-            <span style={{ flex: 1 }} />
+            <span className="flex-1" />
             {canUndo && (
-              <button
-                className="btn sm"
-                type="button"
-                onClick={onUndo}
-                style={{ minHeight: 28, padding: '0 12px', fontSize: 12.5 }}
-              >
+              <Button size="sm" className="min-h-7! px-3! text-[12.5px]!" onClick={onUndo}>
                 Undo
-              </button>
+              </Button>
             )}
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', columnGap: 20 }}>
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-5">
           <Fact label="Applied">{longDate(app.appliedOn)}</Fact>
           <Fact label="Location">{app.location}</Fact>
           <Fact label="Remote / on-site">{app.workMode}</Fact>
@@ -200,79 +150,55 @@ export function PeekPanel({
           <Fact label="Follow up">{d.followUpOn ? shortDate(d.followUpOn) : '—'}</Fact>
           <Fact label="Sponsorship">{d.sponsorship}</Fact>
         </div>
-        <div
-          className="row nw"
-          style={{
-            gap: 14,
-            padding: '8px 12px 8px 10px',
-            border: '1px solid var(--line)',
-            borderRadius: 18,
-            alignItems: 'center',
-          }}
-        >
+        <div className="flex flex-nowrap items-center gap-3.5 rounded-[18px] border border-line py-2 pr-3 pl-2.5">
           <V17MiniPaper />
-          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
-            <div style={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.3 }}>
+          <div className="flex min-w-0 flex-col items-start gap-[3px]">
+            <div className="text-[13.5px] leading-[1.3] font-semibold">
               Sent {shortDate(app.appliedOn)} · {d.cvName}
             </div>
-            <div className="s" style={{ fontSize: 12 }}>
-              {d.cvMeta}
-            </div>
-            <div className="row nw" style={{ gap: 8, marginTop: 4 }}>
-              <button className="btn pri sm" type="button" style={{ minHeight: 30 }} onClick={onOpenCv}>
+            <div className="text-xs text-muted">{d.cvMeta}</div>
+            <div className="mt-1 flex flex-nowrap items-center gap-2">
+              <Button variant="primary" size="sm" className="min-h-[30px]!" onClick={onOpenCv}>
                 View full size
-              </button>
+              </Button>
             </div>
-            <a
-              href="#"
-              style={{
-                fontSize: 12.5,
-                textDecoration: 'underline',
-                textUnderlineOffset: 3,
-                color: 'var(--ink-2)',
-                marginTop: 2,
-              }}
-            >
+            <a href="#" className="mt-0.5 text-[12.5px] text-ink-2 underline underline-offset-[3px]">
               Compare with current
             </a>
           </div>
         </div>
         <div>
-          <div className="row sp nw" style={{ marginBottom: 4 }}>
-            <span className="eyebrow">About the job</span>
-            <a href="#" className="s" style={{ fontSize: 12, textDecoration: 'underline' }}>
+          <div className="mb-1 flex flex-nowrap items-center justify-between gap-3">
+            <Eyebrow>About the job</Eyebrow>
+            <a href="#" className="text-xs text-muted underline">
               Full description
             </a>
           </div>
-          <div className="s" style={{ lineHeight: 1.55, fontSize: 12.5, color: 'var(--ink-2)' }}>
-            {d.description}
-          </div>
+          <div className="text-[12.5px] leading-[1.55] text-ink-2">{d.description}</div>
         </div>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>
-            Your notes
-          </div>
+          <Eyebrow className="mb-1.5">Your notes</Eyebrow>
           <div
-            className="inp"
-            style={{ height: 34, borderRadius: 12, fontSize: 13, color: d.notes ? 'var(--ink)' : 'var(--muted)' }}
+            className={cx(
+              'flex h-[34px] min-w-0 items-center gap-2.5 rounded-xl border border-line-2 bg-bg px-3.5 text-[13px]',
+              d.notes ? 'text-ink' : 'text-muted',
+            )}
           >
             {d.notes || 'Add a note'}
           </div>
         </div>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>
-            Timeline
-          </div>
+          <Eyebrow className="mb-2">Timeline</Eyebrow>
           <Timeline events={timeline} />
         </div>
       </div>
-      <div className="row nw" style={{ flex: 'none', gap: 8, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
-        <button className="btn sm grow" type="button" onClick={onOpenPosting}>
+      <div className="flex flex-none flex-nowrap items-center gap-2 border-t border-line pt-2.5">
+        <Button size="sm" className="min-w-0 flex-1" onClick={onOpenPosting}>
           Open posting · O
-        </button>
-        <button className="btn sm grow" type="button">
+        </Button>
+        <Button size="sm" className="min-w-0 flex-1">
           Answers sent
-        </button>
+        </Button>
       </div>
     </aside>
   );

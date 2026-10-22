@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
+import { Button, cx } from '../../components/ui';
 import { V17Icon } from '../../components/V17Icon';
 import { V17Kbd } from '../../components/V17Kbd';
 import { Pagination } from './components/Pagination';
@@ -21,7 +22,6 @@ import {
 import { actionTargets, queueKeyToResult } from './upnext/queueKeys';
 import { QUEUE_GRID, QueueRow } from './upnext/QueueRow';
 import { UndoToast } from './upnext/UndoToast';
-import './components/dashboard.css';
 
 const CHIPS: { key: QueueFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -33,20 +33,6 @@ const CHIPS: { key: QueueFilter; label: string }[] = [
   { key: 'Sheet', label: 'Sheet' },
 ];
 const HEADERS = ['', '#', 'COMPANY · ROLE', 'SITE', 'EST.', 'FROM', ''] as const;
-
-const chip: CSSProperties = {
-  font: 'inherit',
-  fontSize: 13,
-  border: '1px solid var(--line-2)',
-  borderRadius: 99,
-  padding: '6px 13px',
-  whiteSpace: 'nowrap',
-  flex: 'none',
-  color: 'var(--ink-2)',
-  background: 'transparent',
-  cursor: 'pointer',
-};
-const chipOn: CSSProperties = { ...chip, background: 'var(--pri)', color: 'var(--on-pri)', borderColor: 'var(--pri)' };
 
 const isTextTarget = (t: EventTarget | null): boolean =>
   t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
@@ -119,77 +105,49 @@ export function UpNextView({
     : `CREW ${running} / ${CREW_SIZE} BUSY · ${formatCrewTime(minutes)} LEFT`.toUpperCase();
 
   return (
-    <div className="dash-page">
-      <main
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          padding: '20px 56px 34px',
-          boxSizing: 'border-box',
-          overflowY: 'auto',
-        }}
-      >
-        <div className="row sp nw queue-heading" style={{ alignItems: 'flex-end' }}>
-          <div className="row nw" style={{ gap: 18 }}>
-            <h1 className="h1" style={{ fontSize: 42, margin: 0 }}>
-              Dashboard
-            </h1>
+    <div className="relative flex h-[calc(100vh-var(--app-toolbar-height))]">
+      <main className="box-border flex min-w-0 flex-1 flex-col gap-3.5 overflow-y-auto px-14 pt-5 pb-[34px]">
+        <div className="flex flex-nowrap items-end justify-between gap-3 [@media(width<=1194px)]:flex-wrap [@media(width<=1194px)]:gap-3.5">
+          <div className="flex flex-nowrap items-center gap-[18px]">
+            <h1 className="m-0 font-serif text-[42px] leading-[1.02] font-[350] tracking-[-0.025em]">Dashboard</h1>
             <TabSwitch
               active="up-next"
               appliedCount={SAMPLE_TOTALS.applied}
               upNextCount={state.items.length}
               onChange={onTab}
-              style={{ flex: 'none' }}
+              className="flex-none"
             />
           </div>
-          <div className="row nw" style={{ gap: 10 }}>
+          <div className="flex flex-nowrap items-center gap-2.5">
             <span
-              className="row nw"
+              className="flex h-9 flex-nowrap items-center gap-2 rounded-full border border-line-2 px-3.5 font-mono text-[11.5px] tracking-[0.06em] whitespace-nowrap"
               role="status"
-              style={{
-                gap: 8,
-                height: 36,
-                padding: '0 14px',
-                border: '1px solid var(--line-2)',
-                borderRadius: 99,
-                fontFamily: 'var(--mono)',
-                fontSize: 11.5,
-                letterSpacing: '.06em',
-                whiteSpace: 'nowrap',
-              }}
             >
               <i
-                className={state.paused ? undefined : 'uq-pulse'}
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: state.paused ? 'var(--need)' : 'var(--work)',
-                  display: 'inline-block',
-                }}
+                className={cx(
+                  'inline-block size-[7px] rounded-full',
+                  state.paused ? 'bg-need' : 'animate-jp-pulse bg-work',
+                )}
               />
               {crew}
             </span>
-            <button className="btn sm" type="button" onClick={() => dispatch({ type: 'togglePause' })}>
+            <Button size="sm" onClick={() => dispatch({ type: 'togglePause' })}>
               <V17Icon name={state.paused ? 'play' : 'pause'} />
               {state.paused ? 'Resume queue ' : 'Pause queue '}
               <V17Kbd>P</V17Kbd>
-            </button>
-            <button className="btn sm pri" type="button" onClick={onAddJobs}>
+            </Button>
+            <Button variant="primary" size="sm" onClick={onAddJobs}>
               <V17Icon name="plus" />
               Add jobs <V17Kbd>⌘V</V17Kbd>
-            </button>
+            </Button>
           </div>
         </div>
-        <div className="s" style={{ marginTop: -6, fontSize: 13.5 }}>
+        <div className="-mt-1.5 text-[13.5px] text-muted">
           Up next is the order the crew opens jobs in. Remove or hold anything before it starts. Nothing is sent from
           here.
         </div>
-        <div className="row sp nw" style={{ gap: 16, minWidth: 0 }}>
-          <div className="row nw" style={{ gap: 8, minWidth: 0, flex: 1 }}>
+        <div className="flex min-w-0 flex-nowrap items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <SearchField
               ref={searchRef}
               pill
@@ -201,23 +159,17 @@ export function UpNextView({
             <div
               role="group"
               aria-label="Filter queue"
-              className="row nw"
-              style={{
-                gap: 8,
-                minWidth: 0,
-                overflow: 'hidden',
-                paddingRight: 40,
-                boxSizing: 'border-box',
-                WebkitMaskImage: 'linear-gradient(90deg,#000 calc(100% - 40px),transparent)',
-                maskImage: 'linear-gradient(90deg,#000 calc(100% - 40px),transparent)',
-              }}
+              className="box-border flex min-w-0 flex-nowrap items-center gap-2 overflow-hidden pr-10 [mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)]"
             >
               {CHIPS.map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   aria-pressed={state.filter === key}
-                  style={state.filter === key ? chipOn : chip}
+                  className={cx(
+                    'flex-none cursor-pointer rounded-full border px-[13px] py-1.5 text-[13px] whitespace-nowrap',
+                    state.filter === key ? 'border-pri bg-pri text-on-pri' : 'border-line-2 bg-transparent text-ink-2',
+                  )}
                   onClick={() => dispatch({ type: 'filter', filter: key })}
                 >
                   {label} {counts[key]}
@@ -225,40 +177,26 @@ export function UpNextView({
               ))}
             </div>
           </div>
-          <span className="s nw" style={{ fontSize: 12.5, flex: 'none' }}>
-            Sorted by crew order
-          </span>
+          <span className="flex-none flex-nowrap text-[12.5px] text-muted">Sorted by crew order</span>
         </div>
-        <div className="tbl" role="table" aria-label="Up next" style={{ flex: 'none' }}>
+        <div className="flex-none overflow-hidden rounded-3xl border border-line bg-bg" role="table" aria-label="Up next">
           <div
             role="row"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: QUEUE_GRID,
-              columnGap: 12,
-              alignItems: 'center',
-              padding: '0 14px',
-              background: 'var(--panel)',
-              borderBottom: '1px solid var(--line)',
-            }}
+            className="grid items-center gap-x-3 border-b border-line bg-panel px-3.5"
+            style={{ gridTemplateColumns: QUEUE_GRID }}
           >
             {HEADERS.map((h, i) => (
               <div
                 key={i}
                 role="columnheader"
-                className="spec"
-                style={{ padding: '12px 0', color: 'var(--muted)', whiteSpace: 'nowrap', letterSpacing: '.06em' }}
+                className="py-3 font-mono text-[11.5px] tracking-[0.06em] whitespace-nowrap text-muted"
               >
                 {h}
               </div>
             ))}
           </div>
           {rows.length === 0 && (
-            <div
-              role="status"
-              className="s"
-              style={{ padding: '28px 14px', textAlign: 'center', borderTop: '1px solid var(--line)' }}
-            >
+            <div role="status" className="border-t border-line px-3.5 py-7 text-center text-[13.5px] text-muted">
               {state.items.length === 0 ? 'Nothing queued. Add jobs to start the crew.' : 'No queued jobs match.'}
             </div>
           )}

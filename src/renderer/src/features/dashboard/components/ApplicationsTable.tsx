@@ -1,3 +1,4 @@
+import { cx } from '../../../components/ui';
 import { StatusMenu } from './StatusMenu';
 import { APPLICATION_GRID, ApplicationRow } from './ApplicationRow';
 import { tokenize } from '../filter';
@@ -28,21 +29,14 @@ export function ApplicationsTable({
   const tokens = tokenize(query);
   return (
     <div
-      className="tbl"
+      className={cx('flex-none rounded-3xl border border-line bg-bg', statusMenu ? 'overflow-visible' : 'overflow-hidden')}
       role="table"
       aria-label="Applications"
-      style={{ flex: 'none', overflow: statusMenu ? 'visible' : undefined }}
     >
       <div
-        className="th"
+        className="grid min-h-10 items-center gap-4 px-5 font-mono text-[11.5px] font-medium tracking-[0.08em] text-muted uppercase"
         role="row"
-        style={{
-          gridTemplateColumns: APPLICATION_GRID,
-          gap: 16,
-          padding: '0 20px',
-          minHeight: 40,
-          alignItems: 'center',
-        }}
+        style={{ gridTemplateColumns: APPLICATION_GRID }}
       >
         {HEADERS.map((h) => (
           <div key={h} role="columnheader">

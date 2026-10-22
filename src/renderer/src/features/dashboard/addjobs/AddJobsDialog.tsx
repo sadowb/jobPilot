@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Eyebrow, cx } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
 import { V17Kbd } from '../../../components/V17Kbd';
@@ -6,38 +7,6 @@ import '../../../components/v17-status.css';
 import { shortDate } from '../format';
 import { formatCrewTime } from '../upnext/queue';
 import { parsePaste, summarize, type ParsedLink, type PasteContext } from './parse';
-import './addjobs.css';
-
-const pill: CSSProperties = {
-  display: 'inline-block',
-  fontSize: 12,
-  fontWeight: 600,
-  borderRadius: 99,
-  padding: '3px 10px',
-  whiteSpace: 'nowrap',
-};
-const subline: CSSProperties = { fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-const removeBtn: CSSProperties = {
-  fontSize: 13,
-  marginLeft: 4,
-  display: 'grid',
-  placeItems: 'center',
-  border: 0,
-  background: 'transparent',
-  cursor: 'pointer',
-  padding: 0,
-};
-const tip: CSSProperties = { flex: 1, minWidth: 0, borderTop: '1px solid var(--line)', paddingTop: 12 };
-const rowCard: CSSProperties = {
-  position: 'relative',
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0,1fr)',
-  border: '1px solid var(--line)',
-  borderRadius: 16,
-  padding: '10px 12px',
-  background: 'var(--bg)',
-  overflow: 'hidden',
-};
 
 const TIPS = [
   { key: '⌘V', title: 'Anywhere', body: 'Paste on any screen: an email, Slack, notes.' },
@@ -46,26 +15,28 @@ const TIPS = [
   { key: 'ASK', title: 'Ask Cap', body: '“Add the Greenhouse links from my fall list.”' },
 ] as const;
 
-function statusPill(l: ParsedLink): { label: string; style: CSSProperties } {
+const MUTED_PILL = 'bg-line text-muted';
+
+function statusPill(l: ParsedLink): { label: string; tone: string } {
   switch (l.kind) {
     case 'applied':
       return {
         label: l.appliedOn ? `Already applied · ${shortDate(l.appliedOn)}` : 'Already applied',
-        style: { color: 'var(--muted)', background: 'var(--line)' },
+        tone: MUTED_PILL,
       };
     case 'queued':
-      return { label: 'Already in Up next', style: { color: 'var(--muted)', background: 'var(--line)' } };
+      return { label: 'Already in Up next', tone: MUTED_PILL };
     case 'duplicate':
-      return { label: 'Duplicate in this paste', style: { color: 'var(--muted)', background: 'var(--line)' } };
+      return { label: 'Duplicate in this paste', tone: MUTED_PILL };
     case 'invalid':
-      return { label: 'Not a job page', style: { color: 'var(--st-bad-fg)', background: 'var(--st-bad-bg)' } };
+      return { label: 'Not a job page', tone: 'bg-[var(--st-bad-bg)] text-[var(--st-bad-fg)]' };
     default:
       return l.createsAccount
         ? {
             label: `${l.site} · ~${l.estimateMin} min · creates an account`,
-            style: { color: 'var(--st-amber-fg)', background: 'var(--st-amber-bg)' },
+            tone: 'bg-[var(--st-amber-bg)] text-[var(--st-amber-fg)]',
           }
-        : { label: 'New', style: { color: 'var(--work)', background: 'var(--work-tint)' } };
+        : { label: 'New', tone: 'bg-work-tint text-work' };
   }
 }
 
@@ -75,62 +46,51 @@ function LinkRow({ link, index, onRemove }: { link: ParsedLink; index: number; o
   const delay = 240 + 110 * Math.min(index, 8);
   return (
     <div
-      className="v17a-row"
-      style={{ ...rowCard, ['--d' as string]: `${delay}ms` }}
+      className="relative grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border border-line bg-bg px-3 py-2.5"
+      // Per-row stagger for the read-then-resolve animation (jp-aj-* in styles/index.css).
+      style={{ ['--d' as string]: `${delay}ms` }}
       aria-label={`${link.company}: ${p.label}`}
     >
       <div
-        className="v17a-raw"
+        className="col-start-1 row-start-1 min-w-0 animate-jp-aj-out self-center truncate font-mono text-[12.5px] text-muted opacity-0"
         aria-hidden="true"
-        style={{
-          alignSelf: 'center',
-          fontFamily: 'var(--mono)',
-          fontSize: 12.5,
-          color: 'var(--muted)',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          minWidth: 0,
-        }}
       >
         {link.url}
       </div>
-      <div className="v17a-card" style={{ minWidth: 0 }}>
+      <div className="col-start-1 row-start-1 min-w-0 animate-jp-aj-in">
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            minWidth: 0,
-            opacity: link.kind === 'invalid' ? 0.55 : skipped ? 0.6 : undefined,
-          }}
+          className={cx(
+            'flex min-w-0 items-center gap-3',
+            link.kind === 'invalid' ? 'opacity-55' : skipped && 'opacity-60',
+          )}
         >
           {link.kind === 'invalid' ? (
-            <span
-              style={{ width: 34, height: 34, borderRadius: 10, border: '1px dashed var(--line-2)', flex: 'none' }}
-            />
+            <span className="size-[34px] flex-none rounded-[10px] border border-dashed border-line-2" />
           ) : (
             <V17AgentBot name={link.company} state={skipped ? 'done' : 'idle'} size={34} />
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 14.5 }}>{link.company}</div>
-            <div className="s" style={subline}>
+          <div className="min-w-0 flex-1">
+            <div className="text-[14.5px] font-semibold">{link.company}</div>
+            <div className="truncate text-[12.5px] text-muted">
               {link.kind === 'invalid' ? link.site : `${link.role || 'Role read when opened'} · ${link.site}`}
             </div>
           </div>
-          <span style={{ ...pill, ...p.style }}>{p.label}</span>
+          <span
+            className={cx('inline-block rounded-full px-2.5 py-[3px] text-xs font-semibold whitespace-nowrap', p.tone)}
+          >
+            {p.label}
+          </span>
           <button
             type="button"
-            className="s"
+            className="ml-1 grid cursor-pointer place-items-center border-0 bg-transparent p-0 text-[13px] text-muted"
             aria-label={`Remove ${link.company}`}
-            style={removeBtn}
             onClick={onRemove}
           >
             <V17Icon name="close" />
           </button>
         </div>
       </div>
-      <i className="v17a-bar" />
+      <i className="absolute inset-x-0 bottom-0 h-0.5 origin-left animate-jp-aj-read bg-brand opacity-0" />
     </div>
   );
 }
@@ -218,7 +178,7 @@ export function AddJobsDialog({
   const q = kept.toQueue.length;
   return (
     <>
-      <div className="scrim" style={{ position: 'fixed', inset: 0, zIndex: 20 }} onClick={onClose} />
+      <div className="fixed inset-0 z-20 bg-black/25 backdrop-blur-[8px] dark:bg-black/45" onClick={onClose} />
       <div
         ref={dialogRef}
         role="dialog"
@@ -226,56 +186,30 @@ export function AddJobsDialog({
         aria-label="Add jobs"
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        style={{
-          position: 'fixed',
-          left: '50%',
-          top: 104,
-          transform: 'translateX(-50%)',
-          width: 760,
-          maxHeight: 'calc(100vh - 124px)',
-          overflowY: 'auto',
-          boxSizing: 'border-box',
-          background: 'var(--bg)',
-          border: '1px solid var(--line-2)',
-          borderRadius: 24,
-          boxShadow: 'var(--float)',
-          zIndex: 21,
-          padding: '24px 26px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          outline: 'none',
-        }}
+        className="fixed top-[104px] left-1/2 z-[21] box-border flex max-h-[calc(100vh-124px)] w-[760px] -translate-x-1/2 flex-col overflow-y-auto rounded-3xl border border-line-2 bg-bg px-[26px] py-6 shadow-float outline-none focus-visible:outline-none!"
       >
-        <div className="row sp nw" style={{ alignItems: 'flex-start' }}>
-          <div style={{ minWidth: 0 }}>
-            <div className="eyebrow">Add jobs</div>
-            <div className="h2" style={{ fontSize: 30, marginTop: 6 }}>
-              Paste links, <span className="it">watch them become jobs.</span>
+        <div className="flex flex-nowrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Eyebrow>Add jobs</Eyebrow>
+            <div className="mt-1.5 font-serif text-[30px] leading-tight font-normal tracking-[-0.015em]">
+              Paste links,{' '}
+              <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">watch them become jobs.</span>
             </div>
-            <div className="s" style={{ marginTop: 6, fontSize: 13 }}>
+            <div className="mt-1.5 text-[13px] text-muted">
               Paste anything: links, a whole email, a sheet. Cap reads each link before it joins Up next.
             </div>
           </div>
-          <div className="row nw" style={{ gap: 8, alignSelf: 'flex-start' }}>
+          <div className="flex flex-nowrap items-center gap-2 self-start">
             <V17Kbd>Esc</V17Kbd>
-            <button className="btn sm ghost" type="button" aria-label="Close" onClick={onClose}>
+            <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose}>
               <V17Icon name="close" />
-            </button>
+            </Button>
           </div>
         </div>
-        <div
-          className="row sp nw"
-          style={{
-            marginTop: 18,
-            border: '1.5px dashed var(--line-2)',
-            borderRadius: 16,
-            padding: '12px 16px',
-            gap: 12,
-          }}
-        >
+        <div className="mt-[18px] flex flex-nowrap items-center justify-between gap-3 rounded-2xl border-[1.5px] border-dashed border-line-2 px-4 py-3">
           {empty ? (
             <textarea
-              className="v17a-paste"
+              className="min-h-11 w-full resize-none border-0 bg-transparent text-[13.5px] text-ink outline-0 placeholder:text-muted focus-visible:outline-0!"
               aria-label="Paste links, an email, or a sheet"
               placeholder="Paste links, an email, or a sheet here (⌘V)"
               rows={2}
@@ -293,26 +227,22 @@ export function AddJobsDialog({
               onBlur={commitDraft}
             />
           ) : (
-            <span className="row nw" style={{ gap: 10, fontSize: 13.5, minWidth: 0 }}>
-              <span className="spec" style={{ color: 'var(--ink-2)', letterSpacing: '.06em' }}>
-                ⌘V
-              </span>
+            <span className="flex min-w-0 flex-nowrap items-center gap-2.5 text-[13.5px]">
+              <span className="font-mono text-[11.5px] tracking-[0.06em] text-ink-2">⌘V</span>
               {n} {n === 1 ? 'link' : 'links'} pasted · {q} {q === 1 ? 'job' : 'jobs'} to queue · {kept.skipped} skipped
             </span>
           )}
-          <span className="s" style={{ fontFamily: 'var(--mono)', fontSize: 11.5, whiteSpace: 'nowrap' }}>
-            from · {from}
-          </span>
+          <span className="font-mono text-[11.5px] whitespace-nowrap text-muted">from · {from}</span>
         </div>
         {n > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+          <div className="mt-3.5 flex flex-col gap-2">
             {kept.links.map((l, i) => (
               <LinkRow key={l.key} link={l} index={i} onRemove={() => setDropped((d) => new Set(d).add(l.key))} />
             ))}
           </div>
         )}
-        <div className="row sp nw" style={{ marginTop: 16 }}>
-          <span className="s" style={{ fontSize: 13 }}>
+        <div className="mt-4 flex flex-nowrap items-center justify-between gap-3">
+          <span className="text-[13px] text-muted">
             {q} to queue · {formatCrewTime(kept.minutes)} crew time
             {kept.accounts > 0 && (
               <>
@@ -321,31 +251,21 @@ export function AddJobsDialog({
               </>
             )}
           </span>
-          <div className="row nw" style={{ gap: 8 }}>
-            <button className="btn sm ghost" type="button" onClick={onClose}>
+          <div className="flex flex-nowrap items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              className="btn sm pri"
-              type="button"
-              disabled={q === 0}
-              onClick={queue}
-              style={q === 0 ? { opacity: 0.5 } : undefined}
-            >
+            </Button>
+            <Button variant="primary" size="sm" disabled={q === 0} onClick={queue}>
               Queue {q} <V17Kbd>↵</V17Kbd>
-            </button>
+            </Button>
           </div>
         </div>
-        <div className="row nw" style={{ gap: 18, marginTop: 20, alignItems: 'flex-start' }}>
+        <div className="mt-5 flex flex-nowrap items-start gap-[18px]">
           {TIPS.map((t) => (
-            <div key={t.key} style={tip}>
-              <span className="spec" style={{ color: 'var(--ink-2)', letterSpacing: '.06em' }}>
-                {t.key}
-              </span>
-              <div style={{ fontWeight: 600, fontSize: 13.5, marginTop: 6 }}>{t.title}</div>
-              <div className="s" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: 2 }}>
-                {t.body}
-              </div>
+            <div key={t.key} className="min-w-0 flex-1 border-t border-line pt-3">
+              <span className="font-mono text-[11.5px] tracking-[0.06em] text-ink-2">{t.key}</span>
+              <div className="mt-1.5 text-[13.5px] font-semibold">{t.title}</div>
+              <div className="mt-0.5 text-[12.5px] leading-[1.45] text-muted">{t.body}</div>
             </div>
           ))}
         </div>

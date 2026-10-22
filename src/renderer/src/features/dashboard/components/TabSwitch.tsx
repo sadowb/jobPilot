@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { Segmented } from '../../../components/ui';
 
 export type DashboardTab = 'applied' | 'up-next';
 
@@ -8,33 +8,24 @@ export function TabSwitch({
   appliedCount,
   upNextCount,
   onChange,
-  style,
+  className,
 }: {
   active: DashboardTab;
   appliedCount: number;
   upNextCount: number;
   onChange: (tab: DashboardTab) => void;
-  style?: CSSProperties;
+  className?: string;
 }) {
-  const tab = (key: DashboardTab, label: string, count: number) => (
-    <span
-      role="tab"
-      tabIndex={0}
-      aria-selected={active === key}
-      className={active === key ? 'on' : undefined}
-      onClick={() => onChange(key)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onChange(key);
-      }}
-      style={{ cursor: 'pointer' }}
-    >
-      {label} <b>{count}</b>
-    </span>
-  );
   return (
-    <div className="seg" role="tablist" aria-label="Dashboard view" style={style}>
-      {tab('applied', 'Applied', appliedCount)}
-      {tab('up-next', 'Up next', upNextCount)}
-    </div>
+    <Segmented
+      label="Dashboard view"
+      value={active}
+      onChange={onChange}
+      className={className}
+      options={[
+        { key: 'applied', label: 'Applied', count: appliedCount },
+        { key: 'up-next', label: 'Up next', count: upNextCount },
+      ]}
+    />
   );
 }

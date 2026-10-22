@@ -6,10 +6,7 @@ export function Highlighted({ text, tokens }: { text: string; tokens: string[] }
     <>
       {highlight(text, tokens).map((seg, i) =>
         seg.hit ? (
-          <mark
-            key={i}
-            style={{ background: 'var(--need-tint)', color: 'var(--ink)', borderRadius: 4, padding: '0 2px' }}
-          >
+          <mark key={i} className="rounded-[4px] bg-need-tint px-0.5 text-ink">
             {seg.text}
           </mark>
         ) : (

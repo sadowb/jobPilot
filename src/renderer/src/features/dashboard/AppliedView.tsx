@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, type Dispatch } from 'react';
+import { Button } from '../../components/ui';
 import { CvViewerDialog } from './components/CvViewerDialog';
 import { ApplicationsTable } from './components/ApplicationsTable';
 import { EmptyResults } from './components/EmptyResults';
@@ -18,7 +19,6 @@ import { todayIso } from './format';
 import type { KeyEffect } from './keys';
 import type { ApplicationStatus } from './types';
 import { useDashboardKeys } from './useDashboardKeys';
-import './components/dashboard.css';
 
 const BASE_COUNTS = countByFilter(SAMPLE_APPLICATIONS, '');
 
@@ -81,44 +81,28 @@ export function AppliedView({
   const pickStatus = (status: ApplicationStatus) => dispatch({ type: 'setStatus', status, today: todayIso() });
 
   return (
-    <div className="dash-page">
-      <main
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          padding: '20px 56px 34px',
-          boxSizing: 'border-box',
-          overflowY: 'auto',
-        }}
-      >
-        <div className="row sp nw" style={{ gap: 24, alignItems: 'flex-end' }}>
-          <div style={{ minWidth: 0 }}>
-            <div className="row nw" style={{ gap: 18 }}>
-              <h1 className="h1" style={{ fontSize: 42, margin: 0 }}>
-                Dashboard
-              </h1>
+    <div className="relative flex h-[calc(100vh-var(--app-toolbar-height))]">
+      <main className="box-border flex min-w-0 flex-1 flex-col gap-3.5 overflow-y-auto px-14 pt-5 pb-[34px]">
+        <div className="flex flex-nowrap items-end justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex flex-nowrap items-center gap-[18px]">
+              <h1 className="m-0 font-serif text-[42px] leading-[1.02] font-[350] tracking-[-0.025em]">Dashboard</h1>
               <TabSwitch
                 active="applied"
                 appliedCount={SAMPLE_TOTALS.applied}
                 upNextCount={upNextCount}
                 onChange={onTab}
-                style={{ flex: 'none' }}
+                className="flex-none"
               />
             </div>
           </div>
-          <button className="btn pri sm" type="button" style={{ flex: 'none' }} onClick={onAddJobs}>
+          <Button variant="primary" size="sm" className="flex-none" onClick={onAddJobs}>
             Add jobs
-            <span style={{ opacity: 0.6, marginLeft: 8, fontFamily: 'var(--mono)', fontSize: 12 }}>⌘V</span>
-          </button>
+            <span className="ml-2 font-mono text-xs opacity-60">⌘V</span>
+          </Button>
         </div>
         <MetricRow />
-        <div
-          className="row nw applied-search-tools"
-          style={{ gap: 12, justifyContent: 'space-between', alignItems: 'center', minWidth: 0 }}
-        >
+        <div className="flex min-w-0 flex-nowrap items-center justify-between gap-3 [@media(width<=1194px)]:flex-wrap [@media(width<=1194px)]:items-stretch [@media(width<=1194px)]:[&>[role=group]]:w-full">
           <SearchField ref={searchRef} value={state.query} onChange={(query) => dispatch({ type: 'query', query })} />
           <FilterChips
             counts={counts}

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cx } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17StatusChip } from '../../../components/V17StatusChip';
 import { shortDate } from '../format';
@@ -31,47 +32,42 @@ export function ApplicationRow({
       role="row"
       aria-selected={selected}
       data-row-id={app.id}
-      className={selected ? 'tr sel' : 'tr'}
+      className={cx(
+        'grid min-h-[46px] cursor-pointer items-center gap-4 border-t border-line bg-bg px-5 text-[13.5px] hover:bg-panel',
+        selected && 'bg-panel shadow-[inset_3px_0_0_var(--ink)]',
+      )}
       onClick={onSelect}
-      style={{
-        gridTemplateColumns: APPLICATION_GRID,
-        gap: 16,
-        minHeight: 46,
-        padding: '0 20px',
-        fontSize: 13.5,
-        cursor: 'pointer',
-      }}
+      style={{ gridTemplateColumns: APPLICATION_GRID }}
     >
-      <div className="row nw" style={{ gap: 12, minWidth: 0 }}>
+      <div className="flex min-w-0 flex-nowrap items-center gap-3">
         <V17AgentBot name={app.company} state={app.agent} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="cut" style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.25 }}>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm leading-tight font-semibold">
             <Highlighted text={app.company} tokens={tokens} />
           </div>
-          <div className="cut s" style={{ fontSize: 12.5, lineHeight: 1.35 }}>
+          <div className="truncate text-[12.5px] leading-[1.35] text-muted">
             <Highlighted text={app.role} tokens={tokens} />
           </div>
         </div>
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div className="cut" style={{ fontSize: 13.5 }}>
+      <div className="min-w-0">
+        <div className="truncate text-[13.5px]">
           <Highlighted text={app.location} tokens={tokens} />
         </div>
-        <div className="s" style={{ fontSize: 12 }}>
+        <div className="text-xs text-muted">
           <Highlighted text={app.workMode} tokens={tokens} />
         </div>
       </div>
-      <span className="row nw" style={{ gap: 6, position: 'relative', minWidth: 0 }}>
+      <span className="relative flex min-w-0 flex-nowrap items-center gap-1.5">
         <button
           type="button"
-          className="row nw dash-iconbtn"
+          className="flex min-w-0 flex-nowrap items-center gap-1.5 border-0 bg-transparent p-0"
           aria-label={`Status: ${meta.longLabel}. Change status`}
           aria-haspopup="listbox"
           onClick={(e) => {
             e.stopPropagation();
             onOpenStatus();
           }}
-          style={{ gap: 6, padding: 0, border: 0, background: 'transparent', minWidth: 0 }}
         >
           <V17StatusChip fg={meta.fg} bg={meta.bg}>
             {meta.label}
@@ -86,22 +82,16 @@ export function ApplicationRow({
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
-            style={{ flex: 'none' }}
+            className="flex-none"
           >
             <path d="M6 9l6 6 6-6" />
           </svg>
         </button>
         {menu}
       </span>
-      <span className="s" style={{ fontSize: 13, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
-        {app.salary}
-      </span>
-      <span className="s cut" style={{ fontSize: 13 }}>
-        {app.site}
-      </span>
-      <span className="s" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-        {shortDate(app.appliedOn)}
-      </span>
+      <span className="text-[13px] whitespace-nowrap text-ink-2">{app.salary}</span>
+      <span className="truncate text-[13px] text-muted">{app.site}</span>
+      <span className="text-[13px] whitespace-nowrap text-muted">{shortDate(app.appliedOn)}</span>
     </div>
   );
 }
