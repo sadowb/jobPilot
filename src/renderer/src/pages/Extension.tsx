@@ -17,7 +17,9 @@ export function Extension() {
   const [open, setOpen] = useState(true);
   return (
     <div className="relative min-h-full bg-ground font-sans text-[15px] text-ink">
-      <div className="hidden [[data-platform=darwin]_&]:flex sticky top-0 z-[1] h-[var(--app-toolbar-height)] items-center justify-center bg-ground font-sans text-xs leading-normal text-muted select-none [-webkit-app-region:drag] [app-region:drag]">JobPilot · Extension preview</div>
+      <div className="hidden [[data-platform=darwin]_&]:flex sticky top-0 z-[1] h-[var(--app-toolbar-height)] items-center justify-center bg-ground font-sans text-[12px] leading-normal text-muted select-none [-webkit-app-region:drag] [app-region:drag]">
+        JobPilot · Extension preview
+      </div>
       <div className="box-border flex flex-col gap-[18px] px-10 pt-7 pb-10">
         <div className="flex flex-nowrap items-end justify-between gap-3">
           <div>
@@ -44,7 +46,7 @@ export function Extension() {
         <div className="flex flex-nowrap items-stretch gap-5">
           <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-3xl border border-line bg-bg p-6">
             <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">State 1 · choose</span>
-            <div className="text-base leading-[1.35] font-semibold">
+            <div className="text-[16px] leading-[1.35] font-semibold">
               Only ticked links are sent. The popup reads the links, not the page.
             </div>
             <div className="text-[13px] leading-[1.6] text-muted">

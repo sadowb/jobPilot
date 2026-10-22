@@ -29,7 +29,10 @@ export function ApplicationsTable({
   const tokens = tokenize(query);
   return (
     <div
-      className={cx('flex-none rounded-3xl border border-line bg-bg', statusMenu ? 'overflow-visible' : 'overflow-hidden')}
+      className={cx(
+        'flex-none rounded-3xl border border-line bg-bg',
+        statusMenu ? 'overflow-visible' : 'overflow-hidden',
+      )}
       role="table"
       aria-label="Applications"
     >

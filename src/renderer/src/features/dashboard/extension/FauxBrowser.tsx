@@ -72,7 +72,7 @@ export function FauxBrowser({
           aria-label="JobPilot"
           aria-expanded={popupOpen}
           onClick={onTogglePopup}
-          className="relative ml-auto grid size-9 cursor-pointer place-items-center rounded-[11px] border border-brand bg-brand-tint p-0 text-brand-text"
+          className="relative ml-auto grid size-9 cursor-pointer place-items-center rounded-[11px] border border-brand bg-brand-tint p-0 text-brand-text!"
         >
           <ToolbarDart />
           <span className="absolute -top-[7px] -right-[7px] box-border grid h-5 min-w-5 place-items-center rounded-full bg-pri px-1.5 text-[11px] font-bold text-on-pri">
@@ -88,7 +88,9 @@ export function FauxBrowser({
         <div className="mt-[26px] flex flex-nowrap items-center justify-between gap-3">
           <div>
             <Eyebrow>Careers</Eyebrow>
-            <div className="mt-1.5 font-serif text-[34px] leading-tight font-normal tracking-[-0.015em]">Open roles</div>
+            <div className="mt-1.5 font-serif text-[34px] leading-tight font-normal tracking-[-0.015em]">
+              Open roles
+            </div>
           </div>
           <span className="text-[13px] text-muted">{badge} roles · Engineering, Sales, Data</span>
         </div>

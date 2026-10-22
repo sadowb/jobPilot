@@ -78,7 +78,7 @@ export function StatusMenu({
                   {meta.longLabel}
                 </V17StatusChip>
                 <span className="flex-1" />
-                {s === current && <span className="text-xs font-bold text-ink">✓</span>}
+                {s === current && <span className="text-[12px] font-bold text-ink">✓</span>}
               </div>
             );
           })}

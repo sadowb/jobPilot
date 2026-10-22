@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, type Dispatch } from 'react';
-import { Button } from '../../components/ui';
+import { AppButton } from './components/AppButton';
+
 import { CvViewerDialog } from './components/CvViewerDialog';
 import { ApplicationsTable } from './components/ApplicationsTable';
 import { EmptyResults } from './components/EmptyResults';
@@ -96,10 +97,10 @@ export function AppliedView({
               />
             </div>
           </div>
-          <Button variant="primary" size="sm" className="flex-none" onClick={onAddJobs}>
+          <AppButton variant="primary" size="sm" className="flex-none" onClick={onAddJobs}>
             Add jobs
-            <span className="ml-2 font-mono text-xs opacity-60">⌘V</span>
-          </Button>
+            <span className="ml-2 font-mono text-[12px] opacity-60">⌘V</span>
+          </AppButton>
         </div>
         <MetricRow />
         <div className="flex min-w-0 flex-nowrap items-center justify-between gap-3 [@media(width<=1194px)]:flex-wrap [@media(width<=1194px)]:items-stretch [@media(width<=1194px)]:[&>[role=group]]:w-full">

@@ -1,5 +1,5 @@
 import { V17CapDart } from '../../../components/V17CapDart';
-import { Button } from '../../../components/ui';
+import { AppButton } from './AppButton';
 
 /** Empty search result (board Dash_Empty): Cap on the dart, what was searched, and the two ways out. */
 export function EmptyResults({
@@ -25,17 +25,17 @@ export function EmptyResults({
       <div className="mt-2 font-serif text-[30px] leading-[1.1] font-normal tracking-[-0.015em]">
         No jobs match <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">“{query}”</span>
       </div>
-      <div className="max-w-[470px] text-sm leading-[1.55] text-muted">
+      <div className="max-w-[470px] text-[14px] leading-[1.55] text-muted">
         Search covers company, role, location and work mode across your {appliedTotal} applied jobs.
         {upNextCompany ? ` ${upNextCompany} is still in Up next, so it isn’t here yet.` : ''}
       </div>
       <div className="mt-2 flex flex-nowrap items-center gap-2">
-        <Button variant="primary" size="sm" onClick={onClear}>
+        <AppButton variant="primary" size="sm" onClick={onClear}>
           Clear filters
-        </Button>
-        <Button size="sm" onClick={onOpenUpNext}>
+        </AppButton>
+        <AppButton size="sm" onClick={onOpenUpNext}>
           Open Up next
-        </Button>
+        </AppButton>
       </div>
     </div>
   );

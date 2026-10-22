@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
-import { Button, cx } from '../../components/ui';
+import { AppButton } from './components/AppButton';
+import { cx } from '../../components/ui';
 import { V17Icon } from '../../components/V17Icon';
 import { V17Kbd } from '../../components/V17Kbd';
 import { Pagination } from './components/Pagination';
@@ -126,20 +127,22 @@ export function UpNextView({
               <i
                 className={cx(
                   'inline-block size-[7px] rounded-full',
-                  state.paused ? 'bg-need' : 'animate-jp-pulse bg-work',
+                  state.paused
+                    ? 'bg-need'
+                    : 'animate-jp-pulse bg-work motion-reduce:animate-none motion-reduce:opacity-100',
                 )}
               />
               {crew}
             </span>
-            <Button size="sm" onClick={() => dispatch({ type: 'togglePause' })}>
+            <AppButton size="sm" onClick={() => dispatch({ type: 'togglePause' })}>
               <V17Icon name={state.paused ? 'play' : 'pause'} />
               {state.paused ? 'Resume queue ' : 'Pause queue '}
               <V17Kbd>P</V17Kbd>
-            </Button>
-            <Button variant="primary" size="sm" onClick={onAddJobs}>
+            </AppButton>
+            <AppButton variant="primary" size="sm" onClick={onAddJobs}>
               <V17Icon name="plus" />
               Add jobs <V17Kbd>⌘V</V17Kbd>
-            </Button>
+            </AppButton>
           </div>
         </div>
         <div className="-mt-1.5 text-[13.5px] text-muted">
@@ -167,8 +170,10 @@ export function UpNextView({
                   type="button"
                   aria-pressed={state.filter === key}
                   className={cx(
-                    'flex-none cursor-pointer rounded-full border px-[13px] py-1.5 text-[13px] whitespace-nowrap',
-                    state.filter === key ? 'border-pri bg-pri text-on-pri' : 'border-line-2 bg-transparent text-ink-2',
+                    'flex-none cursor-pointer rounded-full border px-[13px] py-1.5 text-[13px]! whitespace-nowrap',
+                    state.filter === key
+                      ? 'border-pri bg-pri text-on-pri!'
+                      : 'border-line-2 bg-transparent text-ink-2!',
                   )}
                   onClick={() => dispatch({ type: 'filter', filter: key })}
                 >
@@ -179,7 +184,11 @@ export function UpNextView({
           </div>
           <span className="flex-none flex-nowrap text-[12.5px] text-muted">Sorted by crew order</span>
         </div>
-        <div className="flex-none overflow-hidden rounded-3xl border border-line bg-bg" role="table" aria-label="Up next">
+        <div
+          className="flex-none overflow-hidden rounded-3xl border border-line bg-bg"
+          role="table"
+          aria-label="Up next"
+        >
           <div
             role="row"
             className="grid items-center gap-x-3 border-b border-line bg-panel px-3.5"

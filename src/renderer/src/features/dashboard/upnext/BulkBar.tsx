@@ -1,7 +1,7 @@
 import { V17Kbd } from '../../../components/V17Kbd';
 
 const action =
-  'inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent px-3 text-[13.5px] whitespace-nowrap text-inherit hover:bg-white/12';
+  'inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent px-3 text-[13.5px]! whitespace-nowrap text-inherit hover:bg-white/12';
 
 /** Floating toolbar for the current selection: Remove, Hold, Move to top; Esc clears. */
 export function BulkBar({
@@ -31,7 +31,7 @@ export function BulkBar({
       <button type="button" className={action} onClick={onMoveToTop}>
         Move to top <V17Kbd>⇧↑</V17Kbd>
       </button>
-      <span className="ml-auto inline-flex h-9 items-center gap-2 rounded-full px-3 text-[13.5px] whitespace-nowrap opacity-75">
+      <span className="ml-auto inline-flex h-9 items-center gap-2 rounded-full px-3 text-[13.5px]! whitespace-nowrap opacity-75">
         Esc clears
       </span>
     </div>

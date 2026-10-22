@@ -59,8 +59,9 @@ export const SearchField = forwardRef<
         <button
           type="button"
           aria-label="Clear search"
-          className="grid size-[22px] flex-none place-items-center rounded-full border-0 bg-hover p-0 text-[11px] text-ink-2"
-          onClick={() => onChange('')}>
+          className="grid size-[22px] flex-none place-items-center rounded-full border-0 bg-hover p-0 text-[11px]! text-ink-2!"
+          onClick={() => onChange('')}
+        >
           ✕
         </button>
       ) : (

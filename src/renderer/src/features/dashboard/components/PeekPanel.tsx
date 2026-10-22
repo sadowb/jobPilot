@@ -1,4 +1,5 @@
-import { Button, Eyebrow, cx } from '../../../components/ui';
+import { Eyebrow, cx } from '../../../components/ui';
+import { AppButton } from './AppButton';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { V17MiniPaper } from '../../../components/V17MiniPaper';
@@ -31,12 +32,12 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
           <div className="flex flex-nowrap items-center justify-between gap-2.5 text-[13px] leading-5">
             <span className="truncate">{ev.title}</span>
             {ev.undoLabel && (
-              <a href="#" className="text-xs whitespace-nowrap text-muted underline">
+              <a href="#" className="text-[12px] whitespace-nowrap text-muted! underline!">
                 {ev.undoLabel}
               </a>
             )}
           </div>
-          <div className="text-xs leading-4 text-muted">
+          <div className="text-[12px] leading-4 text-muted">
             {shortDate(ev.on)} · {ev.by === 'the agent' ? 'by the agent' : `set by ${ev.by}`}
           </div>
         </div>
@@ -77,14 +78,14 @@ export function PeekPanel({
   return (
     <aside
       aria-label="Application peek"
-      className="box-border flex min-h-0 w-[400px] flex-none animate-jp-peek-in flex-col gap-2 overflow-hidden border-l border-line bg-bg px-6 pt-[18px] pb-6"
+      className="box-border flex min-h-0 w-[400px] flex-none animate-jp-peek-in flex-col motion-reduce:animate-none gap-2 overflow-hidden border-l border-line bg-bg px-6 pt-[18px] pb-6"
     >
       <div className="flex flex-none flex-nowrap items-center justify-between gap-3">
-        <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">
+        <span className="font-mono text-[11.5px] tracking-[0.02em] text-muted">
           Peek · {position} of {total}
         </span>
         <span className="flex flex-nowrap items-center gap-2">
-          <span className="flex flex-nowrap items-center gap-1 text-xs text-muted">
+          <span className="flex flex-nowrap items-center gap-1 text-[12px] text-muted">
             <V17Kbd>J</V17Kbd>
             <V17Kbd>K</V17Kbd>
           </span>
@@ -92,7 +93,7 @@ export function PeekPanel({
             type="button"
             aria-label="Close peek"
             onClick={onClose}
-            className="grid size-7 flex-none place-items-center rounded-full border-0 bg-hover p-0 text-xs text-ink-2"
+            className="grid size-7 flex-none place-items-center rounded-full border-0 bg-hover p-0 text-[12px]! text-ink-2!"
           >
             ✕
           </button>
@@ -132,9 +133,9 @@ export function PeekPanel({
             set by {app.statusSource} · {shortDate(app.statusSetOn)}
             <span className="flex-1" />
             {canUndo && (
-              <Button size="sm" className="min-h-7! px-3! text-[12.5px]!" onClick={onUndo}>
+              <AppButton size="sm" className="min-h-7! px-3! text-[12.5px]!" onClick={onUndo}>
                 Undo
-              </Button>
+              </AppButton>
             )}
           </div>
         </div>
@@ -156,13 +157,13 @@ export function PeekPanel({
             <div className="text-[13.5px] leading-[1.3] font-semibold">
               Sent {shortDate(app.appliedOn)} · {d.cvName}
             </div>
-            <div className="text-xs text-muted">{d.cvMeta}</div>
+            <div className="text-[12px] text-muted">{d.cvMeta}</div>
             <div className="mt-1 flex flex-nowrap items-center gap-2">
-              <Button variant="primary" size="sm" className="min-h-[30px]!" onClick={onOpenCv}>
+              <AppButton variant="primary" size="sm" className="min-h-[30px]!" onClick={onOpenCv}>
                 View full size
-              </Button>
+              </AppButton>
             </div>
-            <a href="#" className="mt-0.5 text-[12.5px] text-ink-2 underline underline-offset-[3px]">
+            <a href="#" className="mt-0.5 text-[12.5px] text-ink-2! underline! underline-offset-[3px]">
               Compare with current
             </a>
           </div>
@@ -170,7 +171,7 @@ export function PeekPanel({
         <div>
           <div className="mb-1 flex flex-nowrap items-center justify-between gap-3">
             <Eyebrow>About the job</Eyebrow>
-            <a href="#" className="text-xs text-muted underline">
+            <a href="#" className="text-[12px] text-muted! underline!">
               Full description
             </a>
           </div>
@@ -193,12 +194,12 @@ export function PeekPanel({
         </div>
       </div>
       <div className="flex flex-none flex-nowrap items-center gap-2 border-t border-line pt-2.5">
-        <Button size="sm" className="min-w-0 flex-1" onClick={onOpenPosting}>
+        <AppButton size="sm" className="min-w-0 flex-1" onClick={onOpenPosting}>
           Open posting · O
-        </Button>
-        <Button size="sm" className="min-w-0 flex-1">
+        </AppButton>
+        <AppButton size="sm" className="min-w-0 flex-1">
           Answers sent
-        </Button>
+        </AppButton>
       </div>
     </aside>
   );

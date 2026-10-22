@@ -37,7 +37,7 @@ export function QueueRow(p: QueueRowProps) {
   const tag = stageTag(item);
   const showActions = (p.cursor || p.selected) && draggable;
   const iconBtn =
-    'inline-grid size-[30px] flex-none cursor-pointer place-items-center rounded-[9px] border border-line bg-bg p-0 text-ink-2';
+    'inline-grid size-[30px] flex-none cursor-pointer place-items-center rounded-[9px] border border-line bg-bg p-0 text-ink-2!';
 
   return (
     <div
@@ -68,7 +68,7 @@ export function QueueRow(p: QueueRowProps) {
             aria-checked={p.selected}
             aria-label={`Select ${item.company}`}
             className={cx(
-              'grid size-[18px] cursor-pointer place-items-center rounded-[5px] border-[1.5px] p-0 text-on-pri',
+              'grid size-[18px] cursor-pointer place-items-center rounded-[5px] border-[1.5px] p-0 text-on-pri!',
               p.selected ? 'border-pri bg-pri' : 'border-line-2 bg-transparent',
             )}
             onClick={p.onToggle}
@@ -120,12 +120,12 @@ export function QueueRow(p: QueueRowProps) {
         )}
         {item.stage === 'waiting' && (
           <span className="flex flex-nowrap items-center gap-2.5 whitespace-nowrap">
-            <span className="inline-block rounded-full bg-[var(--st-amber-bg)] px-2.5 py-[3px] text-xs font-semibold whitespace-nowrap text-[var(--st-amber-fg)]">
+            <span className="inline-block rounded-full bg-[var(--st-amber-bg)] px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap text-[var(--st-amber-fg)]">
               {item.waitReason}
             </span>
             <button
               type="button"
-              className="flex cursor-pointer flex-nowrap items-center gap-1 border-0 bg-transparent p-0 text-[12.5px] font-semibold text-brand-text"
+              className="flex cursor-pointer flex-nowrap items-center gap-1 border-0 bg-transparent p-0 text-[12.5px]! font-semibold! text-brand-text!"
               onClick={p.onOpenInbox}
             >
               Inbox
@@ -158,13 +158,7 @@ export function QueueRow(p: QueueRowProps) {
               </button>
             )}
             {showActions && (
-              <button
-                type="button"
-                className={iconBtn}
-                title="Remove (⌫)"
-                aria-label="Remove (⌫)"
-                onClick={p.onRemove}
-              >
+              <button type="button" className={iconBtn} title="Remove (⌫)" aria-label="Remove (⌫)" onClick={p.onRemove}>
                 <V17Icon name="close" />
               </button>
             )}

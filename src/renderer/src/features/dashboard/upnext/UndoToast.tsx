@@ -23,18 +23,15 @@ export function UndoToast({ batch, now, onUndo }: { batch: RemovedBatch; now: nu
         </span>
         <button
           type="button"
-          className="flex cursor-pointer flex-nowrap items-center gap-1.5 border-0 bg-transparent p-0 font-[650] whitespace-nowrap text-brand-text"
+          className="flex cursor-pointer flex-nowrap items-center gap-1.5 border-0 bg-transparent p-0 font-[650]! whitespace-nowrap text-brand-text!"
           onClick={onUndo}
         >
           Undo <V17Kbd>⌘Z</V17Kbd>
         </button>
-        <span className="font-mono text-xs text-muted tabular-nums">{Math.ceil(left / 1000)} s</span>
+        <span className="font-mono text-[12px] text-muted tabular-nums">{Math.ceil(left / 1000)} s</span>
       </div>
       <div className="h-0.5 bg-line">
-        <i
-          className="block h-0.5 bg-brand"
-          style={{ width: `${Math.floor((left / UNDO_WINDOW_MS) * 100)}%` }}
-        />
+        <i className="block h-0.5 bg-brand" style={{ width: `${Math.floor((left / UNDO_WINDOW_MS) * 100)}%` }} />
       </div>
     </div>
   );

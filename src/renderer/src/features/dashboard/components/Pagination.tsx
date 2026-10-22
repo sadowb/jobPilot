@@ -1,8 +1,7 @@
 import { cx } from '../../../components/ui';
 import { V17Kbd } from '../../../components/V17Kbd';
 
-const cell =
-  'flex size-8 items-center justify-center rounded-[10px] border text-[13px] font-semibold tabular-nums';
+const cell = 'flex size-8 items-center justify-center rounded-[10px] border text-[13px] font-semibold tabular-nums';
 
 /**
  * Footer: range text and the pager. Sample data holds one page, so the pager only navigates what exists;
@@ -66,7 +65,7 @@ export function Pagination({
           </span>
         )}
         <span className="w-2" />
-        <span className="flex flex-nowrap items-center gap-1 text-xs text-muted">
+        <span className="flex flex-nowrap items-center gap-1 text-[12px] text-muted">
           <V17Kbd>[</V17Kbd>
           <V17Kbd>]</V17Kbd>
           <span className="ml-1">page</span>

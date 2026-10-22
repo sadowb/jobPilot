@@ -1,21 +1,12 @@
-import type { CSSProperties } from 'react';
+import { cx } from '../../../components/ui';
 import { FILTER_CHIPS } from '../status';
 import type { FilterCounts } from '../filter';
 import type { StatusFilter } from '../types';
 
-const chip: CSSProperties = {
-  gap: 6,
-  height: 32,
-  padding: '0 12px',
-  borderRadius: 99,
-  border: '1px solid var(--line-2)',
-  fontSize: 12.5,
-  fontWeight: 550,
-  whiteSpace: 'nowrap',
-  boxSizing: 'border-box',
-  color: 'var(--ink-2)',
-};
-const chipOn: CSSProperties = { ...chip, background: 'var(--pri)', color: 'var(--on-pri)', borderColor: 'var(--pri)' };
+const CHIP =
+  'box-border flex h-8 flex-nowrap items-center gap-1.5 rounded-full border px-3 text-[12.5px]! font-[550]! whitespace-nowrap';
+const CHIP_OFF = 'border-line-2 bg-transparent text-ink-2!';
+const CHIP_ON = 'border-pri bg-pri text-on-pri!';
 
 /** Status filter chips with live counts. The row scrolls when space is tight so every filter stays reachable. */
 export function FilterChips({
@@ -28,18 +19,17 @@ export function FilterChips({
   onChange: (f: StatusFilter) => void;
 }) {
   return (
-    <div role="group" aria-label="Filter by status" style={{ minWidth: 0, overflowX: 'auto', display: 'flex' }}>
-      <div className="row nw" style={{ gap: 6, minWidth: 'max-content', padding: '3px' }}>
+    <div role="group" aria-label="Filter by status" className="flex min-w-0 overflow-x-auto">
+      <div className="flex min-w-max flex-nowrap items-center gap-1.5 p-[3px]">
         {FILTER_CHIPS.map(({ key, label }) => (
           <button
             key={key}
             type="button"
-            className="row nw dash-chip"
+            className={cx(CHIP, active === key ? CHIP_ON : CHIP_OFF)}
             aria-pressed={active === key}
-            style={active === key ? chipOn : chip}
             onClick={() => onChange(key)}
           >
-            {label} <span style={{ opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>{counts[key]}</span>
+            {label} <span className="tabular-nums opacity-60">{counts[key]}</span>
           </button>
         ))}
       </div>

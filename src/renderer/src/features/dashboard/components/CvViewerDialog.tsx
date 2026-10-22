@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Eyebrow, Segmented, cx } from '../../../components/ui';
+import { AppButton } from './AppButton';
+import { Eyebrow, cx } from '../../../components/ui';
+import { SegTabs } from './TabSwitch';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { PAPER_TOKENS } from '../../../components/V17MiniPaper';
 import type { CvLine, SentCv } from '../cv';
@@ -41,12 +43,12 @@ export function CvViewerDialog({ company, cv, onClose }: { company: string; cv: 
   return (
     <>
       <div
-        className="fixed inset-0 z-20 animate-jp-cv-fade bg-black/25 backdrop-blur-[8px] dark:bg-black/45"
+        className="fixed inset-0 z-20 animate-jp-cv-fade bg-black/25 motion-reduce:animate-none backdrop-blur-[8px] dark:bg-black/45"
         onClick={onClose}
       />
       <div
         ref={dialogRef}
-        className="fixed inset-x-12 inset-y-10 z-30 flex animate-jp-cv-in flex-col overflow-hidden rounded-3xl border border-line bg-bg shadow-float"
+        className="fixed inset-x-12 inset-y-10 z-30 flex animate-jp-cv-in flex-col motion-reduce:animate-none overflow-hidden rounded-3xl border border-line bg-bg shadow-float"
         role="dialog"
         aria-modal="true"
         aria-label="CV viewer, sent version"
@@ -73,18 +75,18 @@ export function CvViewerDialog({ company, cv, onClose }: { company: string; cv: 
             <span className="text-[13px] text-muted">The exact file {company} received · 1 page</span>
           </div>
           <div className="flex flex-nowrap items-center gap-2.5">
-            <span className="flex flex-nowrap items-center gap-1.5 text-xs text-muted">
+            <span className="flex flex-nowrap items-center gap-1.5 text-[12px] text-muted">
               <V17Kbd>Esc</V17Kbd>
               <span>to close</span>
             </span>
-            <Button data-autofocus size="sm" onClick={onClose}>
+            <AppButton data-autofocus size="sm" onClick={onClose}>
               Close
-            </Button>
+            </AppButton>
           </div>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_380px]">
           <div className="relative grid min-w-0 place-items-center overflow-hidden bg-panel">
-            <div className="absolute top-4 left-6 flex flex-nowrap items-center gap-2.5 text-xs text-muted">
+            <div className="absolute top-4 left-6 flex flex-nowrap items-center gap-2.5 text-[12px] text-muted">
               <span>Page 1 of 1</span>
               <span>·</span>
               <span>Fit page · 90%</span>
@@ -95,7 +97,7 @@ export function CvViewerDialog({ company, cv, onClose }: { company: string; cv: 
                 style={PAPER_TOKENS}
               >
                 <div className="font-serif text-[40px] leading-none tracking-[-0.015em]">{cv.document.name}</div>
-                <div className="mt-2.5 text-xs text-ink-2">{cv.document.headline}</div>
+                <div className="mt-2.5 text-[12px] text-ink-2">{cv.document.headline}</div>
                 {cv.document.sections.map((section) => (
                   <div key={section.heading}>
                     <div className="mt-[22px] mb-2.5 border-b border-line pb-1.5 font-mono text-[10.5px] tracking-[0.12em] text-muted uppercase">
@@ -137,22 +139,22 @@ export function CvViewerDialog({ company, cv, onClose }: { company: string; cv: 
               <div className={metaLabel}>Checksum</div>
               <div className={metaValue}>{cv.checksum}</div>
             </div>
-            <Segmented
+            <SegTabs
               label="CV version"
-              value={view}
+              active={view}
               onChange={setView}
               className="flex-none self-start"
-              options={[
+              tabs={[
                 { key: 'sent', label: 'Sent version' },
                 { key: 'current', label: 'Current version' },
               ]}
             />
             {diff.length > 0 && (
-              <div className="flex flex-col gap-2.5 rounded-[18px] bg-brand-tint px-[18px] py-4 text-sm text-ink-2 shadow-[inset_3px_0_0_var(--brand)]">
-                <div className="text-sm font-semibold text-ink">
+              <div className="flex flex-col gap-2.5 rounded-[18px] bg-brand-tint px-[18px] py-4 text-[14px] text-ink-2 shadow-[inset_3px_0_0_var(--brand)]">
+                <div className="text-[14px] font-semibold text-ink">
                   Your current CV differs in {diff.length} {diff.length === 1 ? 'line' : 'lines'}
                 </div>
-                <div className="font-mono text-xs leading-[1.7] text-ink-2">
+                <div className="font-mono text-[12px] leading-[1.7] text-ink-2">
                   {diff.map((note) => (
                     <div key={note}>
                       <span className="text-brand-text">+</span>
@@ -166,9 +168,9 @@ export function CvViewerDialog({ company, cv, onClose }: { company: string; cv: 
               Locked at submit. This is the file {company} received. Your edits apply to future applications only.
             </div>
             <div className="mt-auto flex flex-nowrap items-center gap-2">
-              <Button variant="primary" className="min-w-0 flex-1">
+              <AppButton variant="primary" className="min-w-0 flex-1">
                 Download PDF
-              </Button>
+              </AppButton>
             </div>
           </div>
         </div>

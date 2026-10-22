@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Eyebrow, cx } from '../../../components/ui';
+import { AppButton } from '../components/AppButton';
+import { Eyebrow, cx } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
 import { V17Kbd } from '../../../components/V17Kbd';
@@ -52,12 +53,12 @@ function LinkRow({ link, index, onRemove }: { link: ParsedLink; index: number; o
       aria-label={`${link.company}: ${p.label}`}
     >
       <div
-        className="col-start-1 row-start-1 min-w-0 animate-jp-aj-out self-center truncate font-mono text-[12.5px] text-muted opacity-0"
+        className="col-start-1 row-start-1 min-w-0 animate-jp-aj-out self-center motion-reduce:animate-none truncate font-mono text-[12.5px] text-muted opacity-0"
         aria-hidden="true"
       >
         {link.url}
       </div>
-      <div className="col-start-1 row-start-1 min-w-0 animate-jp-aj-in">
+      <div className="col-start-1 row-start-1 min-w-0 animate-jp-aj-in motion-reduce:animate-none">
         <div
           className={cx(
             'flex min-w-0 items-center gap-3',
@@ -76,13 +77,16 @@ function LinkRow({ link, index, onRemove }: { link: ParsedLink; index: number; o
             </div>
           </div>
           <span
-            className={cx('inline-block rounded-full px-2.5 py-[3px] text-xs font-semibold whitespace-nowrap', p.tone)}
+            className={cx(
+              'inline-block rounded-full px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap',
+              p.tone,
+            )}
           >
             {p.label}
           </span>
           <button
             type="button"
-            className="ml-1 grid cursor-pointer place-items-center border-0 bg-transparent p-0 text-[13px] text-muted"
+            className="ml-1 grid cursor-pointer place-items-center border-0 bg-transparent p-0 text-[13px]! text-muted!"
             aria-label={`Remove ${link.company}`}
             onClick={onRemove}
           >
@@ -90,7 +94,7 @@ function LinkRow({ link, index, onRemove }: { link: ParsedLink; index: number; o
           </button>
         </div>
       </div>
-      <i className="absolute inset-x-0 bottom-0 h-0.5 origin-left animate-jp-aj-read bg-brand opacity-0" />
+      <i className="absolute inset-x-0 bottom-0 h-0.5 origin-left animate-jp-aj-read bg-brand opacity-0 motion-reduce:animate-none" />
     </div>
   );
 }
@@ -193,7 +197,9 @@ export function AddJobsDialog({
             <Eyebrow>Add jobs</Eyebrow>
             <div className="mt-1.5 font-serif text-[30px] leading-tight font-normal tracking-[-0.015em]">
               Paste links,{' '}
-              <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">watch them become jobs.</span>
+              <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">
+                watch them become jobs.
+              </span>
             </div>
             <div className="mt-1.5 text-[13px] text-muted">
               Paste anything: links, a whole email, a sheet. Cap reads each link before it joins Up next.
@@ -201,9 +207,9 @@ export function AddJobsDialog({
           </div>
           <div className="flex flex-nowrap items-center gap-2 self-start">
             <V17Kbd>Esc</V17Kbd>
-            <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose}>
+            <AppButton variant="ghost" size="sm" aria-label="Close" onClick={onClose}>
               <V17Icon name="close" />
-            </Button>
+            </AppButton>
           </div>
         </div>
         <div className="mt-[18px] flex flex-nowrap items-center justify-between gap-3 rounded-2xl border-[1.5px] border-dashed border-line-2 px-4 py-3">
@@ -252,12 +258,12 @@ export function AddJobsDialog({
             )}
           </span>
           <div className="flex flex-nowrap items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <AppButton variant="ghost" size="sm" onClick={onClose}>
               Cancel
-            </Button>
-            <Button variant="primary" size="sm" disabled={q === 0} onClick={queue}>
+            </AppButton>
+            <AppButton variant="primary" size="sm" disabled={q === 0} onClick={queue}>
               Queue {q} <V17Kbd>↵</V17Kbd>
-            </Button>
+            </AppButton>
           </div>
         </div>
         <div className="mt-5 flex flex-nowrap items-start gap-[18px]">

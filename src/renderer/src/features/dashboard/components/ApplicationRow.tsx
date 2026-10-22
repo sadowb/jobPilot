@@ -33,7 +33,7 @@ export function ApplicationRow({
       aria-selected={selected}
       data-row-id={app.id}
       className={cx(
-        'grid min-h-[46px] cursor-pointer items-center gap-4 border-t border-line bg-bg px-5 text-[13.5px] hover:bg-panel',
+        'grid min-h-[46px] cursor-pointer items-center gap-4 border-t border-line px-5 text-[13.5px] hover:bg-panel',
         selected && 'bg-panel shadow-[inset_3px_0_0_var(--ink)]',
       )}
       onClick={onSelect}
@@ -42,7 +42,7 @@ export function ApplicationRow({
       <div className="flex min-w-0 flex-nowrap items-center gap-3">
         <V17AgentBot name={app.company} state={app.agent} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm leading-tight font-semibold">
+          <div className="truncate text-[14px] leading-tight font-semibold">
             <Highlighted text={app.company} tokens={tokens} />
           </div>
           <div className="truncate text-[12.5px] leading-[1.35] text-muted">
@@ -54,7 +54,7 @@ export function ApplicationRow({
         <div className="truncate text-[13.5px]">
           <Highlighted text={app.location} tokens={tokens} />
         </div>
-        <div className="text-xs text-muted">
+        <div className="text-[12px] text-muted">
           <Highlighted text={app.workMode} tokens={tokens} />
         </div>
       </div>
