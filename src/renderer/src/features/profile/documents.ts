@@ -3,6 +3,9 @@ export interface ProfileDocument {
   name: string;
   file: Blob;
   uploaded: string;
+  /** Optional, shown in the CV list when present: "AI and machine-learning" → "For AI and machine-learning jobs". */
+  forJobs?: string;
+  language?: string;
 }
 
 function openDocuments(): Promise<IDBDatabase> {

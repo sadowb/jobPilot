@@ -1,45 +1,41 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AboutMe } from '../features/profile/AboutMe';
-import { ProfileMain, useProfileFacts } from '../features/profile/ProfileMain';
-import { ProfileSidebar } from '../features/profile/ProfileSidebar';
+import { CommonAnswers } from '../features/profile/CommonAnswers';
+import { KnowledgePanel, useProfileFacts } from '../features/profile/KnowledgePanel';
+import { ProfileDocuments } from '../features/profile/ProfileDocuments';
+import { panelId, ProfileHeader, ProfileTabs, tabId, type ProfileTab } from '../features/profile/ProfileHeader';
+import { useDocumentCount } from '../features/profile/useDocumentCount';
+import { migrateStartAnswer } from '../features/profile/startMigration';
+import { useProfileIdentity } from '../features/profile/useProfileIdentity';
 import '../features/profile/profile.css';
 
-/** Profile sections stay mounted so switching between documents and details preserves unsaved edits. */
+const TABS: ProfileTab[] = ['about', 'documents', 'answers', 'knowledge'];
+
+/** Every tab panel stays mounted (only hidden), so switching tabs preserves unsaved edits. */
 export function ProfilePage() {
+  // Runs once, before the panels below read storage: "When can you start?" now comes from Notice.
+  useState(() => migrateStartAnswer());
   const [params, setParams] = useSearchParams();
-  const section = params.get('section') === 'documents' ? 'documents' : 'about';
+  const requested = params.get('section');
+  const tab = TABS.find((t) => t === requested) ?? 'about';
   const [facts, dispatch] = useProfileFacts();
-  const knowledge = useRef<HTMLElement>(null);
-  const go = (next: 'about' | 'documents') => setParams(next === 'documents' ? { section: 'documents' } : {});
-  const scrollTo = (next: 'about' | 'documents', id: string) => {
-    go(next);
-    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }));
-  };
+  const documents = useDocumentCount();
+  const { answersCount } = useProfileIdentity();
+  const go = (next: ProfileTab) => setParams(next === 'about' ? {} : { section: next });
+  const panel = (id: ProfileTab, children: React.ReactNode) => (
+    <div role="tabpanel" id={panelId(id)} aria-labelledby={tabId(id)} hidden={tab !== id} className="pf-panel">
+      {children}
+    </div>
+  );
   return (
     <div className="profile-layout">
-      <ProfileSidebar
-        section={section}
-        onSection={go}
-        onAnswers={() => scrollTo('about', 'common-answers')}
-        knowledgeCount={facts.review.length}
-        onKnowledge={() => scrollTo('documents', 'agent-knowledge')}
-      />
-      <div className="profile-main-wrap">
-        <main className="profile-about" hidden={section !== 'about'}>
-          <header className="profile-page-heading">
-            <div className="v17x">Profile & documents · About me</div>
-            <h1 className="h1">
-              The person behind <span className="it">every application.</span>
-            </h1>
-            <p>Your details, ready when a form asks. Edit a section to make a change.</p>
-          </header>
-          <AboutMe />
-        </main>
-        <div hidden={section !== 'documents'}>
-          <ProfileMain facts={facts} dispatch={dispatch} knowledgeRef={knowledge} />
-        </div>
-      </div>
+      <ProfileHeader />
+      <ProfileTabs tab={tab} onTab={go} counts={{ documents, answers: answersCount, knowledge: facts.review.length }} />
+      {panel('about', <AboutMe onSeeAllCvs={() => go('documents')} />)}
+      {panel('documents', <ProfileDocuments />)}
+      {panel('answers', <CommonAnswers />)}
+      {panel('knowledge', <KnowledgePanel facts={facts} dispatch={dispatch} />)}
     </div>
   );
 }
