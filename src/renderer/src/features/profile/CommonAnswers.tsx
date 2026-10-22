@@ -140,7 +140,7 @@ function Lines({ lines }: { lines: LineData[] }) {
           {l.action && (
             <button
               type="button"
-              className="min-h-6 flex-none rounded-full border border-need-line bg-need-tint px-2.5 text-xs! font-semibold! text-need! hover:brightness-[0.97]"
+              className="min-h-6 flex-none rounded-full border border-need-line bg-need-tint px-2.5 [font-size:12px]! leading-[normal]! font-semibold! text-need! hover:brightness-[0.97]"
               onClick={l.action.onClick}
             >
               {l.action.label}
@@ -261,7 +261,7 @@ export function CommonAnswers() {
       <div className="mb-[18px]">
         <div className="mb-1 flex items-baseline gap-3">
           <span className={monoLabel}>Auto</span>
-          <span className="text-xs text-muted">Filled from Where you apply and Job preferences. Edit them there, never twice.</span>
+          <span className="[font-size:12px] text-muted">Filled from Where you apply and Job preferences. Edit them there, never twice.</span>
         </div>
         <div className={answerList}>
           {markets.length > 0 && (
@@ -465,7 +465,7 @@ function OverrideAdder({ options, onAdd }: { options: readonly AnswerMarket[]; o
   return (
     <div className={overrideRow}>
       <Field label="Add a country">
-        <Select value={value} onChange={(e) => setPick(e.target.value)}>
+        <Select className="[&>svg]:text-[#8c8c8c]" value={value} onChange={(e) => setPick(e.target.value)}>
           {options.map((o) => (
             <option key={o.code} value={o.code}>
               {o.name}

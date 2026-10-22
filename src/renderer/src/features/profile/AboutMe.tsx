@@ -21,6 +21,7 @@ import { useDocumentCount } from './useDocumentCount';
 import { CareerCard, ContactCard, CvsCard, LanguagesLinksCard, PrefsCard, WhereCard } from './AboutCards';
 import { AddCountryDialog, CountryEditor, ManageCountriesDialog } from './MarketDialogs';
 import { CURRENCIES, EU_CODE, defaultCurrency, MARKETS_KEY, isEuMember, readMarkets, type Market } from './markets';
+import { selectChevron } from './styles';
 
 type Field = {
   label: string;
@@ -284,6 +285,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
                 return (
                   <Field label={field.label} key={key}>
                     <Select
+                      className={selectChevron}
                       value={draft[key] || effectiveSalaryCurrency(draft)}
                       onChange={(e) => update(key, e.target.value)}
                     >
@@ -307,7 +309,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
                       placeholder={field.placeholder}
                     />
                   ) : field.options ? (
-                    <Select value={draft[key]} onChange={(e) => update(key, e.target.value)}>
+                    <Select className={selectChevron} value={draft[key]} onChange={(e) => update(key, e.target.value)}>
                       <option value="">Not specified</option>
                       {field.options.map((o) => (
                         <option key={o}>{o}</option>

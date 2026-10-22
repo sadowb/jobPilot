@@ -24,6 +24,7 @@ import {
   emptyText,
   fieldError,
   hintText,
+  selectChevron,
 } from './styles';
 
 /** What `Field` forwards to its one control. */
@@ -204,7 +205,7 @@ function SalaryControl({
           }}
         />
         <Select
-          className="w-auto min-w-28 flex-none"
+          className={cx(selectChevron, 'w-auto min-w-28 flex-none')}
           aria-label="Salary period"
           value={period}
           onChange={(e) => onChange(amount, e.target.value as SalaryPeriod)}
@@ -239,7 +240,10 @@ export function SalaryField({
   onChange: (amount: number | null, period: SalaryPeriod) => void;
 }) {
   return (
-    <Field label={`${label}${currency ? ` (${currency})` : ''}`}>
+    <Field
+      label={`${label}${currency ? ` (${currency})` : ''}`}
+      className="[&>label]:text-[15px]! [&>label]:font-normal!"
+    >
       <SalaryControl amount={amount} period={period} legacyText={legacyText} onChange={onChange} />
     </Field>
   );
@@ -282,6 +286,7 @@ export function LanguageEditor({
             aria-label={`Language ${i + 1}: ${label}`}
           >
             <Select
+              className={selectChevron}
               size="sm"
               aria-label={`Language ${i + 1}`}
               value={e.language}
@@ -303,6 +308,7 @@ export function LanguageEditor({
               ))}
             </Select>
             <Select
+              className={selectChevron}
               size="sm"
               aria-label={`Level for ${label}`}
               value={e.level}
@@ -380,6 +386,7 @@ function NoticeControl({
   return (
     <>
       <Select
+        className={selectChevron}
         id={id}
         value={value}
         aria-describedby={showLegacy ? `${id}-hint` : undefined}
@@ -429,7 +436,7 @@ export function NoticeField({
   onChange: (next: Notice | null) => void;
 }) {
   return (
-    <Field label="Notice">
+    <Field label="Notice" className="[&>label]:text-[15px]! [&>label]:font-normal!">
       <NoticeControl notice={notice} legacyText={legacyText} onChange={onChange} />
     </Field>
   );

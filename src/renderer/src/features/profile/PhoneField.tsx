@@ -80,7 +80,12 @@ export function PhoneField({
   const invalid = national.trim() !== '' && !parsePhone(national, region).valid;
   const showError = invalid && touched;
   return (
-    <Field label={label} error={showError ? CHECK_NUMBER : undefined} onKeyDown={escape}>
+    <Field
+      label={label}
+      error={showError ? CHECK_NUMBER : undefined}
+      className="[&>label]:text-[15px]! [&>label]:font-normal!"
+      onKeyDown={escape}
+    >
       <PhoneControl
         label={label}
         region={region}

@@ -18,7 +18,7 @@ import { effectiveSalaryCurrency, type PersonalProfile } from './personal';
 import { SalaryField } from './ProfileInputs';
 import type { SalaryPeriod } from './salary';
 import { parsePhone } from './phones';
-import { emptyText } from './styles';
+import { emptyText, selectChevron } from './styles';
 
 /** "+212 6 12 34 56 78 · Mobile", the same international format as the Contact card. */
 function phoneLabel(stored: string): string {
@@ -118,7 +118,7 @@ export function CountryEditor({
           />
         </Field>
         <Field label="Phone number">
-          <Select value={draft.phone ?? ''} onChange={(e) => set({ phone: e.target.value || undefined })}>
+          <Select className={selectChevron} value={draft.phone ?? ''} onChange={(e) => set({ phone: e.target.value || undefined })}>
             <option value="">{phones.length ? 'Main phone' : 'Main phone (none saved yet)'}</option>
             {phones.map((p) => (
               <option key={p} value={p}>
@@ -129,7 +129,7 @@ export function CountryEditor({
           </Select>
         </Field>
         <Field label="Salary in">
-          <Select value={draft.currency ?? ''} onChange={(e) => set({ currency: e.target.value || undefined })}>
+          <Select className={selectChevron} value={draft.currency ?? ''} onChange={(e) => set({ currency: e.target.value || undefined })}>
             <option value="">Main details</option>
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
@@ -151,7 +151,7 @@ export function CountryEditor({
           }}
         />
         <Field label="CV language">
-          <Select value={draft.cvLanguage ?? ''} onChange={(e) => set({ cvLanguage: e.target.value || undefined })}>
+          <Select className={selectChevron} value={draft.cvLanguage ?? ''} onChange={(e) => set({ cvLanguage: e.target.value || undefined })}>
             <option value="">Main details</option>
             {CV_LANGUAGES.map((l) => (
               <option key={l}>{l}</option>

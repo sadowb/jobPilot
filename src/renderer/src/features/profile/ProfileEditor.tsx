@@ -37,6 +37,7 @@ export function ProfileEditor({
     <Dialog
       open
       onClose={onCancel}
+      className="[&>form_button]:font-semibold! [&>form>header>button]:h-[34px]! [&>form>header>button]:min-h-[34px]! [&>form>header>button]:w-9! [&>form>header>button]:min-w-9! [&>form>header>button]:focus:outline-none! [&>form>header>button]:focus-visible:outline-3! [&>form>header>button]:focus-visible:outline-offset-2! [&>form>header>button]:focus-visible:outline-ink!"
       title={title}
       titleAdornment={titleAdornment}
       eyebrow={eyebrow}

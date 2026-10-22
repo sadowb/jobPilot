@@ -13,7 +13,14 @@ const FIX = {
 } as const;
 
 export function PButton({ variant = 'default', className, ...rest }: Omit<ButtonProps, 'size'>) {
-  return <Button size="sm" variant={variant} className={cx('text-[13.5px]!', FIX[variant], className)} {...rest} />;
+  return (
+    <Button
+      size="sm"
+      variant={variant}
+      className={cx('text-[13.5px]!', 'disabled:opacity-100!', FIX[variant], className)}
+      {...rest}
+    />
+  );
 }
 
 /** `<a class="btn sm ghost">`: `.app a{color:inherit}` outranks the utility, hence `!`. */

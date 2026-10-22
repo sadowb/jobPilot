@@ -27,12 +27,12 @@ const rowList = '[&>li:first-child]:border-t-0 [&>li:first-child>button]:border-
 const glyph = (tall?: boolean) => cx('grid w-[22px] flex-none place-items-center text-muted', tall && 'mt-0.5');
 const rowText = (where?: boolean) =>
   cx('min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap', where && 'text-[15px]');
-const rowSub = 'mt-px block overflow-hidden text-xs text-ellipsis text-muted';
+const rowSub = 'mt-px block overflow-hidden [font-size:12px] text-ellipsis text-muted';
 const status = (need?: boolean) =>
   cx('flex-none text-[13px] font-semibold whitespace-nowrap', need ? 'text-need' : 'text-brand-text');
 const moreButton =
-  'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5 text-[13px]! font-medium! text-muted!';
-const addPromptButton = 'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5 text-[13px]! font-semibold! text-brand-text!';
+  'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5';
+const addPromptButton = 'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5';
 
 function Card({
   id,
@@ -80,7 +80,7 @@ function Card({
         </div>
         <button
           type="button"
-          className="min-h-7 flex-none bg-transparent p-0 text-[12.5px]! text-ink-2! underline decoration-line-2 underline-offset-[3px] hover:text-ink!"
+          className="min-h-7 flex-none bg-transparent p-0 underline decoration-line-2 underline-offset-[3px] hover:text-ink!"
           aria-label={editLabel}
           onClick={onEdit}
         >
@@ -333,7 +333,7 @@ export function CvsCard({
       </div>
       <button
         type="button"
-        className="mt-auto flex min-h-10 w-full items-center justify-between border-t border-line bg-transparent p-0 text-[12.5px]! font-[550]! text-ink-2!"
+        className="mt-auto flex min-h-10 w-full items-center justify-between border-t border-line bg-transparent p-0"
         aria-label={none ? 'Add a CV' : 'See all CVs'} onClick={onSeeAll}>
         <span>{none ? 'Add a CV' : 'See all CVs'}</span>
         <Glyph name="arrowRight" size={14} />
@@ -388,7 +388,7 @@ export function CareerCard({ profile, onEdit }: { profile: PersonalProfile; onEd
                   aria-hidden="true"
                 />
                 <div>
-                  <strong className="block text-sm font-[620] [overflow-wrap:anywhere]">{e.title}</strong>
+                  <strong className="block [font-size:14px] font-[620] [overflow-wrap:anywhere]">{e.title}</strong>
                   {e.sub && <span className="mt-0.5 block text-[12.5px] text-muted">{e.sub}</span>}
                 </div>
               </li>

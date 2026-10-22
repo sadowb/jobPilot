@@ -34,3 +34,5 @@ export const dialName = 'min-w-0 flex-1 overflow-hidden text-ellipsis whitespace
 export const dialCode = 'font-mono text-xs leading-[normal] font-medium text-muted';
 /** Field-level error line (`.pf-field-error`). */
 export const fieldError = 'text-xs font-medium text-bad';
+/** Match the legacy select chevron stroke while keeping the shared Select primitive. */
+export const selectChevron = '[&>svg]:text-[#8c8c8c]';
