@@ -1,0 +1,148 @@
+#!/usr/bin/env node
+// Real-Electron screenshot capture for the Tailwind migration. See README "Visual regression".
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { parseArgs } from 'node:util';
+import { _electron as electron } from 'playwright';
+import { SCREENS } from './screens.mjs';
+
+const WIDTH = 1440;
+const HEIGHT = 900;
+const FROZEN_TIME = new Date('2026-10-01T10:00:00Z');
+const THEMES = /** @type {const} */ (['light', 'dark']);
+
+const { values } = parseArgs({
+  options: { app: { type: 'string' }, out: { type: 'string' }, only: { type: 'string' } },
+});
+if (!values.app || !values.out) {
+  console.error('usage: capture.mjs --app <worktree> --out <dir> [--only <substring>]');
+  process.exit(2);
+}
+const appDir = resolve(values.app);
+const outDir = resolve(values.out);
+mkdirSync(outDir, { recursive: true });
+
+const fixture = /** @type {Record<string, unknown>} */ (
+  JSON.parse(readFileSync(new URL('./fixture.json', import.meta.url), 'utf8'))
+);
+const screens = SCREENS.filter((s) => !values.only || s.name.includes(values.only));
+
+// The app's own electron binary, so a worktree is captured with the version it was built for.
+const electronPath = /** @type {string} */ (createRequire(join(appDir, 'package.json'))('electron'));
+const electronVersion = JSON.parse(readFileSync(join(appDir, 'node_modules/electron/package.json'), 'utf8')).version;
+
+/** @param {import('playwright').Page} page */
+async function stabilise(page) {
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    // Hide the text caret without an inline <style> (the CSP forbids it): a constructed stylesheet is allowed.
+    if (!document.adoptedStyleSheets.length) {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync('*{caret-color:transparent !important}');
+      document.adoptedStyleSheets = [sheet];
+    }
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  });
+  await page.waitForTimeout(150);
+}
+
+/**
+ * @param {import('playwright').Page} page
+ * @param {import('./screens.mjs').Action} action
+ */
+async function run(page, action) {
+  if ('click' in action) await page.locator(action.click).first().click({ timeout: 5000 });
+  else if ('fill' in action) await page.locator(action.fill[0]).first().fill(action.fill[1], { timeout: 5000 });
+  else if ('press' in action) await page.keyboard.press(action.press);
+  else if ('waitFor' in action) await page.locator(action.waitFor).first().waitFor({ state: 'visible', timeout: 5000 });
+  else if ('event' in action) {
+    await page.evaluate(([name, detail]) => window.dispatchEvent(new CustomEvent(name, { detail })), action.event);
+  } else await page.waitForTimeout(action.wait);
+}
+
+/** @type {{ screen: string, theme: string, error: string }[]} */
+const errors = [];
+/** @type {string[]} */
+const captured = [];
+let clockMode = 'fixed';
+
+for (const theme of THEMES) {
+  const userData = mkdtempSync(join(tmpdir(), 'jp-visual-'));
+  // Electron's native theme is authoritative (src/main/index.ts reads this file); localStorage covers browser mode.
+  writeFileSync(join(userData, 'theme-preference'), theme, 'utf8');
+  const app = await electron.launch({
+    executablePath: electronPath,
+    args: [join(appDir, 'out/main/index.js'), `--user-data-dir=${userData}`],
+    env: { ...process.env, NODE_ENV: 'production' },
+  });
+  try {
+    const page = await app.firstWindow();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    try {
+      await page.clock.install({ time: FROZEN_TIME });
+      await page.clock.setFixedTime(FROZEN_TIME);
+    } catch (e) {
+      clockMode = `unavailable: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    // Every load starts from the same storage: reseed before app code runs.
+    await page.addInitScript(
+      ({ data, mode }) => {
+        localStorage.clear();
+        for (const [k, v] of Object.entries(data)) localStorage.setItem(k, JSON.stringify(v));
+        localStorage.setItem('jobpilot.appearance', mode);
+      },
+      { data: fixture, mode: theme },
+    );
+    for (const screen of screens) {
+      const label = `${screen.name}.${theme}`;
+      try {
+        const width = screen.width ?? WIDTH;
+        await app.evaluate(
+          ({ BrowserWindow }, [w, h]) => {
+            const win = BrowserWindow.getAllWindows()[0];
+            win?.setMinimumSize(1, 1);
+            win?.setContentSize(w, h);
+          },
+          [width, HEIGHT],
+        );
+        await page.evaluate((hash) => {
+          location.hash = hash;
+        }, `#${screen.route}`);
+        await page.evaluate(async () => {
+          for (const db of (await indexedDB.databases?.()) ?? []) if (db.name) indexedDB.deleteDatabase(db.name);
+        });
+        await page.reload();
+        await page.locator('#root > *').first().waitFor({ state: 'attached', timeout: 10000 });
+        await stabilise(page);
+        for (const action of screen.actions ?? []) await run(page, action);
+        await stabilise(page);
+        await page.screenshot({ path: join(outDir, `${label}.png`), fullPage: true });
+        captured.push(label);
+        console.log(`ok    ${label}`);
+      } catch (e) {
+        const message = e instanceof Error ? (e.message.split('\n')[0] ?? String(e)) : String(e);
+        errors.push({ screen: screen.name, theme, error: message });
+        console.log(`ERROR ${label}: ${message}`);
+      }
+    }
+  } finally {
+    await app.close();
+    rmSync(userData, { recursive: true, force: true });
+  }
+}
+
+let commit = 'unknown';
+try {
+  commit = execFileSync('git', ['-C', appDir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+} catch {
+  /* not a git checkout */
+}
+writeFileSync(
+  join(outDir, 'manifest.json'),
+  JSON.stringify({ app: appDir, commit, electron: electronVersion, clock: clockMode, captured, errors }, null, 2),
+);
+console.log(`${captured.length} captured, ${errors.length} errors -> ${outDir}`);

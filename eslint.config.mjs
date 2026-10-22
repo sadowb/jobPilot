@@ -17,4 +17,9 @@ export default tseslint.config(
     files: ['src/main/**/*.ts', 'src/preload/**/*.ts', 'scripts/**/*.mjs', '*.config.*'],
     languageOptions: { globals: globals.node },
   },
+  {
+    // capture.mjs passes callbacks to page.evaluate, which run in the browser.
+    files: ['scripts/visual/capture.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
 );
