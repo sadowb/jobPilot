@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { KeyCap } from '../../components/KeyCap';
-
-const ELLIPSIS = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
+import { ELLIPSIS } from './styles';
 
 /** Thread header bar: avatar + title/sub on the left, actions on the right. */
 export function ThreadHeader({
@@ -16,24 +15,15 @@ export function ThreadHeader({
   children?: ReactNode;
 }) {
   return (
-    <div
-      className="flex items-center gap-[16px] flex-nowrap justify-between flex-none p-[16px_28px] [border-bottom:1px_solid_var(--line)] bg-bg min-w-[0px]"
-      
-    >
-      <div className="flex items-center gap-[12px] flex-nowrap min-w-[0px]" >
+    <div className="flex min-w-0 flex-none items-center justify-between gap-4 border-b border-line bg-bg px-7 py-4">
+      <div className="flex min-w-0 items-center gap-3">
         {lead}
-        <div className="min-w-[0px]">
-          <div className="font-[600] text-[15px] whitespace-nowrap overflow-hidden text-ellipsis" >
-            {title}
-          </div>
-          <div className="text-[12.5px] text-muted whitespace-nowrap overflow-hidden text-ellipsis" >
-            {sub}
-          </div>
+        <div className="min-w-0">
+          <div className={`text-[15px] font-semibold ${ELLIPSIS}`}>{title}</div>
+          <div className={`text-[12.5px] text-muted ${ELLIPSIS}`}>{sub}</div>
         </div>
       </div>
-      <div className="flex items-center gap-[8px] flex-nowrap flex-none" >
-        {children}
-      </div>
+      <div className="flex flex-none items-center gap-2">{children}</div>
     </div>
   );
 }
@@ -41,14 +31,8 @@ export function ThreadHeader({
 /** "You have control of …" bar above the thread while the owner drives. */
 export function ControlBanner({ agent }: { agent: string }) {
   return (
-    <div
-      className="flex items-center gap-[12px] flex-nowrap flex-none p-[12px_28px] bg-pri text-on-pri"
-      role="status"
-      
-    >
-      <span
-        className="w-[26px] h-[26px] rounded-[50%] grid place-items-center bg-on-pri text-pri flex-none"
-      >
+    <div role="status" className="flex flex-none items-center gap-3 bg-pri px-7 py-3 text-on-pri">
+      <span className="grid size-[26px] flex-none place-items-center rounded-full bg-on-pri text-pri">
         <svg
           width="14"
           height="14"
@@ -64,9 +48,7 @@ export function ControlBanner({ agent }: { agent: string }) {
         </svg>
       </span>
       <b className="text-[14.5px]">You have control of {agent} · its agent is paused</b>
-      <span className="text-[13px] opacity-[0.75] ml-[auto] whitespace-nowrap">
-        The rest of the crew keeps working
-      </span>
+      <span className="ml-auto text-[13px] whitespace-nowrap opacity-75">The rest of the crew keeps working</span>
     </div>
   );
 }
@@ -78,9 +60,7 @@ export interface Shortcut {
 
 export function ShortcutBar({ shortcuts }: { shortcuts: readonly Shortcut[] }) {
   return (
-    <div
-      className="flex-none flex items-center gap-[22px] p-[11px_24px] [border-top:1px_solid_var(--line)] bg-bg text-[12.5px] text-muted whitespace-nowrap overflow-hidden"
-    >
+    <div className="flex flex-none items-center gap-[22px] overflow-hidden border-t border-line bg-bg px-6 py-[11px] text-[12.5px] whitespace-nowrap text-muted">
       {shortcuts.map((s) => (
         <span key={s.label} className="inline-flex items-center gap-[7px]">
           {s.keys.map((k) => (

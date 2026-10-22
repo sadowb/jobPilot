@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { BARE_INPUT, FOCUS_WITHIN } from './styles';
 
 /** Bottom message pill (`.comp`). `onSend` receives trimmed, non-empty text only. */
 export function Composer({ placeholder, onSend }: { placeholder: string; onSend: (text: string) => void }) {
@@ -11,7 +12,10 @@ export function Composer({ placeholder, onSend }: { placeholder: string; onSend:
     setText('');
   };
   return (
-    <form className="m-[0_auto_18px] max-w-[724px] w-[calc(100%_-_96px)] flex items-center gap-[10px] min-h-[54px] p-[0_8px_0_18px] [border:1px_solid_var(--line-2)] rounded-[99px] bg-bg text-muted text-[15px] flex-none focus-within:border-ink focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ink)_14%,transparent)]"  onSubmit={submit}>
+    <form
+      className={`mx-auto mb-[18px] flex min-h-[54px] w-[calc(100%_-_96px)] max-w-[724px] flex-none items-center gap-2.5 rounded-full border border-line-2 bg-bg pr-2 pl-[18px] text-[15px] text-muted ${FOCUS_WITHIN}`}
+      onSubmit={submit}
+    >
       <svg
         width="18"
         height="18"
@@ -26,13 +30,17 @@ export function Composer({ placeholder, onSend }: { placeholder: string; onSend:
         <path d="M12 5v14M5 12h14" />
       </svg>
       <input
-        className="flex-1 min-w-[0px] h-[100%] [border:0] [outline:0] bg-transparent text-ink [font:inherit] p-[0px] placeholder:text-muted placeholder:opacity-100 focus-visible:outline-none!"
+        className={BARE_INPUT}
         value={text}
         placeholder={placeholder}
         aria-label={placeholder}
         onChange={(e) => setText(e.target.value)}
       />
-      <button className="ml-[auto] w-[38px] h-[38px] rounded-[50%] bg-pri text-on-pri! grid place-items-center [border:0]" type="submit" aria-label="Send">
+      <button
+        className="ml-auto grid size-[38px] place-items-center rounded-full border-0 bg-pri text-on-pri!"
+        type="submit"
+        aria-label="Send"
+      >
         <svg
           width="18"
           height="18"
