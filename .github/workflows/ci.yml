@@ -93,17 +93,41 @@ jobs:
         run: |
           npx electron-builder --dir --mac --arm64
           node scripts/sign-app.mjs release/mac-arm64/JobPilot.app "$JOBPILOT_SIGN_IDENTITY"
-      - name: Package PR base for upgrade journey
+      - name: Prepare PR base for upgrade journey
+        id: base
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           git worktree add --detach "$RUNNER_TEMP/jobpilot-base" "$BASE_SHA"
           cd "$RUNNER_TEMP/jobpilot-base"
+          node -p "'electron=' + require('./package-lock.json').packages['node_modules/electron'].version" >> "$GITHUB_OUTPUT"
+      - name: Restore unsigned PR base app
+        id: base-cache
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ runner.temp }}/jobpilot-base/release/mac-arm64/JobPilot.app
+          key: pr-base-app-${{ github.event.pull_request.base.sha }}-${{ runner.os }}-arm64-electron-${{ steps.base.outputs.electron }}
+      - name: Package PR base for upgrade journey
+        if: github.event_name == 'pull_request' && steps.base-cache.outputs.cache-hit != 'true'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          cd "$RUNNER_TEMP/jobpilot-base"
           npm ci
           npm run build
           npx electron-builder --dir --mac --arm64
-          node "$GITHUB_WORKSPACE/scripts/sign-app.mjs" "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app" "$JOBPILOT_SIGN_IDENTITY"
+      - name: Cache unsigned PR base app before per-job signing
+        if: github.event_name == 'pull_request' && steps.base-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ runner.temp }}/jobpilot-base/release/mac-arm64/JobPilot.app
+          key: ${{ steps.base-cache.outputs.cache-primary-key }}
+      - name: Sign PR base with per-job identity
+        if: github.event_name == 'pull_request'
+        run: |
+          node scripts/sign-app.mjs "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app" "$JOBPILOT_SIGN_IDENTITY"
           echo "JOBPILOT_BASE_EXECUTABLE=$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot" >> "$GITHUB_ENV"
       - name: Assert PR and base designated requirements match
         if: github.event_name == 'pull_request'
