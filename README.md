@@ -1,66 +1,154 @@
-# jobPilot
+<div align="center">
 
-Desktop app (Electron + Vite + React + TypeScript + Tailwind v4) for JobPilot, an agent that fills job applications and lets you watch or take over. The UI matches the V17 design boards one to one, light and dark.
+# JobPilot
 
-- Spec (read first): [docs/FRONTEND.md](docs/FRONTEND.md)
-- Design source of truth: `design/v17/` (67 boards), tokens `design/tokens.json`, brand SVGs `design/brand/`
+**A desktop app that applies to jobs for you, in parallel, and never sends anything you haven't seen.**
 
-## Commands
+[![CI](https://github.com/sadowb/jobPilot/actions/workflows/ci.yml/badge.svg)](https://github.com/sadowb/jobPilot/actions/workflows/ci.yml)
+![macOS](https://img.shields.io/badge/macOS-arm64-black)
+![Electron](https://img.shields.io/badge/Electron-45-47848F)
+![Status](https://img.shields.io/badge/status-in%20development-orange)
 
-```bash
-npm ci
-npm run dev          # Electron with HMR
-npm run typecheck && npm run lint && npm run format:check && npm test
-npm run build        # typecheck + electron-vite build -> out/
-npm run start        # production build, run unpackaged (no HMR, no devtools reload)
-npm run dist:dir     # packaged app, unpacked, in release/ (fast smoke test)
-npm run dist         # package for this OS -> release/
-npm run tokens       # regenerate styles/tokens.css from design/tokens.json
+<img src="docs/screenshots/welcome-1-dark.png" alt="JobPilot welcome screen: Cap, the app's agent, offers to fill job applications" width="900">
+
+</div>
+
+---
+
+## What it does
+
+Paste a stack of job links. JobPilot reads each posting, fills the application from your profile, CV and saved answers, and asks you only what it can't know. **You review exactly what will be sent before anything is submitted.**
+
+- **Parallel crew.** Several agents work through your queue at once, each in its own browser tab.
+- **Asks, doesn't guess.** Questions it can't answer from your profile land in the Inbox with a drafted answer for you to accept, edit or skip.
+- **Local first.** Your profile, CVs and answers live in an encrypted database on your Mac. No account, no server, no telemetry.
+- **Learns over time.** Your answers and each site's quirks are remembered, so the next application on the same site is faster.
+
+## A look inside
+
+> Screens below are rendered from the real app with sample data. The engine behind them is being wired up; see [Status](#status).
+
+### Inbox: review what will be sent
+
+Every application waits here until you accept it. The right panel shows exactly what the form will receive.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/inbox-dark.png">
+  <img src="docs/screenshots/inbox-light.png" alt="Inbox with a drafted answer to review and the full list of fields that will be sent">
+</picture>
+
+### Analytics: what's working
+
+Funnel, reply rate over time, and which site, CV and role level get replies, with a short read from Cap on each.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/analytics-dark.png">
+  <img src="docs/screenshots/analytics-light.png" alt="Analytics: funnel, reply rate over time, reply rate by site, CV and role level">
+</picture>
+
+### Ask Cap, from anywhere
+
+<kbd>⌘</kbd> <kbd>K</kbd> searches your jobs or asks Cap a question. The whole app is keyboard-first.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cmdk-dark.png">
+  <img src="docs/screenshots/cmdk-light.png" alt="Command palette searching jobs, with status chips and keyboard hints">
+</picture>
+
+## How it works
+
+```mermaid
+flowchart LR
+  A[Paste job links] --> B[Read posting<br/>ATS API or page]
+  B --> C[Queue<br/>parallel runs]
+  C --> D[Agent fills form<br/>in its own tab]
+  D -->|unknown question| E[Inbox<br/>you answer]
+  E --> D
+  D --> F[Review<br/>exactly what is sent]
+  F -->|you approve| G[Submit]
 ```
 
-## Layout
+- **Known job sites** (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, BambooHR) are read through their public APIs, so questions are known up front. Other career pages are read by the agent.
+- **The app owns the state.** Agents return structured results that are validated before use. Submitting needs your approval, bound to the exact form contents.
+- **Any agent.** Runs go through one provider interface. Claude (your installed `claude` CLI, or an API key) is first; Codex and others follow.
 
-```
-src/main/       Electron main process (window, app:// protocol, IPC handlers)
-src/preload/    contextBridge only (window.jobpilot)
-src/shared/     IPC contract (channel names + types), imported by all three
-src/renderer/   React UI (HashRouter; fonts bundled; CSP forbids remote hosts)
-scripts/        gen-tokens, after-pack (Electron fuses)
-tests/          vitest
-```
-
-## Desktop appearance
-
-Click the sun/moon icon in the top bar (also available during setup) to switch directly
-between Light and Dark with a brief fade. Reduced motion skips the animation.
-Choose System in Settings to follow your device. The preference
-stays in sync across the app and survives restarts. On macOS, the
-native window buttons align with a compact 56px toolbar that stays visible when scrolling.
-Sheets open below it; the redundant logo is hidden and empty header space drags the window. See [the desktop UI review](docs/UI_REVIEW.md) for page coverage and remaining prototype behavior.
-
-## Profile & documents
-
-Click the account initials in the top bar to open About me (`#/profile`). Edit contact details,
-links, education, job preferences, and reusable application answers. Use a section’s Edit action to open its side sheet, then Save changes;
-Cancel or Escape restores the last saved values. Common answers can be edited, added, searched, or removed.
-Saved details and answers persist locally. Documents (`#/profile?section=documents`) supports PDF/DOCX
-uploads up to 20 MB, local storage, downloading a copy through the native Save dialog, and removal.
-CV parsing and agent/backend sync are not connected. The V17 Profile board supplied the visual language
-and Documents layout; About me completes the sidebar section that had no dedicated board.
-
-## Security posture
-
-`contextIsolation`, `sandbox`, no Node in the renderer; renderer served from `app://jobpilot/` (not `file://`); navigation and `window.open` locked, only `https:` links open in the system browser; strict CSP; single instance; fuses: RunAsNode, NODE_OPTIONS, `--inspect` and file-protocol privileges off, cookie encryption and asar integrity on.
-
-Note: with the inspect fuse off, Playwright cannot attach to the _packaged_ app. E2E runs against the unpackaged build (`electron .`).
+More: [architecture](docs/architecture.md) · [decision records](docs/adr/) · [UI spec](docs/FRONTEND.md)
 
 ## Status
 
-Foundation done (shell, theme, tokens, fonts, packaging). Screens are being ported board by board; unported routes show a placeholder naming their board.
+| Area                                                       | State        |
+| ---------------------------------------------------------- | ------------ |
+| Encrypted local database, migrations, backups              | ✅ Done      |
+| Add jobs by URL, ATS readers, SSRF-safe fetching           | ✅ Done      |
+| Parallel run queue, browser hookup, Claude agent provider  | ✅ Done      |
+| API key storage (optional)                                 | ✅ Done      |
+| Add many jobs at once                                      | 🔧 In review |
+| Use your installed `claude` login                          | ⏳ Next      |
+| First real application end to end (fill, review, submit)   | ⏳ Next      |
+| First-launch onboarding on real data                       | ⏳ Next      |
+| Memory, inbox email signals, site accounts, release builds | 🗓 Planned    |
 
-## Visual regression
+Progress is tracked in [issues](https://github.com/sadowb/jobPilot/issues).
 
-Real-Electron screenshot comparison, used to verify the CSS to Tailwind migration with pixel parity.
+## Principles
+
+- **Nothing is sent without you.** Every submission shows the exact fields and files first.
+- **A guest on your Mac.** Writes only inside its own app-data folder, never changes your tools or settings, adds no login item or background service, and stops every agent and tab when you quit.
+- **Libraries over custom code** wherever reliability matters.
+
+## Getting started
+
+Requires macOS on Apple Silicon and Node 22.
+
+```bash
+npm ci
+npm run dev          # Electron with hot reload
+```
+
+<details>
+<summary>All commands</summary>
+
+```bash
+npm run typecheck && npm run lint && npm run format:check && npm test
+npm run build        # typecheck + electron-vite build -> out/
+npm run start        # production build, unpackaged
+npm run dist:dir     # packaged app, unpacked, in release/ (quick smoke test)
+npm run dist         # package for this OS -> release/
+npm run e2e          # Playwright journeys against the built app
+npm run tokens       # regenerate styles/tokens.css from design/tokens.json
+npm run db:generate  # migration after an entity change (then npm run db:check)
+```
+
+</details>
+
+## Tech
+
+Electron 45 · React 19 · TypeScript · Tailwind CSS 4 · SQLCipher (`better-sqlite3-multiple-ciphers`) · Drizzle ORM · liteque · zod · pino · Claude Agent SDK · Playwright
+
+## Project layout
+
+```
+src/main/app/        bootstrap, windows, security, app:// protocol
+src/main/modules/    one folder per feature: controller -> service -> repository -> entity
+src/main/platform/   db, queue, agents, browsers, secrets, ipc
+src/preload/         contextBridge only
+src/shared/          IPC channels + zod DTOs shared by main and renderer
+src/renderer/        React UI
+e2e/                 Playwright journeys against the built app
+design/v17/          design boards (source of truth for the UI)
+```
+
+Contributor and agent rules: [AGENTS.md](AGENTS.md). How work flows from issue to merged PR: [docs/FACTORY.md](docs/FACTORY.md).
+
+## Security
+
+- Renderer: `contextIsolation`, `sandbox`, no Node, served from `app://jobpilot/`, strict CSP, navigation and `window.open` locked, only `https:` links open externally.
+- Electron fuses: RunAsNode, `NODE_OPTIONS`, `--inspect` and file-protocol privileges off; cookie encryption and asar integrity on.
+- Data: SQLCipher database with its key in the macOS Keychain; every IPC payload, agent output and HTTP response is validated with zod; outbound fetches are SSRF-checked.
+- CI: gitleaks, zizmor, `npm audit`, CodeQL and secret-scanning push protection.
+
+<details>
+<summary><strong>Visual regression</strong> (pixel comparison of every screen, light and dark)</summary>
 
 ```bash
 # 1. build each tree you want to compare
@@ -71,12 +159,9 @@ npm run visual:capture -- --app <worktree> --out /tmp/vis/head [--only <substrin
 npm run visual:diff -- --base /tmp/vis/base --head /tmp/vis/head --out /tmp/vis/report [--threshold 0.001]
 ```
 
-- `scripts/visual/screens.mjs` declares screens and overlay actions; `scripts/visual/fixture.json` is the fake
-  localStorage seed (reapplied before every page load, so each screen starts from identical state).
-- Determinism: fresh `--user-data-dir` per launch, theme through the `theme-preference` file the main process reads,
-  `reducedMotion: reduce`, frozen `Date` (`page.clock.setFixedTime`), `document.fonts.ready` + network idle + two
-  animation frames before each shot, caret hidden through a constructed stylesheet (the CSP forbids inline `<style>`).
-- Report: `report.md` (FAIL first, by changed %), `report.html` (base | head | diff for FAIL rows). FAIL means more than
-  0.1% of pixels changed, a size mismatch, a missing file or a capture error.
-- Limits: screenshots are taken at the machine's device scale factor, so compare captures from the same machine;
-  `Date` is frozen but timers still run; a screen whose selector fails is recorded as ERROR and fails the diff.
+- `scripts/visual/screens.mjs` declares screens and overlay actions; `scripts/visual/fixture.json` is the fake localStorage seed, reapplied before every page load.
+- Determinism: fresh `--user-data-dir` per launch, theme through the `theme-preference` file, `reducedMotion: reduce`, frozen `Date`, fonts + network idle + two animation frames before each shot, caret hidden.
+- Report: `report.md` (FAIL first) and `report.html` (base | head | diff). FAIL means more than 0.1% of pixels changed, a size mismatch, a missing file or a capture error.
+- Limits: compare captures from the same machine (device scale factor); timers still run; a screen whose selector fails is recorded as ERROR.
+
+</details>
