@@ -40,8 +40,11 @@ const reactRoot = createRoot(root);
 async function start(): Promise<void> {
   reactRoot.render(<p role="status">Loading your profile…</p>);
   try {
-    if (window.jobpilot && !location.hash.includes('/recovery'))
-      setProfileData(await initializeProfile(window.jobpilot.profile, localStorage));
+    if (window.jobpilot && !location.hash.includes('/recovery')) {
+      const profile = await initializeProfile(window.jobpilot.profile, localStorage);
+      setProfileData(profile);
+      if (profile.personal === null && (!location.hash || location.hash === '#/')) location.replace('#/welcome/1');
+    }
     reactRoot.render(
       <StrictMode>
         <App />

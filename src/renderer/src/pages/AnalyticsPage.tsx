@@ -1,5 +1,5 @@
-import { AnalyticsScreen } from '../features/analytics/AnalyticsScreen';
+import { ComingSoon } from '../components/ComingSoon';
 
 export function AnalyticsPage() {
-  return <AnalyticsScreen />;
+  return <ComingSoon title="Analytics" arrival="application analytics" />;
 }
