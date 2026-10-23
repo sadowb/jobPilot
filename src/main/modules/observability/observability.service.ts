@@ -1,6 +1,7 @@
 import { appendFileSync, chmodSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
+import { redact } from './redact';
 import {
   RecordAuditEventSchema,
   RunTraceInputSchema,
@@ -18,7 +19,8 @@ export const AuditService = {
 
 export const RunTraceService = {
   append(input: RunTraceInput) {
-    const event = RunTraceInputSchema.parse(input);
+    const parsed = RunTraceInputSchema.parse(input);
+    const event = { ...parsed, payload: redact(parsed.payload) };
     const persisted = appendRunEvent(event.runId, event.type, event.payload);
     const directory = join(app.getPath('userData'), 'logs', 'runs');
     mkdirSync(directory, { recursive: true, mode: 0o700 });

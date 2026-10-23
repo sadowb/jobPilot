@@ -1,5 +1,8 @@
 import { app } from 'electron';
 import Database from 'better-sqlite3';
+import type { Logger } from 'pino';
+import { z } from 'zod';
+import { RecoveryKeySchema } from '../../../shared/ipc';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
@@ -7,7 +10,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, stat
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as schema from './schema';
-import { getDatabaseKey } from '../secrets/db-key';
+import { getDatabaseKey, storeDatabaseKey } from '../secrets/db-key';
 
 type SqliteDatabase = InstanceType<typeof Database> & { key(key: Buffer): number };
 
@@ -32,13 +35,18 @@ function pendingMigrations(sqlite: SqliteDatabase, migrationFolder: string): boo
   return migrations.some((migration) => latest.created_at === null || latest.created_at < migration.folderMillis);
 }
 
-async function createBackup(sqlite: SqliteDatabase, key: Buffer, suffix: string): Promise<void> {
+async function createBackup(
+  sqlite: SqliteDatabase,
+  key: Buffer,
+  suffix: string,
+  logger: Pick<Logger, 'error'>,
+): Promise<void> {
   const directory = backupDirectory();
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  chmodSync(directory, 0o700);
   const target = join(directory, `jobpilot-${suffix}.db`);
   const temporary = `${target}.${process.pid}.tmp`;
   try {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    chmodSync(directory, 0o700);
     const uri = new URL(pathToFileURL(temporary));
     uri.searchParams.set('cipher', 'sqlcipher');
     uri.searchParams.set('hexkey', key.toString('hex'));
@@ -55,8 +63,19 @@ async function createBackup(sqlite: SqliteDatabase, key: Buffer, suffix: string)
     }
     renameSync(temporary, target);
     chmodSync(target, 0o600);
-  } catch {
+  } catch (error) {
+    const code = z.object({ code: z.string().regex(/^SQLITE_[A-Z_]+$/) }).safeParse(error);
+    logger.error(
+      {
+        error_class:
+          error instanceof Database.SqliteError ? 'SqliteError' : error instanceof Error ? 'Error' : 'Unknown',
+        sqlite_status: code.success ? code.data.code : undefined,
+      },
+      'Encrypted database backup failed',
+    );
     rmSync(temporary, { force: true });
+    // The original error can contain the hexkey URI; never retain it as a cause.
+    // eslint-disable-next-line preserve-caught-error
     throw new Error('Encrypted database backup could not be created or verified.');
   }
 }
@@ -72,13 +91,39 @@ function pruneBackups(): void {
   }
 }
 
-export async function openDatabase(): Promise<void> {
+export class DatabaseUnlockError extends Error {}
+
+export async function recoverDatabaseKey(encoded: string): Promise<void> {
+  const key = Buffer.from(RecoveryKeySchema.parse(encoded), 'base64');
+  try {
+    const check = new Database(databasePath(), { readonly: true, fileMustExist: true }) as SqliteDatabase;
+    try {
+      check.pragma("cipher='sqlcipher'");
+      check.key(key);
+      check.prepare('SELECT count(*) FROM sqlite_schema').get();
+    } finally {
+      check.close();
+    }
+    await storeDatabaseKey(key);
+  } finally {
+    key.fill(0);
+  }
+}
+
+export async function openDatabase(logger: Pick<Logger, 'error'>): Promise<void> {
   const directory = app.getPath('userData');
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   chmodSync(directory, 0o700);
   const file = databasePath();
   const existed = existsSync(file);
-  const { key, created: keyCreated } = await getDatabaseKey();
+  let key: Buffer;
+  let keyCreated: boolean;
+  try {
+    ({ key, created: keyCreated } = await getDatabaseKey(!existed));
+  } catch {
+    if (existed) throw new DatabaseUnlockError('Use your recovery key to unlock the existing database.');
+    throw new Error('OS secure storage could not provide a database key.');
+  }
   if (!existed && !keyCreated) {
     throw new Error(
       'The encrypted database file is missing but its stored key exists. Restore a backup before continuing.',
@@ -86,9 +131,13 @@ export async function openDatabase(): Promise<void> {
   }
   const sqlite = new Database(file, { fileMustExist: existed }) as SqliteDatabase;
   try {
-    sqlite.pragma("cipher='sqlcipher'");
-    sqlite.key(key);
-    sqlite.prepare('SELECT count(*) FROM sqlite_schema').get();
+    try {
+      sqlite.pragma("cipher='sqlcipher'");
+      sqlite.key(key);
+      sqlite.prepare('SELECT count(*) FROM sqlite_schema').get();
+    } catch {
+      throw new DatabaseUnlockError('The stored key could not unlock the database. Use your recovery key.');
+    }
     chmodSync(file, 0o600);
     sqlite.pragma('foreign_keys = ON');
     sqlite.pragma('busy_timeout = 5000');
@@ -98,8 +147,8 @@ export async function openDatabase(): Promise<void> {
     const pending = pendingMigrations(sqlite, migrationFolder);
     const today = new Date().toISOString().slice(0, 10);
     const dailyBackup = join(backupDirectory(), `jobpilot-${today}.db`);
-    if (pending) await createBackup(sqlite, key, `${today}-migration-${Date.now()}`);
-    if (!existsSync(dailyBackup)) await createBackup(sqlite, key, today);
+    if (pending) await createBackup(sqlite, key, `${today}-migration-${Date.now()}`, logger);
+    if (!existsSync(dailyBackup)) await createBackup(sqlite, key, today, logger);
     pruneBackups();
 
     db = drizzle(sqlite, { schema });
@@ -107,5 +156,7 @@ export async function openDatabase(): Promise<void> {
   } catch (error) {
     sqlite.close();
     throw error;
+  } finally {
+    key.fill(0);
   }
 }

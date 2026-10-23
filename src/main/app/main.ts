@@ -4,10 +4,11 @@ import { join } from 'node:path';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
 import { initLogService, loggerFor } from '../modules/observability/log.service';
-import { settingsHandlers } from '../modules/settings/settings.controller';
+import { recoveryHandlers, settingsHandlers } from '../modules/settings/settings.controller';
 import { broadcastThemeChanges, loadTheme } from '../modules/settings/settings.service';
-import { openDatabase } from '../platform/db/database';
+import { DatabaseUnlockError, openDatabase } from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
+import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
 import { registerAppScheme, serveRenderer } from './protocol';
 import { denyPermissionsByDefault, lockDown } from './security';
@@ -41,28 +42,43 @@ if (!app.requestSingleInstanceLock()) {
       logger.error({ err: reason instanceof Error ? reason : String(reason) }, 'Unhandled main-process rejection');
     });
 
+    serveRenderer();
+    denyPermissionsByDefault();
+    registerIpc(recoveryHandlers, originCheck(isTrustedUrl));
+    let recoveryWindow: BrowserWindow | undefined;
     try {
-      await openDatabase();
-    } catch (error) {
-      logger.fatal({ err: error }, 'Encrypted database could not be opened');
+      try {
+        await openDatabase(loggerFor('database'));
+      } catch (error) {
+        if (!(error instanceof DatabaseUnlockError)) throw error;
+        const recovered = waitForRecovery();
+        recoveryWindow = createWindow('/recovery');
+        recoveryWindow.on('closed', () => app.quit());
+        await recovered;
+        await openDatabase(loggerFor('database'));
+      }
+    } catch {
+      logger.fatal('Encrypted database could not be opened');
       await dialog.showMessageBox({
         type: 'error',
         title: 'JobPilot database error',
         message: 'JobPilot could not safely open its encrypted database. No database files were replaced.',
-        detail: error instanceof Error ? error.message : String(error),
+        detail: 'Restore a backup if the database is damaged. Your database files have been kept.',
       });
       app.quit();
       return;
     }
 
-    serveRenderer();
-    denyPermissionsByDefault();
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
     loadTheme();
     registerIpc([...settingsHandlers, ...documentsHandlers, ...observabilityHandlers], originCheck(isTrustedUrl));
     broadcastThemeChanges();
     createWindow();
+    if (recoveryWindow) {
+      recoveryWindow.removeAllListeners('closed');
+      recoveryWindow.close();
+    }
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
@@ -72,3 +88,7 @@ if (!app.requestSingleInstanceLock()) {
     if (process.platform !== 'darwin') app.quit();
   });
 }
+
+// Main-process exports let the inspector-only E2E harness exercise the shipped services.
+export { loggerFor } from '../modules/observability/log.service';
+export { RunTraceService } from '../modules/observability/observability.service';
