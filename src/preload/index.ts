@@ -7,7 +7,13 @@ import {
   RendererErrorInputSchema,
   RecoveryKeySchema,
 } from '../shared/ipc';
-import { ApplicationListItemSchema, IngestResultSchema, ProfileDataSchema, ProfileSaveSchema, ThemeStateSchema } from '../shared/dto';
+import {
+  ApplicationListItemSchema,
+  IngestResultSchema,
+  ProfileDataSchema,
+  ProfileSaveSchema,
+  ThemeStateSchema,
+} from '../shared/dto';
 
 const bridge: JobPilotBridge = {
   postings: {
