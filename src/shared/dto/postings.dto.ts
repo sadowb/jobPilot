@@ -44,3 +44,22 @@ export const FillPlanSchema = z.object({
   unresolved_required: z.array(z.object({ field_key: z.string(), label: z.string() })),
 });
 export type FillPlanDto = z.infer<typeof FillPlanSchema>;
+
+export const IngestUrlSchema = z
+  .string()
+  .max(2048)
+  .url()
+  .pipe(
+    z.string().refine((raw) => {
+      const url = new URL(raw);
+      return url.protocol === 'https:' && !url.username && !url.password && !url.port;
+    }, 'Use an HTTPS URL without credentials or a custom port.'),
+  );
+
+export const PostingPreviewSchema = PostingFormSchema.extend({ postingId: z.ulid() });
+export type PostingPreview = z.infer<typeof PostingPreviewSchema>;
+export const IngestResultSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), posting: PostingPreviewSchema }),
+  z.object({ ok: z.literal(false), code: z.enum(['UNSUPPORTED_ATS', 'FETCH_FAILED']), message: z.string() }),
+]);
+export type IngestResult = z.infer<typeof IngestResultSchema>;

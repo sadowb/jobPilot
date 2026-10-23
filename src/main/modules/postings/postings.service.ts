@@ -1,4 +1,4 @@
-import { PostingFormSchema, type FillPlanDto, type PostingFormDto } from '../../../shared/dto';
+import { PostingFormSchema, type FillPlanDto, type PostingPreview } from '../../../shared/dto';
 import { fetchPosting } from './ats';
 import { PostingsRepository, type PostingsDb } from './postings.repository';
 
@@ -16,11 +16,11 @@ export class PostingService {
     this.repository = new PostingsRepository(db);
   }
 
-  async ingest(url: string): Promise<PostingFormDto> {
+  async ingest(url: string): Promise<PostingPreview> {
     try {
       const parsed = PostingFormSchema.parse(await fetchPosting(url));
-      this.repository.ingest(parsed);
-      return parsed;
+      const postingId = this.repository.ingest(parsed);
+      return { ...parsed, postingId };
     } catch (error) {
       const host = (() => {
         try {

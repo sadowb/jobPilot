@@ -1,20 +1,17 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AddJobsDialog } from '../features/dashboard/addjobs/AddJobsDialog';
-import { SAMPLE_PASTE, toQueueItems, type ParsedLink } from '../features/dashboard/addjobs/parse';
+import { appliedItem, isApplied, queueItem } from '../features/dashboard/applications';
 import { AppliedView } from '../features/dashboard/AppliedView';
 import type { DashboardTab } from '../features/dashboard/components/TabSwitch';
-import { SAMPLE_APPLICATIONS } from '../features/dashboard/sample';
 import { dashboardReducer, initialState } from '../features/dashboard/state';
 import { UpNextView } from '../features/dashboard/UpNextView';
-import { initialQueueState, queueReducer, scenarioQueue, type QueueScenario } from '../features/dashboard/upnext/queue';
+import { initialQueueState, queueReducer } from '../features/dashboard/upnext/queue';
 
 interface AddJobsState {
   text: string;
-  from: 'clipboard' | 'typed';
 }
 
-const isDevBuild = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const isTextTarget = (t: EventTarget | null): boolean =>
   t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 
@@ -28,18 +25,22 @@ export function Dashboard() {
   const [params] = useSearchParams();
   const tab: DashboardTab = params.get('tab') === 'up-next' ? 'up-next' : 'applied';
 
-  // `?scenario=bulk|addjobs` seeds the states the boards draw. Dev builds only; production ignores it.
-  const [scenarioName] = useState<QueueScenario | null>(() => {
-    const name = params.get('scenario');
-    return isDevBuild && (name === 'bulk' || name === 'addjobs') ? name : null;
-  });
-  const scenario = useMemo(() => (scenarioName ? scenarioQueue(scenarioName) : null), [scenarioName]);
-
-  const [applied, dispatchApplied] = useReducer(dashboardReducer, SAMPLE_APPLICATIONS, initialState);
-  const [queue, dispatchQueue] = useReducer(queueReducer, scenario?.state ?? initialQueueState());
-  const [addJobs, setAddJobs] = useState<AddJobsState | null>(
-    scenarioName === 'addjobs' ? { text: SAMPLE_PASTE, from: 'clipboard' } : null,
+  const [applied, dispatchApplied] = useReducer(dashboardReducer, [], initialState);
+  const [queue, dispatchQueue] = useReducer(queueReducer, initialQueueState([]));
+  const [addJobs, setAddJobs] = useState<AddJobsState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const reload = useCallback(
+    () =>
+      window.jobpilot!.applications.list().then((items) => {
+        dispatchApplied({ type: 'loaded', apps: items.filter(isApplied).map(appliedItem) });
+        dispatchQueue({ type: 'loaded', items: items.filter((item) => !isApplied(item)).map(queueItem) });
+        setLoadError(null);
+      }),
+    [],
   );
+  useEffect(() => {
+    void reload().catch(() => setLoadError('Could not load applications. Please reload.'));
+  }, [reload]);
   const addJobsOpen = addJobs !== null;
 
   useEffect(() => {
@@ -49,29 +50,24 @@ export function Dashboard() {
       const text = e.clipboardData?.getData('text') ?? '';
       if (!text.trim()) return;
       e.preventDefault();
-      setAddJobs({ text, from: 'clipboard' });
+      setAddJobs({ text });
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
   }, [addJobsOpen]);
 
-  const queueCtx = useMemo(() => ({ applied: applied.apps, queued: queue.items }), [applied.apps, queue.items]);
-  const queueLinks = useCallback(
-    (links: ParsedLink[]) => {
-      const stamp = Date.now().toString(36);
-      const ids = links.map((_, i) => `added-${stamp}-${i}`);
-      dispatchQueue({ type: 'add', items: toQueueItems(links, 'Pasted', ids) });
-      setAddJobs(null);
-      navigate('/?tab=up-next');
-    },
-    [navigate],
-  );
+  const onAdded = async () => {
+    await reload();
+    setAddJobs(null);
+    navigate('/?tab=up-next');
+  };
 
   const goTab = (t: DashboardTab) => navigate(t === 'applied' ? '/' : '/?tab=up-next');
-  const openAddJobs = () => setAddJobs({ text: '', from: 'typed' });
+  const openAddJobs = () => setAddJobs({ text: '' });
 
   return (
     <>
+      {loadError && <p role="alert">{loadError}</p>}
       {tab === 'applied' ? (
         <AppliedView
           state={applied}
@@ -88,22 +84,13 @@ export function Dashboard() {
         <UpNextView
           state={queue}
           dispatch={dispatchQueue}
-          frozenNow={scenario?.frozenNow}
           onTab={goTab}
           onOpenInbox={() => navigate('/inbox')}
           onAddJobs={openAddJobs}
           modalOpen={addJobsOpen}
         />
       )}
-      {addJobs && (
-        <AddJobsDialog
-          initialText={addJobs.text}
-          from={addJobs.from}
-          context={queueCtx}
-          onQueue={queueLinks}
-          onClose={() => setAddJobs(null)}
-        />
-      )}
+      {addJobs && <AddJobsDialog initialText={addJobs.text} onAdded={onAdded} onClose={() => setAddJobs(null)} />}
     </>
   );
 }

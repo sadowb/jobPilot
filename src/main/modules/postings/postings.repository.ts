@@ -1,4 +1,4 @@
-import { and, eq, inArray, notInArray } from 'drizzle-orm';
+import { and, eq, inArray, notInArray, or } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { FillPlanDto, PostingFormDto } from '../../../shared/dto';
 import * as schema from '../../platform/db/schema';
@@ -10,8 +10,8 @@ export type PostingsDb = BetterSQLite3Database<typeof schema>;
 export class PostingsRepository {
   constructor(private readonly db: PostingsDb) {}
 
-  ingest(form: PostingFormDto): void {
-    this.db.transaction((tx) => {
+  ingest(form: PostingFormDto): string {
+    return this.db.transaction((tx) => {
       const normalizedName = form.company.normalize('NFKC').toLocaleLowerCase();
       const nameKey = normalizedName.replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || normalizedName;
       const companyRow = tx
@@ -20,12 +20,24 @@ export class PostingsRepository {
         .onConflictDoUpdate({ target: company.nameKey, set: { name: form.company } })
         .returning({ id: company.id })
         .get();
+      const existing = tx
+        .select({ canonicalUrl: jobPosting.canonicalUrl })
+        .from(jobPosting)
+        .where(
+          or(
+            eq(jobPosting.canonicalUrl, form.canonical_url),
+            form.ats_job_id === null
+              ? undefined
+              : and(eq(jobPosting.ats, form.ats), eq(jobPosting.atsJobId, form.ats_job_id)),
+          ),
+        )
+        .get();
       const posted = tx
         .insert(jobPosting)
         .values({
           companyId: companyRow.id,
           url: form.canonical_url,
-          canonicalUrl: form.canonical_url,
+          canonicalUrl: existing?.canonicalUrl ?? form.canonical_url,
           ats: form.ats,
           atsJobId: form.ats_job_id,
           title: form.title,
@@ -103,6 +115,7 @@ export class PostingsRepository {
           })
           .run();
       }
+      return posted.id;
     });
   }
 

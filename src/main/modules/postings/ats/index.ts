@@ -487,6 +487,10 @@ async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
   });
 }
 
+export function matchPostingUrl(url: URL): MatchedPosting | null {
+  return adapters.map((adapter) => adapter.match(url)).find((match) => match !== null) ?? null;
+}
+
 export async function fetchPosting(rawUrl: string): Promise<ReturnType<typeof form>> {
   const url = canonicalUrl(rawUrl);
   const matched = adapters.map((adapter) => ({ adapter, match: adapter.match(url) })).find((x) => x.match);

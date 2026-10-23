@@ -1,0 +1,369 @@
+{
+  "source": "https://boards-api.greenhouse.io/v1/boards/perpay/jobs/4076934007?questions=true&pay_transparency=true",
+  "response": {
+    "absolute_url": "https://job-boards.greenhouse.io/perpay/jobs/4076934007",
+    "data_compliance": [
+      {
+        "type": "gdpr",
+        "requires_consent": false,
+        "requires_processing_consent": false,
+        "requires_retention_consent": false,
+        "retention_period": null,
+        "demographic_data_consent_applies": false
+      }
+    ],
+    "education": "education_required",
+    "internal_job_id": 4056523007,
+    "location": {
+      "name": "Philadelphia, Pennsylvania, United States"
+    },
+    "metadata": null,
+    "id": 4076934007,
+    "updated_at": "2026-09-10T10:26:18-04:00",
+    "requisition_id": "20",
+    "title": "Analytics Internship, Summer 2027",
+    "pay_input_ranges": [],
+    "company_name": "Perpay - Career's Page",
+    "first_published": "2023-09-12T09:29:22-04:00",
+    "language": "en",
+    "application_deadline": null,
+    "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;h3&gt;&lt;strong&gt;About Us:&lt;/strong&gt;&lt;/h3&gt;\n&lt;p&gt;Perpay is a certified B Corp and Philadelphia\u2019s most impactful growth-stage startup. We are driven by a mission to significantly improve the financial stability of everyday Americans. For the past decade, we have established strong product-market fit and a profitable, efficient operating model across a suite of products, positioning Perpay as the premier financial partner for consumers with subprime credit.&lt;/p&gt;\n&lt;p&gt;With over 500,000 customers who have utilized more than $1 billion in spending power, we are at a pivotal moment. We are scaling our operations, building new offerings, and deepening our impact. We are looking for teammates eager to join us on this journey.&lt;/p&gt;\n&lt;p&gt;Our venture partners include First Round Capital and L Catterton.&lt;/p&gt;\n&lt;p&gt;Products we\u2019ve built to make an impact:&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Perpay Marketplace: Combines interest-free payments and modern e-commerce to reduce cost of ownership and promote healthy repayment behavior.&lt;/li&gt;\n&lt;li&gt;Perpay+: Leverages Marketplace repayment history to help members monitor and build credit with all 3 credit bureaus.&lt;/li&gt;\n&lt;li&gt;Perpay Credit Card: Expands access to the flexibility and benefits of a World Mastercard by removing common barriers like high security deposits and low approval odds.&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;Our team thrives on in-person collaboration, operating from our unique center-city Philadelphia office. This comfortable &quot;home away from home&quot; space offers river views and fosters rapid product development, strong relationships, and career growth. The energy from achieving big wins is palpable here. While we primarily work in the office, we offer sensible flexibility for personal needs, such as sick children or urgent errands, and coordinate official remote weeks around major holidays. If you are passionate about a meaningful mission, collaboration, equity, and generous perks, Perpay is the best place to be in Philadelphia right now.&lt;/p&gt;&lt;/div&gt;&lt;h3&gt;About the Role:&lt;/h3&gt;\n&lt;p&gt;As an intern at Perpay, your main responsibility is to learn. We understand the value of mentorship and offer students an opportunity to gain real work experience before graduation. In the 10-12 weeks we&#39;ll be together next summer (2027), you will have the opportunity to uncover and communicate insights from our company data that will inform decision-making on open and pressing business questions.&lt;/p&gt;\n&lt;p&gt;Candidates hired for this role will be placed on one of the following teams based on fit and business need, determined after the hiring process:&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Strategic Analytics&lt;/li&gt;\n&lt;li&gt;Risk&lt;/li&gt;\n&lt;li&gt;Business Planning &amp;amp; Analysis (BP&amp;amp;A)&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;In close collaboration with team members on your assigned team, you will apply rigorous research approaches to frame analyses impacting key areas of the business, create high-quality analytic code to assemble evidence, and communicate clear and actionable recommendations to leadership based on your research. All while developing the skills to succeed in a fast-paced tech start-up environment and experiencing and contributing to our unique culture.&lt;/p&gt;\n&lt;p&gt;Our greatest strength is our people, and we&#39;d love for you to be one of them!&lt;/p&gt;\n&lt;h3&gt;&lt;strong&gt;What You\u2019ll Bring:&lt;/strong&gt;&lt;/h3&gt;\n&lt;ul&gt;\n&lt;li style=&quot;font-weight: 400;&quot;&gt;Currently enrolled in or will receive a Bachelor&#39;s/Master&#39;s in a quantitative discipline with an expected graduation date between December 2027 and June 2028, or equivalent relevant experience&lt;/li&gt;\n&lt;li style=&quot;font-weight: 400;&quot;&gt;Knowledge of statistical research methods&lt;/li&gt;\n&lt;li style=&quot;font-weight: 400;&quot;&gt;Experience using SQL for acquiring and transforming data&lt;/li&gt;\n&lt;li style=&quot;font-weight: 400;&quot;&gt;Experience programming for data analysis and visualization (Python preferred)&lt;/li&gt;\n&lt;li style=&quot;font-weight: 400;&quot;&gt;Experience with Business Intelligence tools (Tableau, Domo)&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;strong&gt;Bonus:&lt;/strong&gt;&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Enrolled in a Master\u2019s Degree or advanced technical degree&lt;/li&gt;\n&lt;li&gt;Previous work experience in a technical field&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;em&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Hey, &lt;/span&gt;&lt;/em&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;we know not everybody checks all the boxes, so if you\u2019re interested, please apply because you could be just what we\u2019re looking for!&lt;/span&gt;&lt;/p&gt;\n&lt;h3&gt;&lt;strong&gt;Our Recruitment Process:&lt;/strong&gt;&lt;/h3&gt;\n&lt;p&gt;To give you a clear picture of what to expect, here&#39;s an outline of our interview process for this role:&lt;/p&gt;\n&lt;ol&gt;\n&lt;li&gt;&lt;strong&gt;Lightweight data challenge&lt;/strong&gt; \u2014 a short exercise using publicly available information&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Phone call&lt;/strong&gt; \u2014 a conversation with a member of our team.&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;In-depth data challenge&lt;/strong&gt; \u2014 a more robust exercise using internal information, resembling a real analyst assignment.&lt;/li&gt;\n&lt;li&gt;&lt;strong&gt;Team interviews&lt;/strong&gt; \u2014 Conversations with Perpay team members covering your background, interest in the role, and scenario-based questions to understand how you think. You will also have an opportunity to present your \u2018in-depth\u2019 data challenge to the team.&lt;/li&gt;\n&lt;/ol&gt;\n&lt;h3&gt;&lt;strong&gt;What We\u2019ll Bring For Internship:&amp;nbsp;&lt;/strong&gt;&lt;/h3&gt;\n&lt;ul&gt;\n&lt;li&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Hourly compensation&lt;/span&gt;&lt;/li&gt;\n&lt;li&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Espresso bar, full kitchen, weekly catered lunches, snacks, beverages, &amp;amp; everyday lunch essentials&lt;/span&gt;&lt;/li&gt;\n&lt;li&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;One-of-a-kind office with comfortable work/lounge spaces and pleasant riverfront setting&lt;/span&gt;&lt;/li&gt;\n&lt;li&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Opportunity to gain experience at one of the fastest-growing financial startups in the country in both e-commerce &amp;amp; fintech, working cross-functionally.&lt;br&gt;&lt;/span&gt;&lt;/li&gt;\n&lt;/ul&gt;&lt;div class=&quot;content-conclusion&quot;&gt;&lt;h3&gt;&lt;strong&gt;What We\u2019ll Bring to Full-time Team Members:&lt;/strong&gt;&lt;/h3&gt;\n&lt;ul&gt;\n&lt;li&gt;Meaningful compensation and equity&lt;/li&gt;\n&lt;li&gt;Premium medical benefits (fully paid base plan, and very reasonable premium for the buy-up option)&lt;/li&gt;\n&lt;li&gt;5% employer 401k match&lt;/li&gt;\n&lt;li&gt;Unlimited PTO policy&lt;/li&gt;\n&lt;li&gt;\u200b\u200bRemote weeks around major holidays + extra holiday on weekends like MDW and LDW&lt;/li&gt;\n&lt;li&gt;High quality catered lunch by local chefs, 4 days / week&lt;/li&gt;\n&lt;li&gt;Gym subsidy&lt;/li&gt;\n&lt;li&gt;Paid cell phone + plan&lt;/li&gt;\n&lt;li&gt;Student loan repayment match program&lt;/li&gt;\n&lt;li&gt;Family savings match program&lt;/li&gt;\n&lt;li&gt;Relocation assistance&lt;/li&gt;\n&lt;li&gt;Generous team member discounts&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;This is not a remote opportunity; it is 100% onsite (#LI-Onsite) (#LI-TH1) (#LI-AK1)&lt;/span&gt;&lt;/p&gt;\n&lt;p&gt;&lt;em&gt;&lt;span style=&quot;font-weight: 400;&quot;&gt;Perpay is proud to be an equal opportunity employer. We value diversity in all its forms and are committed to creating an inclusive environment. We do not discriminate on the basis of race, religion, color, national origin, gender identity, sexual orientation, sex (including pregnancy), marital status, political affiliation, age, veteran status, disability status or other non-merit factor. Please contact us at careers@perpay.com to request accommodation.&lt;/span&gt;&lt;/em&gt;&lt;/p&gt;&lt;/div&gt;",
+    "departments": [
+      {
+        "id": 4014872007,
+        "name": "Analytics & Risk",
+        "child_ids": [],
+        "parent_id": 4015944007
+      }
+    ],
+    "offices": [
+      {
+        "id": 4012728007,
+        "name": "2400 Market",
+        "location": "Philadelphia, Pennsylvania, United States",
+        "child_ids": [],
+        "parent_id": null
+      }
+    ],
+    "ai_disclaimer": null,
+    "include_ai_disclaimer": null,
+    "ai_opt_out_request_url": null,
+    "compliance": null,
+    "demographic_questions": null,
+    "questions": [
+      {
+        "description": null,
+        "label": "First Name",
+        "required": true,
+        "fields": [
+          {
+            "name": "first_name",
+            "type": "input_text",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Last Name",
+        "required": true,
+        "fields": [
+          {
+            "name": "last_name",
+            "type": "input_text",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Email",
+        "required": true,
+        "fields": [
+          {
+            "name": "email",
+            "type": "input_text",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Phone",
+        "required": true,
+        "fields": [
+          {
+            "name": "phone",
+            "type": "input_text",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Resume/CV",
+        "required": true,
+        "fields": [
+          {
+            "name": "resume",
+            "type": "input_file",
+            "values": []
+          },
+          {
+            "name": "resume_text",
+            "type": "textarea",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Cover Letter",
+        "required": false,
+        "fields": [
+          {
+            "name": "cover_letter",
+            "type": "input_file",
+            "values": []
+          },
+          {
+            "name": "cover_letter_text",
+            "type": "textarea",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "How did you hear about us?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_4468066007",
+            "type": "textarea",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Did you attend a fall career fair this year?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_10051079007",
+            "type": "multi_value_single_select",
+            "values": [
+              {
+                "label": "No",
+                "value": 20636393007
+              },
+              {
+                "label": "Yes, Drexel STEM",
+                "value": 20636394007
+              },
+              {
+                "label": "Yes, Drexel General",
+                "value": 35013730007
+              },
+              {
+                "label": "Yes, UPenn STEM",
+                "value": 20636395007
+              },
+              {
+                "label": "Yes, UPenn General",
+                "value": 20636396007
+              },
+              {
+                "label": "Yes, Penn State University",
+                "value": 35013739007
+              },
+              {
+                "label": "Yes, Lafayette",
+                "value": 20636399007
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "What excites you about this opportunity?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_4468067007",
+            "type": "textarea",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "What tools do you use to work with data?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_7239166007",
+            "type": "textarea",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Tell us about a time you used data to understand your world. What did you learn, how, and why?",
+        "required": false,
+        "fields": [
+          {
+            "name": "question_7239167007",
+            "type": "textarea",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "What are you most interested in learning during your internship?",
+        "required": false,
+        "fields": [
+          {
+            "name": "question_7239168007",
+            "type": "textarea",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "LinkedIn Profile",
+        "required": false,
+        "fields": [
+          {
+            "name": "question_4468068007",
+            "type": "input_text",
+            "values": []
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Will you now or in the future require sponsorship for employment visa status?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_5344153007",
+            "type": "multi_value_single_select",
+            "values": [
+              {
+                "label": "Yes",
+                "value": 1
+              },
+              {
+                "label": "No",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Are you legally authorized to work in the United States on a full-time basis?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_5344261007",
+            "type": "multi_value_single_select",
+            "values": [
+              {
+                "label": "Yes",
+                "value": 1
+              },
+              {
+                "label": "No",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "I understand this is an in-person role in Philadelphia, PA.",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_4468065007",
+            "type": "multi_value_single_select",
+            "values": [
+              {
+                "label": "Yes",
+                "value": 1
+              },
+              {
+                "label": "No",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "When are you expecting to graduate with your graduate degree?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_10353318007",
+            "type": "multi_value_single_select",
+            "values": [
+              {
+                "label": "Graduated",
+                "value": 17953676007
+              },
+              {
+                "label": "2025",
+                "value": 17953677007
+              },
+              {
+                "label": "2026",
+                "value": 17953679007
+              },
+              {
+                "label": "2027 & later",
+                "value": 17953681007
+              },
+              {
+                "label": "n/a",
+                "value": 17953683007
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "description": null,
+        "label": "Are you currently pursuing a graduate degree?",
+        "required": true,
+        "fields": [
+          {
+            "name": "question_10353319007",
+            "type": "multi_value_single_select",
+            "values": [
+              {
+                "label": "Yes",
+                "value": 1
+              },
+              {
+                "label": "No",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "location_questions": []
+  }
+}

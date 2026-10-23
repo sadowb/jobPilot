@@ -7,9 +7,28 @@ import {
   RendererErrorInputSchema,
   RecoveryKeySchema,
 } from '../shared/ipc';
-import { ProfileDataSchema, ProfileSaveSchema, ThemeStateSchema } from '../shared/dto';
+import {
+  ApplicationListItemSchema,
+  IngestResultSchema,
+  ProfileDataSchema,
+  ProfileSaveSchema,
+  ThemeStateSchema,
+} from '../shared/dto';
 
 const bridge: JobPilotBridge = {
+  postings: {
+    async ingest(url) {
+      return IngestResultSchema.parse(await ipcRenderer.invoke(Channels.ingestPosting, url));
+    },
+  },
+  applications: {
+    async list() {
+      return z.array(ApplicationListItemSchema).parse(await ipcRenderer.invoke(Channels.listApplications));
+    },
+    async create(postingId) {
+      return ApplicationListItemSchema.parse(await ipcRenderer.invoke(Channels.createApplication, { postingId }));
+    },
+  },
   platform: process.platform,
   profile: {
     async migrationDone() {

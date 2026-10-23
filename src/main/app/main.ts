@@ -1,6 +1,8 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { applicationsHandlers } from '../modules/applications/applications.controller';
+import { postingsHandlers } from '../modules/postings/postings.controller';
 import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
@@ -81,7 +83,14 @@ if (!app.requestSingleInstanceLock()) {
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
     loadTheme();
     registerIpc(
-      [...settingsHandlers, ...documentsHandlers, ...observabilityHandlers, ...profileHandlers],
+      [
+        ...settingsHandlers,
+        ...documentsHandlers,
+        ...observabilityHandlers,
+        ...postingsHandlers,
+        ...applicationsHandlers,
+        ...profileHandlers,
+      ],
       originCheck(isTrustedUrl),
     );
     broadcastThemeChanges();

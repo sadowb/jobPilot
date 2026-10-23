@@ -2,7 +2,7 @@ import type { AgentState } from '../../components/v17-agent-state';
 
 export type ApplicationStatus = 'submitted' | 'screening' | 'interview' | 'offer' | 'rejected' | 'withdrawn' | 'closed';
 
-export type WorkMode = 'Remote' | 'Hybrid' | 'On-site';
+export type WorkMode = 'Remote' | 'Hybrid' | 'On-site' | '—';
 
 /** Who last set the status: the agent at submit time, an email the inbox parsed, or the user in the UI. */
 export type StatusSource = 'agent' | 'email' | 'you';
