@@ -4,6 +4,7 @@ on:
     - cron: '13 6 * * 1'
   workflow_dispatch:
 permissions:
+  actions: read
   issues: write
   pull-requests: read
 concurrency:
@@ -36,10 +37,6 @@ jobs:
           gh api --paginate "repos/$GH_REPO/issues?state=open&per_page=100" |
             jq -r '.[] | select(.pull_request == null) | select(any(.labels[]; .name == "blocked" or .name == "owner-action")) | "- [#\(.number)](\(.html_url)) \(.title)"' >> "$body"
           printf '\n## Failed nightly runs in the last 7 days\n\n' >> "$body"
-          # Listing private Actions runs requires actions: read; keep the requested two-permission token.
-          if gh api --paginate "repos/$GH_REPO/actions/workflows/nightly.yml/runs?status=failure&created=%3E%3D$week_ago&per_page=100" > "$RUNNER_TEMP/nightly.json"; then
-            jq -r '.workflow_runs[] | "- [Run #\(.run_number)](\(.html_url)) (\(.created_at))"' "$RUNNER_TEMP/nightly.json" >> "$body"
-          else
-            printf 'Unavailable: the digest token has no actions: read permission.\n' >> "$body"
-          fi
+          gh api --paginate "repos/$GH_REPO/actions/workflows/nightly.yml/runs?status=failure&created=%3E%3D$week_ago&per_page=100" > "$RUNNER_TEMP/nightly.json"
+          jq -r '.workflow_runs[] | "- [Run #\(.run_number)](\(.html_url)) (\(.created_at))"' "$RUNNER_TEMP/nightly.json" >> "$body"
           gh issue create --title "$title" --label digest --body-file "$body"

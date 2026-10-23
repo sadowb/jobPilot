@@ -29,12 +29,13 @@ try {
     options: {
       model: { type: 'string', default: 'gpt-6.1-sol' },
       effort: { type: 'string', default: 'medium' },
+      'allow-author': { type: 'string', default: 'sadowb' },
       'dry-run': { type: 'boolean', default: false },
     },
   });
   if (positionals.length !== 1 || !/^[1-9]\d*$/.test(positionals[0])) {
     throw new Error(
-      'Usage: node scripts/dispatch.mjs <positive issue-number> [--model gpt-6.1-sol] [--effort medium] [--dry-run]',
+      'Usage: node scripts/dispatch.mjs <positive issue-number> [--model gpt-6.1-sol] [--effort medium] [--allow-author <login>] [--dry-run]',
     );
   }
   const number = positionals[0];
@@ -44,8 +45,24 @@ try {
     .parse(values.model);
   const effort = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']).parse(values.effort);
   const issue = z
-    .object({ title: z.string(), body: z.string().nullable() })
-    .parse(JSON.parse(run('gh', ['issue', 'view', number, '--repo', repo, '--json', 'title,body'])));
+    .object({
+      title: z.string(),
+      body: z.string().nullable(),
+      author: z.object({ login: z.string(), is_bot: z.boolean() }),
+      state: z.enum(['OPEN', 'CLOSED']),
+    })
+    .parse(JSON.parse(run('gh', ['issue', 'view', number, '--repo', repo, '--json', 'title,body,author,state'])));
+  if (issue.author.is_bot || issue.author.login.endsWith('[bot]')) {
+    throw new Error(`Refusing issue #${number}: bot author ${issue.author.login} cannot be allowed.`);
+  }
+  if (issue.state !== 'OPEN') {
+    throw new Error(`Refusing issue #${number}: issue is closed.`);
+  }
+  if (issue.author.login !== values['allow-author']) {
+    throw new Error(
+      `Refusing issue #${number}: author ${issue.author.login} is not allowed (expected ${values['allow-author']}). The owner may explicitly override with --allow-author <login>.`,
+    );
+  }
   const slug =
     issue.title
       .toLowerCase()
