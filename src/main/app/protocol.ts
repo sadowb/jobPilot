@@ -4,7 +4,9 @@ import { pathToFileURL } from 'node:url';
 
 // Must run before app is ready.
 export function registerAppScheme(): void {
-  protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+  protocol.registerSchemesAsPrivileged([
+    { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  ]);
 }
 
 export function serveRenderer(): void {

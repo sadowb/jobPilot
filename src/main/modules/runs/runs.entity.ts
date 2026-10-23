@@ -35,9 +35,7 @@ export const run = sqliteTable(
   },
   (t) => [
     // At most one active run per application.
-    uniqueIndex('run_one_active_per_application_uq')
-      .on(t.applicationId)
-      .where(inList(t.status, ACTIVE_RUN_STATUSES)),
+    uniqueIndex('run_one_active_per_application_uq').on(t.applicationId).where(inList(t.status, ACTIVE_RUN_STATUSES)),
     index('run_application_created_idx').on(t.applicationId, t.createdAt),
     index('run_status_idx').on(t.status),
     oneOf('run_status_ck', t.status, RunStatus.values),

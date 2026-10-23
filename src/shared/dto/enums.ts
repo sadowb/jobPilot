@@ -6,7 +6,17 @@ const enumOf = <const T extends readonly [string, ...string[]]>(values: T) => ({
 export const AtsKind = enumOf(['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'bamboohr', 'custom']);
 export type AtsKind = z.infer<typeof AtsKind.schema>;
 
-export const QuestionType = enumOf(['text', 'textarea', 'select', 'multiselect', 'checkbox', 'radio', 'file', 'date', 'number']);
+export const QuestionType = enumOf([
+  'text',
+  'textarea',
+  'select',
+  'multiselect',
+  'checkbox',
+  'radio',
+  'file',
+  'date',
+  'number',
+]);
 export type QuestionType = z.infer<typeof QuestionType.schema>;
 
 export const ApplicationStatus = enumOf([
@@ -66,7 +76,14 @@ export type InboxThreadStatus = z.infer<typeof InboxThreadStatus.schema>;
 export const MessageSender = enumOf(['owner', 'agent', 'employer', 'system']);
 export type MessageSender = z.infer<typeof MessageSender.schema>;
 
-export const EmailSignalKind = enumOf(['verification_code', 'confirmation', 'rejection', 'interview', 'reply', 'other']);
+export const EmailSignalKind = enumOf([
+  'verification_code',
+  'confirmation',
+  'rejection',
+  'interview',
+  'reply',
+  'other',
+]);
 export type EmailSignalKind = z.infer<typeof EmailSignalKind.schema>;
 
 export const DocumentKind = enumOf(['cv', 'cover_letter', 'transcript', 'other']);

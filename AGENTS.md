@@ -18,6 +18,7 @@ e2e/                     Playwright `_electron` journeys
 ## Layering (enforced in review)
 
 `controller -> service -> repository -> entity`. Nothing skips a layer or points back up.
+
 - **controller**: registers IPC handlers via `platform/ipc` (`defineHandler(channel, zodSchema, fn)`). Parses input, calls one service, returns a DTO. No SQL, no business rules.
 - **service**: business rules, state-machine transitions, transactions. The only layer that calls other modules' services.
 - **repository**: the only layer that talks to Drizzle. Returns plain rows/DTOs.

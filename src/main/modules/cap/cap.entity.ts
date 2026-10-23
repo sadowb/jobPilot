@@ -27,5 +27,8 @@ export const capMessage = sqliteTable(
     content: text('content').notNull(),
     createdAt: createdAt(),
   },
-  (t) => [index('cap_message_conversation_created_idx').on(t.conversationId, t.createdAt), oneOf('cap_message_role_ck', t.role, CapRole.values)],
+  (t) => [
+    index('cap_message_conversation_created_idx').on(t.conversationId, t.createdAt),
+    oneOf('cap_message_role_ck', t.role, CapRole.values),
+  ],
 );

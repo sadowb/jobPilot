@@ -32,5 +32,8 @@ export const documentVersion = sqliteTable(
     parsedText: text('parsed_text'),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex('document_version_doc_version_uq').on(t.documentId, t.version), index('document_version_sha256_idx').on(t.sha256)],
+  (t) => [
+    uniqueIndex('document_version_doc_version_uq').on(t.documentId, t.version),
+    index('document_version_sha256_idx').on(t.sha256),
+  ],
 );

@@ -3,10 +3,16 @@ import { check, integer, text, type AnySQLiteColumn } from 'drizzle-orm/sqlite-c
 import { ulid } from 'ulid';
 
 /** ULID text primary key. */
-export const id = () => text('id').primaryKey().$defaultFn(() => ulid());
+export const id = () =>
+  text('id')
+    .primaryKey()
+    .$defaultFn(() => ulid());
 
 /** Unix milliseconds. */
-export const createdAt = () => integer('created_at').notNull().$defaultFn(() => Date.now());
+export const createdAt = () =>
+  integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now());
 export const updatedAt = () =>
   integer('updated_at')
     .notNull()
@@ -21,4 +27,5 @@ export const inList = (column: AnySQLiteColumn, values: readonly string[]): SQL 
   sql`${column} IN (${sql.raw(values.map((v) => `'${v.replaceAll("'", "''")}'`).join(', '))})`;
 
 /** CHECK constraint restricting a text column to a closed set (SQLite has no enums). */
-export const oneOf = (name: string, column: AnySQLiteColumn, values: readonly string[]) => check(name, inList(column, values));
+export const oneOf = (name: string, column: AnySQLiteColumn, values: readonly string[]) =>
+  check(name, inList(column, values));

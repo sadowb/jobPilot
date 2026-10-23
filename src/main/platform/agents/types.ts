@@ -10,11 +10,15 @@ export type McpServerConfig =
 export const RunResultSchema = z.object({
   status: z.enum(['filled', 'needs_answers', 'blocked', 'submitted', 'failed']),
   /** Answers the agent took from the fill plan / library / profile. */
-  answers_used: z.array(z.object({ field_key: z.string(), answer: z.string(), source: z.enum(['library', 'profile', 'agent', 'owner']) })),
+  answers_used: z.array(
+    z.object({ field_key: z.string(), answer: z.string(), source: z.enum(['library', 'profile', 'agent', 'owner']) }),
+  ),
   /** Answers the agent had to produce itself; the app offers them for the answer library. */
   answers_added: z.array(z.object({ field_key: z.string(), question: z.string(), answer: z.string() })),
   /** Fields the agent could not answer (status needs_answers). */
-  questions_needed: z.array(z.object({ field_key: z.string(), question: z.string(), options: z.array(z.string()).optional() })).default([]),
+  questions_needed: z
+    .array(z.object({ field_key: z.string(), question: z.string(), options: z.array(z.string()).optional() }))
+    .default([]),
   /** Site/form quirks worth remembering (stored in Mnemosyne). */
   learned: z.array(z.string()),
   blockers: z.array(z.object({ kind: z.enum(['captcha', 'login', 'unsupported', 'other']), message: z.string() })),
@@ -29,7 +33,12 @@ export const RunEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tool_call'), callId: z.string(), name: z.string(), input: z.unknown() }),
   z.object({ type: z.literal('tool_result'), callId: z.string(), output: z.unknown(), isError: z.boolean() }),
   z.object({ type: z.literal('status'), text: z.string() }),
-  z.object({ type: z.literal('cost'), inputTokens: z.number().int().nonnegative(), outputTokens: z.number().int().nonnegative(), costMicros: z.number().int().nonnegative() }),
+  z.object({
+    type: z.literal('cost'),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costMicros: z.number().int().nonnegative(),
+  }),
   z.object({ type: z.literal('error'), message: z.string() }),
 ]);
 export type RunEvent = z.infer<typeof RunEventSchema>;
