@@ -37,7 +37,7 @@ describe('renderer stylesheet policy', () => {
   it('has no class selectors in the entry stylesheet outside Tailwind directives', () => {
     const source = readFileSync(join(renderer, 'src/styles/index.css'), 'utf8');
     const root = postcss.parse(source);
-    const allowedBase = new Set(['html, body, #root', 'body', 'button', 'a', ':focus-visible', '::selection']);
+    const allowedBase = new Set(['html, body, #root', 'body', 'button', 'a', ':focus-visible', '::selection', '*, *::before, *::after']);
     const selectors: string[] = [];
     const visit = (node: postcss.Container, inBase = false) => {
       node.nodes?.forEach((child) => {
@@ -49,8 +49,12 @@ describe('renderer stylesheet policy', () => {
           else expect.fail(`selector outside @theme or @layer base: ${selector}`);
         }
         if (child.type === 'atrule' && child.nodes) {
-          expect(child.name === 'theme' || child.name === 'layer').toBe(true);
-          if (child.name === 'layer') expect(child.params).toBe('base');
+          if (child.name === 'media') {
+            expect(inBase && child.params === '(prefers-reduced-motion: reduce)').toBe(true);
+          } else {
+            expect(child.name === 'theme' || child.name === 'layer').toBe(true);
+            if (child.name === 'layer') expect(child.params).toBe('base');
+          }
           visit(child, inBase || (child.name === 'layer' && child.params === 'base'));
         } else if (child.type === 'rule') {
           visit(child, inBase);
