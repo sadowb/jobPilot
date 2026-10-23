@@ -3,6 +3,7 @@ import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { applicationsHandlers } from '../modules/applications/applications.controller';
 import { postingsHandlers } from '../modules/postings/postings.controller';
+import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
 import { initLogService, loggerFor } from '../modules/observability/log.service';
@@ -81,6 +82,7 @@ if (!app.requestSingleInstanceLock()) {
         ...observabilityHandlers,
         ...postingsHandlers,
         ...applicationsHandlers,
+        ...profileHandlers,
       ],
       originCheck(isTrustedUrl),
     );

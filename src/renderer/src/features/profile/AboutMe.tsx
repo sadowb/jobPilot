@@ -147,7 +147,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
     setView(null);
   };
   const saveMarkets = (next: Market[]) => markets.save(next);
-  const addCountry = (code: string) => {
+  const addCountry = async (code: string) => {
     const home = code === draft.countryCode;
     // A new country starts from the main details: no overrides, and work authorisation is only assumed for home.
     // An EU member inherits the answer already given for the EU as a whole.
@@ -155,7 +155,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
     const next: Market = { code, workAuth: eu ?? (home ? 'authorized' : 'sponsorship') };
     const currency = defaultCurrency(code);
     if (currency) next.currency = currency;
-    if (saveMarkets([...markets.draft, next])) setView({ type: 'country', code, added: true });
+    if (await saveMarkets([...markets.draft, next])) setView({ type: 'country', code, added: true });
   };
   const editingMarket = view?.type === 'country' ? markets.draft.find((m) => m.code === view.code) : undefined;
   // The unreadable-data message for markets is shown once, inside its card.
@@ -187,7 +187,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
           dirty={profile.dirty}
           error={problem || profile.error}
           onCancel={closeProfile}
-          onSave={() => {
+          onSave={async () => {
             const phone = phoneProblem(draft.phone);
             const alternate = phoneProblem(draft.alternatePhone);
             const langProblem = languagesError(draft.languages);
@@ -201,7 +201,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
               setProblem(bad);
               return;
             }
-            if (profile.save({ ...draft, career: sortCareer(draft.career) })) setView(null);
+            if (await profile.save({ ...draft, career: sortCareer(draft.career) })) setView(null);
           }}
         >
           {group.career && (
@@ -354,11 +354,11 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
           error={markets.error}
           added={view.added === true}
           onCancel={() => setView(null)}
-          onSave={(next) => {
-            if (saveMarkets(markets.draft.map((m) => (m.code === next.code ? next : m)))) setView(null);
+          onSave={async (next) => {
+            if (await saveMarkets(markets.draft.map((m) => (m.code === next.code ? next : m)))) setView(null);
           }}
-          onRemove={() => {
-            if (saveMarkets(markets.draft.filter((m) => m.code !== editingMarket.code))) setView(null);
+          onRemove={async () => {
+            if (await saveMarkets(markets.draft.filter((m) => m.code !== editingMarket.code))) setView(null);
           }}
         />
       )}
