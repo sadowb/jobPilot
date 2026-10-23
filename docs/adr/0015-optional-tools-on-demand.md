@@ -1,6 +1,7 @@
 # ADR 0015: Optional tools are installed on demand, never bundled
 
 - Status: accepted (2026-10-23). Amends ADR 0005 (browser providers), ADR 0006 (Mnemosyne) and ADR 0013 (Bitwarden).
+- Amended by [ADR 0016](0016-gentle-footprint.md): never install or change the owner's tools on their behalf. The Claude provisioning section below is historical where it conflicts; explicit JobPilot-owned MCP installations remain confined to `userData`.
 - Decision: The `.app` ships only JobPilot. Every agent-side tool (a browser MCP, memory, the Bitwarden vault) is chosen by the owner in Settings and installed then, pinned, into `userData/tools/<tool>/`. Nothing the owner did not choose is downloaded.
 
 ## Why

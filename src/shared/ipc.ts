@@ -16,6 +16,12 @@ import { z } from 'zod';
 
 export type { ThemeSource, ThemeState };
 
+export const IpcValidationErrorSchema = z.object({
+  ipcError: z.literal('INVALID_INPUT'),
+  issue_codes: z.array(z.string()),
+});
+export type IpcValidationError = z.infer<typeof IpcValidationErrorSchema>;
+
 export const Channels = {
   getAgent: 'agents:get',
   detectAgent: 'agents:detect',

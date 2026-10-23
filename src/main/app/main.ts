@@ -68,7 +68,7 @@ if (!app.requestSingleInstanceLock()) {
 
     serveRenderer();
     denyPermissionsByDefault();
-    registerIpc(recoveryHandlers, originCheck(isTrustedUrl));
+    registerIpc(recoveryHandlers, originCheck(isTrustedUrl), loggerFor('ipc'));
     let recoveryWindow: BrowserWindow | undefined;
     try {
       try {
@@ -135,6 +135,7 @@ if (!app.requestSingleInstanceLock()) {
         ...profileHandlers,
       ],
       originCheck(isTrustedUrl),
+      loggerFor('ipc'),
     );
     broadcastThemeChanges();
     createWindow();

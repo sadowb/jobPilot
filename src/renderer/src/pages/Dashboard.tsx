@@ -28,6 +28,7 @@ export function Dashboard() {
   const [applied, dispatchApplied] = useReducer(dashboardReducer, [], initialState);
   const [queue, dispatchQueue] = useReducer(queueReducer, initialQueueState([]));
   const [addJobs, setAddJobs] = useState<AddJobsState | null>(null);
+  const [addedIds, setAddedIds] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const reload = useCallback(
     () =>
@@ -56,10 +57,17 @@ export function Dashboard() {
     return () => window.removeEventListener('paste', onPaste);
   }, [addJobsOpen]);
 
-  const onAdded = async () => {
+  useEffect(() => {
+    if (!addedIds.length) return;
+    const timer = window.setTimeout(() => setAddedIds([]), 5000);
+    return () => window.clearTimeout(timer);
+  }, [addedIds]);
+
+  const onAdded = async (ids: string[], complete: boolean) => {
     await reload();
-    setAddJobs(null);
     navigate('/?tab=up-next');
+    setAddedIds(ids);
+    if (complete) setAddJobs(null);
   };
 
   const goTab = (t: DashboardTab) => navigate(t === 'applied' ? '/' : '/?tab=up-next');
@@ -88,7 +96,16 @@ export function Dashboard() {
           onOpenInbox={() => navigate('/inbox')}
           onAddJobs={openAddJobs}
           modalOpen={addJobsOpen}
+          addedIds={addedIds}
         />
+      )}
+      {!!addedIds.length && (
+        <div
+          role="status"
+          className="fixed bottom-8 left-1/2 z-10 -translate-x-1/2 rounded-2xl border border-line bg-bg px-5 py-3 text-sm text-ink shadow-float"
+        >
+          Added {addedIds.length} jobs
+        </div>
       )}
       {addJobs && <AddJobsDialog initialText={addJobs.text} onAdded={onAdded} onClose={() => setAddJobs(null)} />}
     </>

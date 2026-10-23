@@ -10,6 +10,7 @@ export interface QueueRowProps {
   /** 1-based place among queued jobs, when the job is queued. */
   position: number | null;
   selected: boolean;
+  added?: boolean;
   cursor: boolean;
   onCursor: () => void;
   onToggle: () => void;
@@ -45,6 +46,7 @@ export function QueueRow(p: QueueRowProps) {
       className={cn(
         'grid min-h-[62px] items-center gap-x-3 border-t border-line px-3.5',
         QUEUE_GRID,
+        p.added && 'bg-work-tint',
         running && 'bg-panel',
         !running && p.selected && 'bg-brand-tint shadow-[inset_3px_0_0_var(--brand)]',
         !running && !p.selected && p.cursor && 'bg-hover',

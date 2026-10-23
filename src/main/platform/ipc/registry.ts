@@ -1,5 +1,9 @@
 import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import type { z } from 'zod';
+import type { Logger } from 'pino';
+import type { IpcValidationError } from '../../../shared/ipc';
+
+type IpcLogger = Pick<Logger, 'debug' | 'warn' | 'error'>;
 
 export interface IpcContext {
   event: IpcMainInvokeEvent;
@@ -9,7 +13,7 @@ export interface IpcContext {
 
 export interface IpcHandler {
   channel: string;
-  register(isTrustedSender: (event: IpcMainInvokeEvent) => boolean): void;
+  register(isTrustedSender: (event: IpcMainInvokeEvent) => boolean, logger: IpcLogger): void;
 }
 
 /** channel -> zod input schema -> handler. The renderer sends one payload argument (or none for `z.void()`). */
@@ -20,12 +24,24 @@ export function defineHandler<S extends z.ZodType, R>(
 ): IpcHandler {
   return {
     channel,
-    register(isTrustedSender) {
-      ipcMain.handle(channel, (event, raw: unknown) => {
-        if (!isTrustedSender(event)) throw new Error(`untrusted sender for ${channel}`);
-        const parsed = input.safeParse(raw);
-        if (!parsed.success) throw new TypeError(`invalid payload for ${channel}: ${parsed.error.message}`);
-        return run(parsed.data, { event, window: BrowserWindow.fromWebContents(event.sender) });
+    register(isTrustedSender, logger) {
+      ipcMain.handle(channel, async (event, raw: unknown) => {
+        if (!isTrustedSender(event)) {
+          logger.warn({ channel }, 'Untrusted IPC sender');
+          throw new Error(`untrusted sender for ${channel}`);
+        }
+        try {
+          const parsed = input.safeParse(raw);
+          if (!parsed.success) {
+            const issue_codes = parsed.error.issues.map((issue) => issue.code);
+            logger.debug({ channel, issue_codes });
+            return { ipcError: 'INVALID_INPUT', issue_codes } satisfies IpcValidationError;
+          }
+          return await run(parsed.data, { event, window: BrowserWindow.fromWebContents(event.sender) });
+        } catch (error) {
+          logger.error({ channel, err: error }, 'IPC handler failed');
+          throw error;
+        }
       });
     },
   };
@@ -44,6 +60,10 @@ export function originCheck(isTrustedUrl: (url: URL) => boolean) {
   };
 }
 
-export function registerIpc(handlers: IpcHandler[], isTrustedSender: (event: IpcMainInvokeEvent) => boolean): void {
-  for (const handler of handlers) handler.register(isTrustedSender);
+export function registerIpc(
+  handlers: IpcHandler[],
+  isTrustedSender: (event: IpcMainInvokeEvent) => boolean,
+  logger: IpcLogger,
+): void {
+  for (const handler of handlers) handler.register(isTrustedSender, logger);
 }

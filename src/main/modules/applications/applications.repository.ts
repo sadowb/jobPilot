@@ -1,4 +1,4 @@
-import { asc, eq, max } from 'drizzle-orm';
+import { and, asc, eq, isNull, max } from 'drizzle-orm';
 import type { JobPilotDb } from '../../platform/db/database';
 import type { ApplicationListItem } from '../../../shared/dto';
 import { application, vApplicationList } from './applications.entity';
@@ -8,6 +8,14 @@ export class ApplicationsRepository {
 
   list(): ApplicationListItem[] {
     return this.db.select().from(vApplicationList).orderBy(asc(vApplicationList.queueRank)).all();
+  }
+
+  hasPosting(postingId: string): boolean {
+    return !!this.db
+      .select({ id: application.id })
+      .from(application)
+      .where(and(eq(application.postingId, postingId), isNull(application.deletedAt)))
+      .get();
   }
 
   create(postingId: string, recordCreated: (id: string) => void): ApplicationListItem {
