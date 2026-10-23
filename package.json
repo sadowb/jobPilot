@@ -33,7 +33,6 @@
     "@fontsource-variable/geist-mono": "5.3.0",
     "@fontsource-variable/newsreader": "5.3.0",
     "@fontsource/bagel-fat-one": "5.3.0",
-    "better-sqlite3": "13.0.3",
     "better-sqlite3-multiple-ciphers": "13.0.3",
     "drizzle-orm": "0.45.4",
     "execa": "10.2.0",

@@ -23,14 +23,16 @@ export const RunResultSchema = z.object({
 });
 export type RunResult = z.infer<typeof RunResultSchema>;
 
-export type RunEvent =
-  | { type: 'session'; sessionId: string }
-  | { type: 'message'; role: 'assistant' | 'user'; text: string }
-  | { type: 'tool_call'; callId: string; name: string; input: unknown }
-  | { type: 'tool_result'; callId: string; output: unknown; isError: boolean }
-  | { type: 'status'; text: string }
-  | { type: 'cost'; inputTokens: number; outputTokens: number; costMicros: number }
-  | { type: 'error'; message: string };
+export const RunEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('session'), sessionId: z.string() }),
+  z.object({ type: z.literal('message'), role: z.enum(['assistant', 'user']), text: z.string() }),
+  z.object({ type: z.literal('tool_call'), callId: z.string(), name: z.string(), input: z.unknown() }),
+  z.object({ type: z.literal('tool_result'), callId: z.string(), output: z.unknown(), isError: z.boolean() }),
+  z.object({ type: z.literal('status'), text: z.string() }),
+  z.object({ type: z.literal('cost'), inputTokens: z.number().int().nonnegative(), outputTokens: z.number().int().nonnegative(), costMicros: z.number().int().nonnegative() }),
+  z.object({ type: z.literal('error'), message: z.string() }),
+]);
+export type RunEvent = z.infer<typeof RunEventSchema>;
 
 export interface RunSpec {
   runId: string;

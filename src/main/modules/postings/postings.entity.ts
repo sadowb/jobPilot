@@ -13,7 +13,7 @@ export const company = sqliteTable(
     website: text('website'),
     ...timestamps(),
   },
-  (t) => [uniqueIndex('company_name_key_uq').on(t.nameKey)],
+  (t) => [uniqueIndex('company_domain_uq').on(t.domain), uniqueIndex('company_name_key_uq').on(t.nameKey)],
 );
 
 export const jobPosting = sqliteTable(
@@ -26,7 +26,7 @@ export const jobPosting = sqliteTable(
     url: text('url').notNull(),
     /** Normalised URL (no tracking params); the de-duplication key. */
     canonicalUrl: text('canonical_url').notNull(),
-    source: text('source', { enum: AtsKind.values }).notNull(),
+    ats: text('ats', { enum: AtsKind.values }).notNull(),
     /** The ATS's own job id, when a public API exists. */
     atsJobId: text('ats_job_id'),
     title: text('title').notNull(),
@@ -46,9 +46,9 @@ export const jobPosting = sqliteTable(
   },
   (t) => [
     uniqueIndex('job_posting_canonical_url_uq').on(t.canonicalUrl),
-    uniqueIndex('job_posting_ats_uq').on(t.source, t.atsJobId),
+    uniqueIndex('job_posting_ats_job_id_uq').on(t.ats, t.atsJobId),
     index('job_posting_company_id_idx').on(t.companyId),
-    oneOf('job_posting_source_ck', t.source, AtsKind.values),
+    oneOf('job_posting_ats_ck', t.ats, AtsKind.values),
   ],
 );
 

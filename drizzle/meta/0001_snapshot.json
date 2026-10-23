@@ -1,6 +1,6 @@
 {
-  "id": "49f88c4a-56ea-4dc8-bd71-e02daa1165fb",
-  "prevId": "17cc505e-94ab-4871-91f4-48559d8176ba",
+  "id": "3242b54e-0117-4ded-9e40-86349919df17",
+  "prevId": "03a02e24-3a4d-4f14-a1f2-a643901344fb",
   "version": "6",
   "dialect": "sqlite",
   "tables": {
@@ -848,8 +848,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "external_id": {
-          "name": "external_id",
+        "message_id": {
+          "name": "message_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -899,10 +899,10 @@
         }
       },
       "indexes": {
-        "email_signal_external_id_uq": {
-          "name": "email_signal_external_id_uq",
+        "email_signal_message_id_uq": {
+          "name": "email_signal_message_id_uq",
           "columns": [
-            "external_id"
+            "message_id"
           ],
           "isUnique": true
         },
@@ -1326,6 +1326,13 @@
         }
       },
       "indexes": {
+        "company_domain_uq": {
+          "name": "company_domain_uq",
+          "columns": [
+            "domain"
+          ],
+          "isUnique": true
+        },
         "company_name_key_uq": {
           "name": "company_name_key_uq",
           "columns": [
@@ -1370,8 +1377,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "source": {
-          "name": "source",
+        "ats": {
+          "name": "ats",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -1491,10 +1498,10 @@
           ],
           "isUnique": true
         },
-        "job_posting_ats_uq": {
-          "name": "job_posting_ats_uq",
+        "job_posting_ats_job_id_uq": {
+          "name": "job_posting_ats_job_id_uq",
           "columns": [
-            "source",
+            "ats",
             "ats_job_id"
           ],
           "isUnique": true
@@ -1525,9 +1532,9 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {
-        "job_posting_source_ck": {
-          "name": "job_posting_source_ck",
-          "value": "\"job_posting\".\"source\" IN ('greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'bamboohr', 'custom')"
+        "job_posting_ats_ck": {
+          "name": "job_posting_ats_ck",
+          "value": "\"job_posting\".\"ats\" IN ('greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'bamboohr', 'custom')"
         }
       }
     },
@@ -2355,7 +2362,7 @@
           "columns": [
             "application_id"
           ],
-          "where": "\"run\".\"status\" IN ('queued', 'running', 'awaiting_approval', 'submitting')",
+          "where": "\"run\".\"status\" IN ('queued', 'running')",
           "isUnique": true
         },
         "run_application_created_idx": {
@@ -2394,7 +2401,7 @@
       "checkConstraints": {
         "run_status_ck": {
           "name": "run_status_ck",
-          "value": "\"run\".\"status\" IN ('queued', 'running', 'awaiting_approval', 'submitting', 'needs_answers', 'blocked', 'submitted', 'failed', 'cancelled')"
+          "value": "\"run\".\"status\" IN ('queued', 'running', 'needs_you', 'owner_in_control', 'awaiting_approval', 'submitted', 'failed', 'cancelled')"
         },
         "run_agent_ck": {
           "name": "run_agent_ck",

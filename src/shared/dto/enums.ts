@@ -28,17 +28,16 @@ export type ApplicationStatus = z.infer<typeof ApplicationStatus.schema>;
 export const RunStatus = enumOf([
   'queued',
   'running',
+  'needs_you',
+  'owner_in_control',
   'awaiting_approval',
-  'submitting',
-  'needs_answers',
-  'blocked',
   'submitted',
   'failed',
   'cancelled',
 ]);
 export type RunStatus = z.infer<typeof RunStatus.schema>;
 /** A run in one of these states blocks a second run for the same application (partial unique index). */
-export const ACTIVE_RUN_STATUSES = ['queued', 'running', 'awaiting_approval', 'submitting'] as const satisfies readonly RunStatus[];
+export const ACTIVE_RUN_STATUSES = ['queued', 'running'] as const satisfies readonly RunStatus[];
 
 export const RunEventType = enumOf(['session', 'message', 'tool_call', 'tool_result', 'status', 'cost', 'error']);
 export type RunEventType = z.infer<typeof RunEventType.schema>;

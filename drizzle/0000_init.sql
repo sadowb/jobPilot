@@ -123,7 +123,7 @@ CREATE TABLE `email_signal` (
 	`id` text PRIMARY KEY NOT NULL,
 	`application_id` text,
 	`thread_id` text,
-	`external_id` text NOT NULL,
+	`message_id` text NOT NULL,
 	`kind` text NOT NULL,
 	`value` text,
 	`received_at` integer NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE `email_signal` (
 	CONSTRAINT "email_signal_kind_ck" CHECK("email_signal"."kind" IN ('verification_code', 'confirmation', 'rejection', 'interview', 'reply', 'other'))
 ) STRICT;
 --> statement-breakpoint
-CREATE UNIQUE INDEX `email_signal_external_id_uq` ON `email_signal` (`external_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `email_signal_message_id_uq` ON `email_signal` (`message_id`);--> statement-breakpoint
 CREATE INDEX `email_signal_application_id_idx` ON `email_signal` (`application_id`);--> statement-breakpoint
 CREATE INDEX `email_signal_thread_id_idx` ON `email_signal` (`thread_id`);--> statement-breakpoint
 CREATE TABLE `inbox_message` (
@@ -195,13 +195,14 @@ CREATE TABLE `company` (
 	`updated_at` integer NOT NULL
 ) STRICT;
 --> statement-breakpoint
+CREATE UNIQUE INDEX `company_domain_uq` ON `company` (`domain`);--> statement-breakpoint
 CREATE UNIQUE INDEX `company_name_key_uq` ON `company` (`name_key`);--> statement-breakpoint
 CREATE TABLE `job_posting` (
 	`id` text PRIMARY KEY NOT NULL,
 	`company_id` text NOT NULL,
 	`url` text NOT NULL,
 	`canonical_url` text NOT NULL,
-	`source` text NOT NULL,
+	`ats` text NOT NULL,
 	`ats_job_id` text,
 	`title` text NOT NULL,
 	`location` text,
@@ -218,11 +219,11 @@ CREATE TABLE `job_posting` (
 	`updated_at` integer NOT NULL,
 	`deleted_at` integer,
 	FOREIGN KEY (`company_id`) REFERENCES `company`(`id`) ON UPDATE no action ON DELETE restrict,
-	CONSTRAINT "job_posting_source_ck" CHECK("job_posting"."source" IN ('greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'bamboohr', 'custom'))
+	CONSTRAINT "job_posting_ats_ck" CHECK("job_posting"."ats" IN ('greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'bamboohr', 'custom'))
 ) STRICT;
 --> statement-breakpoint
 CREATE UNIQUE INDEX `job_posting_canonical_url_uq` ON `job_posting` (`canonical_url`);--> statement-breakpoint
-CREATE UNIQUE INDEX `job_posting_ats_uq` ON `job_posting` (`source`,`ats_job_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `job_posting_ats_job_id_uq` ON `job_posting` (`ats`,`ats_job_id`);--> statement-breakpoint
 CREATE INDEX `job_posting_company_id_idx` ON `job_posting` (`company_id`);--> statement-breakpoint
 CREATE TABLE `posting_question` (
 	`id` text PRIMARY KEY NOT NULL,
@@ -343,12 +344,12 @@ CREATE TABLE `run` (
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`application_id`) REFERENCES `application`(`id`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "run_status_ck" CHECK("run"."status" IN ('queued', 'running', 'awaiting_approval', 'submitting', 'needs_answers', 'blocked', 'submitted', 'failed', 'cancelled')),
+	CONSTRAINT "run_status_ck" CHECK("run"."status" IN ('queued', 'running', 'needs_you', 'owner_in_control', 'awaiting_approval', 'submitted', 'failed', 'cancelled')),
 	CONSTRAINT "run_agent_ck" CHECK("run"."agent" IN ('claude', 'codex', 'agy')),
 	CONSTRAINT "run_browser_ck" CHECK("run"."browser" IN ('neo', 'playwright', 'embedded'))
 ) STRICT;
 --> statement-breakpoint
-CREATE UNIQUE INDEX `run_one_active_per_application_uq` ON `run` (`application_id`) WHERE "run"."status" IN ('queued', 'running', 'awaiting_approval', 'submitting');--> statement-breakpoint
+CREATE UNIQUE INDEX `run_one_active_per_application_uq` ON `run` (`application_id`) WHERE "run"."status" IN ('queued', 'running');--> statement-breakpoint
 CREATE INDEX `run_application_created_idx` ON `run` (`application_id`,`created_at`);--> statement-breakpoint
 CREATE INDEX `run_status_idx` ON `run` (`status`);--> statement-breakpoint
 CREATE TABLE `run_event` (

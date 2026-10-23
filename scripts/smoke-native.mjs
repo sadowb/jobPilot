@@ -28,7 +28,7 @@ try {
 
   const now = Date.now();
   db.prepare("INSERT INTO company (id,name,name_key,created_at,updated_at) VALUES ('c1','Acme','acme',?,?)").run(now, now);
-  db.prepare("INSERT INTO job_posting (id,company_id,url,canonical_url,source,title,created_at,updated_at) VALUES ('p1','c1','u','u','custom','Dev',?,?)").run(now, now);
+  db.prepare("INSERT INTO job_posting (id,company_id,url,canonical_url,ats,title,created_at,updated_at) VALUES ('p1','c1','u','u','custom','Dev',?,?)").run(now, now);
   db.prepare("INSERT INTO application (id,posting_id,queue_rank,last_activity_at,created_at,updated_at) VALUES ('a1','p1',1,?,?,?)").run(now, now, now);
   const run = db.prepare("INSERT INTO run (id,application_id,agent,browser,created_at,updated_at) VALUES (?,'a1','claude','neo',?,?)");
   run.run('r1', now, now);

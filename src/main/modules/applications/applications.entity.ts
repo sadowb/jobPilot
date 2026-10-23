@@ -1,5 +1,4 @@
 import { index, integer, sqliteTable, sqliteView, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
 import { Actor, AgentId, AnswerSource, ApplicationStatus, RunStatus } from '../../../shared/dto';
 import { createdAt, deletedAt, id, oneOf, timestamps } from '../../platform/db/columns';
 import { documentVersion } from '../documents/documents.entity';
@@ -28,11 +27,7 @@ export const application = sqliteTable(
     deletedAt: deletedAt(),
   },
   (t) => [
-    // One live application per posting.
-    uniqueIndex('application_posting_live_uq')
-      .on(t.postingId)
-      .where(sql`${t.deletedAt} IS NULL`),
-    index('application_posting_id_idx').on(t.postingId), // FK lookup also for soft-deleted rows
+    uniqueIndex('application_posting_id_uq').on(t.postingId),
     index('application_status_queue_rank_idx').on(t.status, t.queueRank),
     index('application_cv_version_id_idx').on(t.cvVersionId),
     oneOf('application_status_ck', t.status, ApplicationStatus.values),

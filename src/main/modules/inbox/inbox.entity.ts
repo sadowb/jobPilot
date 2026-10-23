@@ -54,7 +54,7 @@ export const emailSignal = sqliteTable(
     id: id(),
     applicationId: text('application_id').references(() => application.id, { onDelete: 'set null' }),
     threadId: text('thread_id').references(() => inboxThread.id, { onDelete: 'set null' }),
-    externalId: text('external_id').notNull(),
+    messageId: text('message_id').notNull(),
     kind: text('kind', { enum: EmailSignalKind.values }).notNull(),
     /** E.g. the verification code. */
     value: text('value'),
@@ -63,7 +63,7 @@ export const emailSignal = sqliteTable(
     ...timestamps(),
   },
   (t) => [
-    uniqueIndex('email_signal_external_id_uq').on(t.externalId),
+    uniqueIndex('email_signal_message_id_uq').on(t.messageId),
     index('email_signal_application_id_idx').on(t.applicationId),
     index('email_signal_thread_id_idx').on(t.threadId),
     oneOf('email_signal_kind_ck', t.kind, EmailSignalKind.values),
