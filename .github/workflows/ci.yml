@@ -21,6 +21,36 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Create per-job code-signing identity
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/jobpilot-ci.keychain-db"
+          certdir="$RUNNER_TEMP/jobpilot-ci-cert"
+          mkdir -m 700 "$certdir"
+          keychain_password=$(openssl rand -hex 32)
+          p12_password=$(openssl rand -hex 32)
+          cat > "$certdir/extensions.cnf" <<'EOF'
+          basicConstraints=critical,CA:false
+          keyUsage=critical,digitalSignature
+          extendedKeyUsage=critical,codeSigning
+          EOF
+          openssl req -x509 -newkey rsa:3072 -sha256 -days 2 -nodes \
+            -keyout "$certdir/jobpilot.key" -out "$certdir/jobpilot.crt" \
+            -subj "/CN=JobPilot CI" -extensions v3_req \
+            -config <(printf '[req]\ndistinguished_name=dn\nx509_extensions=v3_req\n[dn]\n[v3_req]\n%s' "$(cat "$certdir/extensions.cnf")")
+          openssl pkcs12 -export -inkey "$certdir/jobpilot.key" -in "$certdir/jobpilot.crt" \
+            -name "JobPilot CI" -out "$certdir/jobpilot.p12" -passout "pass:$p12_password"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security import "$certdir/jobpilot.p12" -k "$keychain" -P "$p12_password" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+            -k "$keychain_password" "$keychain"
+          identity=$(security find-identity -v -p codesigning "$keychain" | awk '/"JobPilot CI"/ { print $2; exit }')
+          if [ -z "$identity" ]; then security find-identity -v -p codesigning "$keychain"; exit 1; fi
+          echo "JOBPILOT_SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "JOBPILOT_SIGN_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
@@ -50,7 +80,12 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run smoke:native
-      - run: npx electron-builder --dir --mac --arm64
+      - name: Package PR app
+        env:
+          CSC_FOR_PULL_REQUEST: true
+        run: |
+          npx electron-builder --dir --mac --arm64
+          node scripts/sign-app.mjs release/mac-arm64/JobPilot.app "$JOBPILOT_SIGN_IDENTITY"
       - name: Package PR base for upgrade journey
         if: github.event_name == 'pull_request'
         env:
@@ -61,12 +96,19 @@ jobs:
           npm ci
           npm run build
           npx electron-builder --dir --mac --arm64
+          node "$GITHUB_WORKSPACE/scripts/sign-app.mjs" "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app" "$JOBPILOT_SIGN_IDENTITY"
           echo "JOBPILOT_BASE_EXECUTABLE=$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot" >> "$GITHUB_ENV"
+      - name: Assert PR and base designated requirements match
+        if: github.event_name == 'pull_request'
+        run: |
+          pr_dr=$(codesign -dr - release/mac-arm64/JobPilot.app 2>&1 | sed -n 's/^.*designated => //p')
+          base_dr=$(codesign -dr - "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app" 2>&1 | sed -n 's/^.*designated => //p')
+          printf 'PR DR:   %s\nBase DR: %s\n' "$pr_dr" "$base_dr"
+          [[ "$pr_dr" == "$base_dr" && "$pr_dr" == *'certificate leaf = H"'* && "$pr_dr" != *cdhash* ]]
       - name: Run dev, packaged, and upgrade journeys
         run: node scripts/run-e2e.mjs
       - name: Verify exact shipped bytes (fuses, signature, real boot)
-        # Fresh default keychain = first install. The journeys' re-signed copy already owns the login-keychain item,
-        # and an ad-hoc signature differs per binary, so the shipped app would block on a Keychain prompt (ADR 0014).
+        # Fresh default keychain = first install. The journey apps share the CI certificate DR (ADR 0014).
         run: |
           security create-keychain -p ci "$RUNNER_TEMP/shipped.keychain"
           security set-keychain-settings "$RUNNER_TEMP/shipped.keychain"
@@ -89,3 +131,8 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Delete per-job signing identity
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/jobpilot-ci.keychain-db" 2>/dev/null || true
+          rm -rf "$RUNNER_TEMP/jobpilot-ci-cert"

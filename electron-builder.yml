@@ -17,7 +17,6 @@ afterPack: scripts/after-pack.mjs
 mac:
   category: public.app-category.productivity
   target: [dmg]
-  identity: null # ad-hoc signed; no paid certificate (see docs/RELEASE.md)
 win:
   target: [nsis]
 linux:

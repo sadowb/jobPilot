@@ -1,14 +1,14 @@
-# ADR 0014: Sign every build with one stable self-signed certificate
+# ADR 0014: Use a stable signing identity where builds share Keychain data
 
-- Status: accepted (2026-10-23), implementation planned (see [docs/RELEASE.md](../RELEASE.md)).
-- Decision: Replace ad-hoc signing (`mac.identity: null`) with one long-lived self-signed **code-signing** certificate, used for local `dist` builds, CI packaged tests and releases. Revisit Apple Developer ID (99 USD/year) only if Gatekeeper friction on download becomes a problem.
+- Status: accepted (2026-10-23), implemented.
+- Decision: Use a long-lived self-signed **code-signing** certificate for releases. Each macOS CI packaging job creates a fresh throwaway code-signing identity and uses it for both PR and base apps in the upgrade journey. Local builds without a configured identity remain ad-hoc. Revisit Apple Developer ID (99 USD/year) only if Gatekeeper friction on download becomes a problem.
 
 ## Problem
 
 macOS Keychain items carry an access list keyed by the app's **designated requirement** (DR). Electron `safeStorage` stores the SQLCipher key in the item `JobPilot Safe Storage`.
 
 - Ad-hoc signature: DR is the code hash (`cdhash`), so every build is a different app to Keychain. After each update the owner gets "JobPilot wants to use your confidential information…"; clicking Deny leaves the database unopenable.
-- Stable certificate: DR is `identifier "app.jobpilot.desktop" and certificate leaf = H"<cert sha1>"`, identical across builds. "Always Allow" survives updates.
+- Shared certificate: DR is `identifier "app.jobpilot.desktop" and certificate leaf = H"<cert sha1>"`, identical for builds signed with that certificate. "Always Allow" survives updates.
 
 ## What it does and does not fix
 
@@ -22,5 +22,6 @@ macOS Keychain items carry an access list keyed by the app's **designated requir
 
 - The private key (`.p12`) is a release secret: kept in the owner's **main** Bitwarden vault and as GitHub Actions secrets `MAC_CERT_P12_BASE64` + `MAC_CERT_PASSWORD`. Never in the repo; gitleaks runs on every commit.
 - Validity 10 years. Rotating the certificate changes the DR once, so plan a single Keychain prompt and release note when it happens.
-- CI imports the certificate into a temporary keychain per job (electron-builder `CSC_LINK` / `CSC_KEY_PASSWORD`) and deletes it after.
-- The ADR 0012 upgrade journey (base build then PR build on the same userData) is the regression test: it fails if the second launch cannot read the Keychain item without a prompt.
+- Pull request CI generates a new self-signed code-signing certificate per macOS job, imports it into a temporary keychain, and deletes the keychain and key material at job end. It signs the PR and base `.app` after electron-builder, then checks both designated requirements match and contain a certificate leaf hash. No signing secret is used.
+- Release CI requires `MAC_CERT_P12_BASE64` and `MAC_CERT_PASSWORD`, imports that real release identity into a temporary keychain, and uses it for the tested `.app` and DMG. See [docs/RELEASE.md](../RELEASE.md).
+- The ADR 0012 upgrade journey (base build then PR build on the same userData) is the regression test: ad-hoc apps with changed bytes have different cdhash requirements and can prompt. CI's shared per-job identity makes the journey's requirements match even when PR and base shipped bytes differ.
