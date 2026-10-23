@@ -395,7 +395,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
             { ...fixture.response, id, title: `${fixture.response.title} ${id}` },
             { headers: { 'content-type': 'application/json' } },
           )
-          .delay(id === 5 ? 12_000 : id === 1 ? 700 : 20)
+          .delay(id === 5 ? 12_000 : id === 1 || id === 10 ? 700 : 20)
           .persist();
       }
       mock
@@ -441,7 +441,9 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(rows.nth(2)).toContainText('Ready');
     await expect(rows.nth(3)).toContainText('Already in your list');
     await expect(rows.nth(4)).toContainText('Unsupported');
-    await expect(rows.nth(4)).toContainText('No job description or application form');
+    await expect(rows.nth(0)).toContainText('Greenhouse');
+    await expect(rows.nth(4)).toContainText('example.com/about');
+    await expect(rows.nth(4).getByTitle(/No job description or application form/)).toBeVisible();
     await expect(window.getByRole('button', { name: 'Add 3 jobs', exact: true })).toBeEnabled();
     await window.setViewportSize({ width: 1280, height: 800 });
     const mixed = [
@@ -452,11 +454,20 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     ].join('\n');
     await window.getByLabel('Job links', { exact: true }).fill(mixed);
     await expect(rows).toHaveCount(12);
+    await expect(window.getByRole('dialog').locator('footer')).toContainText(/Reading \d+ links…/);
     await expect(rows.nth(11)).toContainText('Ready');
     await expect(rows.nth(6)).toContainText('Reading');
+    await expect(window.getByRole('dialog').locator('footer')).toContainText('Reading 1 link…');
     await expect(rows.nth(5)).toContainText('Failed');
+    await expect(rows.nth(5).locator('div[title]')).toHaveText('example.com/job');
+    await expect(rows.nth(5).locator('div[title]')).toHaveAttribute('title', 'http://example.com/job');
+    await expect(rows.nth(5).locator('div[title]')).toHaveClass(/font-mono/);
+    await expect(rows.nth(5).locator('div[title]')).toHaveCSS('text-overflow', 'ellipsis');
     await expect(rows.nth(3)).toContainText('Already in your list');
     await expect(rows.nth(4)).toContainText('Unsupported');
+    await expect(rows.nth(4).locator('div[title]')).toHaveAttribute('title', 'https://example.com/about');
+    await expect(window.getByText('Paste a list, a spreadsheet column, or an email', { exact: true })).toBeVisible();
+    await expect(window.getByText(/12 links found/)).toHaveCount(1);
     const list = window.getByRole('list', { name: 'Job previews' });
     const pasteBox = window.getByLabel('Job links', { exact: true });
     const pasteBounds = await pasteBox.boundingBox();
@@ -470,8 +481,13 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     });
     expect(geometry.filter((row) => row.visible).length).toBeGreaterThanOrEqual(7);
     expect(new Set(geometry.map((row) => row.height)).size).toBe(1);
+    await window.evaluate(() => document.documentElement.classList.remove('dark'));
+    await expect(list).toHaveCSS('color-scheme', 'light');
+    await expect(pasteBox).toHaveCSS('color-scheme', 'light');
     await window.screenshot({ path: testInfo.outputPath('bulk-after-light.png') });
     await window.evaluate(() => document.documentElement.classList.add('dark'));
+    await expect(list).toHaveCSS('color-scheme', 'dark');
+    await expect(pasteBox).toHaveCSS('color-scheme', 'dark');
     await window.screenshot({ path: testInfo.outputPath('bulk-after-dark.png') });
     await window.emulateMedia({ reducedMotion: 'reduce' });
     expect(await rows.nth(6).evaluate((row) => getComputedStyle(row).animationName)).toBe('none');
@@ -523,10 +539,13 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await rows.nth(0).getByRole('button', { name: 'Edit link 1', exact: true }).click();
     await window.getByRole('textbox', { name: 'Edit link 1', exact: true }).fill('https://example.com/retry');
     await window.getByLabel('Job links', { exact: true }).focus();
-    await expect(rows.nth(0)).toContainText('Could not read this posting');
+    await expect(rows.nth(0)).toContainText('example.com/retry');
+    await expect(rows.nth(0).getByTitle(/Could not read this posting/)).toBeVisible();
     await rows.nth(0).getByRole('button', { name: 'Retry', exact: true }).click();
     await expect(rows.nth(0)).toContainText('Ready');
     await expect(rows.nth(0)).toContainText('Retry role');
+    await expect(rows.nth(0)).toContainText('example.com');
+    await expect(rows.nth(0)).not.toContainText('custom');
     await window.getByRole('button', { name: 'Remove link', exact: true }).click();
     await expect(rows).toHaveCount(0);
     await window

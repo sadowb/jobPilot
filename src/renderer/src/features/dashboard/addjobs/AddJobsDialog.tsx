@@ -14,6 +14,15 @@ function candidates(text: string) {
 
 type Row = { id: number; url: string; result?: IngestResult; added?: boolean; addError?: string };
 
+const atsNames = {
+  greenhouse: 'Greenhouse',
+  lever: 'Lever',
+  ashby: 'Ashby',
+  workable: 'Workable',
+  smartrecruiters: 'SmartRecruiters',
+  bamboohr: 'BambooHR',
+};
+
 export function AddJobsDialog({
   initialText,
   onAdded,
@@ -61,7 +70,8 @@ export function AddJobsDialog({
   }, [rows]);
 
   const ready = rows.filter((row) => row.result?.ok && !row.result.alreadyTracked && !row.added);
-  const reading = rows.some((row) => !row.result);
+  const readingCount = rows.filter((row) => !row.result).length;
+  const reading = readingCount > 0;
   const tracked = rows.filter((row) => row.result?.ok && row.result.alreadyTracked).length;
   const unsupported = rows.filter(
     (row) => row.result && !row.result.ok && row.result.code === 'UNSUPPORTED_ATS',
@@ -130,12 +140,12 @@ export function AddJobsDialog({
       }}
       title="Add jobs"
       eyebrow="Paste job links"
-      className="w-[min(840px,calc(100vw-32px))] [&_header]:py-3 [&_footer]:shrink-0 [&_footer]:py-3"
+      className="w-[min(840px,calc(100vw-32px))] scheme-light dark:scheme-dark [&_header]:py-3 [&_footer]:shrink-0 [&_footer]:py-3"
       bodyClassName="flex min-h-0 flex-col overflow-hidden py-4"
       note={
         <span className="flex flex-col gap-1 tabular-nums">
           <span aria-busy={reading}>
-            {reading ? `Reading ${rows.filter((row) => !row.result).length} links…` : summary}
+            {reading ? `Reading ${readingCount} ${readingCount === 1 ? 'link' : 'links'}…` : summary}
           </span>
           <span className="flex items-center gap-1 text-muted">
             <V17Kbd>↑↓</V17Kbd> move <V17Kbd>⌫</V17Kbd> remove <V17Kbd>Esc</V17Kbd> close
@@ -169,7 +179,7 @@ export function AddJobsDialog({
           <Field
             className="[&>label]:sr-only [&>span]:mb-0"
             label="Job links"
-            hint={`Paste a list, a spreadsheet column, or an email · ${rows.length} links found`}
+            hint="Paste a list, a spreadsheet column, or an email"
           >
             <Textarea
               id={inputId}
@@ -230,6 +240,7 @@ export function AddJobsDialog({
                         ? 'Failed'
                         : 'Ready';
               const reason = row.addError ?? (result && !result.ok ? result.message : '');
+              const link = URL.parse(row.url);
               return (
                 <li
                   key={row.id}
@@ -303,12 +314,26 @@ export function AddJobsDialog({
                                   : 'Could not read job'}
                             </div>
                             <div
-                              title={reason || undefined}
-                              className={cn('truncate text-[12.5px] leading-[1.35] text-muted', !!reason && 'text-bad')}
+                              title={failed || unsupported ? row.url : undefined}
+                              className={cn(
+                                'truncate text-[12.5px] leading-[1.35] text-muted',
+                                (failed || unsupported) && 'font-mono',
+                              )}
                             >
-                              {reason ||
-                                (posting &&
-                                  [posting.ats, posting.location, posting.salary].filter(Boolean).join(' · '))}
+                              {failed || unsupported
+                                ? link
+                                  ? `${link.host}${link.pathname}`
+                                  : row.url
+                                : posting &&
+                                  [
+                                    posting.ats === 'custom'
+                                      ? URL.parse(posting.canonical_url)?.host
+                                      : atsNames[posting.ats],
+                                    posting.location,
+                                    posting.salary,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
                             </div>
                           </>
                         )}
@@ -352,7 +377,7 @@ export function AddJobsDialog({
                               : 'bg-work-tint text-work',
                       )}
                     >
-                      <span className="inline-flex items-center gap-1.5">
+                      <span title={reason || undefined} className="inline-flex items-center gap-1.5">
                         {!result && (
                           <span className="size-3 animate-jp-spin rounded-full border-2 border-transparent border-t-brand motion-reduce:animate-none" />
                         )}
