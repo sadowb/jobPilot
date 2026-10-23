@@ -40,11 +40,14 @@ test('Claude key persists encrypted, stays write-only, tests in main, and can be
     let window = await launch();
     const section = () => window.getByRole('region', { name: 'Claude API key settings' });
     await expect(section().getByTestId('claude-key-status')).toHaveText('No key saved');
+    await expect(window.getByLabel('Claude API key (optional)', { exact: true })).toHaveAccessibleDescription(
+      "JobPilot uses the Claude you're signed into on this Mac. Add a key only to use API billing instead.",
+    );
     expect(await window.evaluate(() => window.jobpilot!.claudeKey.test())).toBe('not_set');
-    await window.getByLabel('Claude API key', { exact: true }).fill(key);
+    await window.getByLabel('Claude API key (optional)', { exact: true }).fill(key);
     await section().getByRole('button', { name: 'Save key' }).click();
     await expect(section().getByRole('status')).toHaveText('Claude API key saved.');
-    await expect(window.getByLabel('Claude API key', { exact: true })).toHaveValue('');
+    await expect(window.getByLabel('Claude API key (optional)', { exact: true })).toHaveValue('');
     expect(await window.evaluate(() => window.jobpilot!.claudeKey.status())).toEqual({ set: true, last4: 'ABCD' });
 
     expect(
@@ -69,7 +72,7 @@ test('Claude key persists encrypted, stays write-only, tests in main, and can be
     await app!.close();
     window = await launch();
     await expect(section().getByTestId('claude-key-status')).toHaveText('Saved · ••••ABCD');
-    await expect(window.getByLabel('Claude API key', { exact: true })).toHaveValue('');
+    await expect(window.getByLabel('Claude API key (optional)', { exact: true })).toHaveValue('');
     expect(
       await window.evaluate(() => ({
         bridge: Object.keys(window.jobpilot!.claudeKey),
@@ -89,21 +92,24 @@ test('Claude key persists encrypted, stays write-only, tests in main, and can be
       let calls = 0;
       globalThis.fetch = (async (url, init) => {
         calls++;
-        const body = JSON.parse(init!.body as string);
         if (
-          url !== 'https://api.anthropic.com/v1/messages' ||
-          init?.method !== 'POST' ||
+          url !== 'https://api.anthropic.com/v1/models?limit=1' ||
+          init?.method !== 'GET' ||
           (init.headers as Record<string, string>)['x-api-key'] !== expected ||
-          body.max_tokens !== 1 ||
-          body.model !== 'claude-haiku-4-5-20251001' ||
+          (init.headers as Record<string, string>)['anthropic-version'] !== '2023-06-01' ||
+          init.body !== undefined ||
           init.redirect !== 'error' ||
           !init.signal
         )
           throw new Error('Unexpected request');
-        if (calls === 1) return new Response(JSON.stringify({ type: 'message', role: 'assistant', id: 'msg_fake' }));
-        if (calls === 2) return new Response(JSON.stringify({ error: expected }), { status: 401 });
-        if (calls === 3) return new Response(JSON.stringify({ unexpected: expected }));
-        throw new Error(expected);
+        if (calls === 1) return new Response(JSON.stringify({ data: [{ type: 'model', id: 'available-model' }] }));
+        if (calls <= 6) {
+          return new Response(JSON.stringify({ error: expected }), { status: [401, 403, 429, 500, 503][calls - 2] });
+        }
+        if (calls === 7) return new Response(JSON.stringify({ unexpected: expected }));
+        if (calls === 8) return new Response('invalid JSON');
+        if (calls === 9) throw new TypeError(expected);
+        throw new DOMException(expected, 'TimeoutError');
       }) as typeof fetch;
       (globalThis as typeof globalThis & { finishClaudeTest: () => number }).finishClaudeTest = () => {
         globalThis.fetch = original;
@@ -113,12 +119,23 @@ test('Claude key persists encrypted, stays write-only, tests in main, and can be
     }, key);
     await section().getByRole('button', { name: 'Test', exact: true }).click();
     await expect(section().getByRole('status')).toHaveText('Claude API key works.');
-    for (let i = 0; i < 3; i++) expect(await window.evaluate(() => window.jobpilot!.claudeKey.test())).toBe('failed');
+    for (let i = 0; i < 2; i++) {
+      await section().getByRole('button', { name: 'Test', exact: true }).click();
+      await expect(section().getByRole('status')).toHaveText(
+        'This key was rejected. Check it in the Anthropic Console.',
+      );
+    }
+    for (let i = 0; i < 7; i++) {
+      await section().getByRole('button', { name: 'Test', exact: true }).click();
+      await expect(section().getByRole('status')).toHaveText(
+        "Couldn't reach Anthropic. Check your connection and try again.",
+      );
+    }
     expect(
       await app!.evaluate(() =>
         (globalThis as typeof globalThis & { finishClaudeTest: () => number }).finishClaudeTest(),
       ),
-    ).toBe(4);
+    ).toBe(10);
 
     expect(
       await window.evaluate(async () => {

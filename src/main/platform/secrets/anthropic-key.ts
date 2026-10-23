@@ -67,31 +67,25 @@ export class AnthropicKeyStore {
   async test(): Promise<ClaudeKeyTest> {
     try {
       if (this.storage.anthropicKey() === undefined) return 'not_set';
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
+      const response = await fetch('https://api.anthropic.com/v1/models?limit=1', {
+        method: 'GET',
         redirect: 'error',
         signal: AbortSignal.timeout(15_000),
         headers: {
-          'content-type': 'application/json',
           'anthropic-version': '2023-06-01',
           'x-api-key': await this.readApiKey(),
         },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1,
-          messages: [{ role: 'user', content: 'Hi' }],
-        }),
       });
       if (!response.ok) {
         await response.body?.cancel();
-        return 'failed';
+        return response.status === 401 || response.status === 403 ? 'invalid' : 'unreachable';
       }
       const parsed = z
-        .object({ type: z.literal('message'), role: z.literal('assistant'), id: z.string() })
+        .object({ data: z.array(z.object({ type: z.literal('model'), id: z.string() })) })
         .safeParse(await response.json());
-      return parsed.success ? 'ok' : 'failed';
+      return parsed.success ? 'ok' : 'unreachable';
     } catch {
-      return 'failed';
+      return 'unreachable';
     }
   }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ClaudeKeyStatus } from '../../../../shared/dto';
-import { Button, Input } from '../../components/ui';
+import { Button, Field, Input } from '../../components/ui';
 
 export function ClaudeKeyField() {
   const input = useRef<HTMLInputElement>(null);
@@ -40,7 +40,9 @@ export function ClaudeKeyField() {
             ? 'Claude API key works.'
             : result === 'not_set'
               ? 'Save a key first.'
-              : 'Claude API test failed. Check your key, credits, and connection.',
+              : result === 'invalid'
+                ? 'This key was rejected. Check it in the Anthropic Console.'
+                : "Couldn't reach Anthropic. Check your connection and try again.",
         );
       }
       setStatus(await window.jobpilot.claudeKey.status());
@@ -54,25 +56,24 @@ export function ClaudeKeyField() {
 
   return (
     <section className="border-t border-line py-2.5" aria-label="Claude API key settings">
-      <label className="text-[15px] font-semibold" htmlFor="claude-api-key">
-        Claude API key
-      </label>
-      <p className="my-2 text-[13px] text-muted">
-        Encrypted on this Mac. Test sends a one-token request to Claude Haiku.
-      </p>
       <p className="text-[13px]" data-testid="claude-key-status">
         {status ? (status.set ? `Saved · ••••${status.last4}` : 'No key saved') : 'Status unavailable'}
       </p>
-      <Input
-        id="claude-api-key"
-        ref={input}
-        type="password"
-        autoComplete="off"
-        spellCheck={false}
-        maxLength={512}
-        disabled={busy}
-        placeholder="Enter a new key"
-      />
+      <Field
+        label="Claude API key (optional)"
+        hint="JobPilot uses the Claude you're signed into on this Mac. Add a key only to use API billing instead."
+      >
+        <Input
+          id="claude-api-key"
+          ref={input}
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={512}
+          disabled={busy}
+          placeholder="Enter a new key"
+        />
+      </Field>
       <div className="mt-2 flex gap-2">
         <Button size="sm" disabled={busy || !status} onClick={() => void act('save')}>
           Save key
