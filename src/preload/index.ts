@@ -1,10 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { z } from 'zod';
-import { Channels, type JobPilotBridge, type ThemeSource } from '../shared/ipc';
+import { Channels, type JobPilotBridge, type ThemeSource, RendererErrorInputSchema } from '../shared/ipc';
 import { ThemeStateSchema } from '../shared/dto';
 
 const bridge: JobPilotBridge = {
   platform: process.platform,
+  async reportRendererError(error) {
+    await ipcRenderer.invoke(Channels.rendererError, RendererErrorInputSchema.parse(error));
+  },
   documents: {
     async save(name, bytes) {
       return z.boolean().parse(await ipcRenderer.invoke(Channels.saveDocument, { name, bytes }));

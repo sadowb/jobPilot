@@ -1,4 +1,4 @@
-import { shell, type WebContents } from 'electron';
+import { session, shell, type WebContents } from 'electron';
 import { APP_ORIGIN, rendererDevUrl } from './env';
 
 /** Only https links leave the app, and only to the system browser. */
@@ -23,4 +23,9 @@ export function lockDown(contents: WebContents): void {
     if (!inApp) openExternal(url);
   });
   contents.on('will-attach-webview', (event) => event.preventDefault());
+}
+
+export function denyPermissionsByDefault(): void {
+  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+  session.defaultSession.setPermissionCheckHandler(() => false);
 }

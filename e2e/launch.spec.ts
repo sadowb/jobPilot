@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -57,8 +57,10 @@ test('launches the built app, toggles theme, navigates routes, reports DB state'
       expect.soft(appStderr.join('\n')).not.toMatch(/error/i);
     });
 
-    await test.step('record userData DB presence (informational: DB is not opened at boot yet)', async () => {
+    await test.step('encrypted DB file exists after launch', async () => {
       const dbFiles = readdirSync(userData).filter((name) => name.endsWith('.db') || name.endsWith('.sqlite'));
+      expect(dbFiles).toContain('jobpilot.db');
+      expect(readFileSync(join(userData, 'jobpilot.db')).subarray(0, 15).toString()).not.toBe('SQLite format 3');
       test.info().annotations.push({ type: 'db', description: dbFiles.length ? dbFiles.join(', ') : 'none' });
     });
   } finally {
