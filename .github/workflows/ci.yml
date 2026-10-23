@@ -163,6 +163,15 @@ jobs:
           elapsed=$(( $(date +%s) - STARTED ))
           minutes=$(awk -v seconds="$elapsed" 'BEGIN { printf "%.2f", seconds / 60 }')
           echo "### macOS app job: ${minutes} minutes wall time" >> "$GITHUB_STEP_SUMMARY"
+      # Screenshots are review evidence for every run, not only failures (PR template: Verification).
+      - name: Upload journey screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: screenshots-${{ github.run_id }}
+          path: test-results/**/*.png
+          if-no-files-found: ignore
+          retention-days: 30
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
