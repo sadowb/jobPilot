@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
+import type { Logger } from 'pino';
 import type { McpServerConfig } from '../agents/types';
 import type { BrowserProvider, BrowserTab } from './types';
 import { NeoMcp } from './neo-mcp';
@@ -21,7 +22,10 @@ export class NeoBrowserProvider implements BrowserProvider {
   private readonly tabs = new Map<string, BrowserTab>();
   private pending: Promise<unknown> = Promise.resolve();
 
-  constructor(endpoint = 'http://127.0.0.1:9200/mcp') {
+  constructor(
+    private readonly logger: Pick<Logger, 'debug'>,
+    endpoint = 'http://127.0.0.1:9200/mcp',
+  ) {
     const url = new URL(z.url().parse(endpoint));
     if (
       url.protocol !== 'http:' ||
@@ -43,7 +47,11 @@ export class NeoBrowserProvider implements BrowserProvider {
           .parse(await this.mcp.call('tools/list'));
         if (!tools.some(({ name }) => name === 'tabs')) throw new Error('Neo tabs tool unavailable');
         return 'installed';
-      } catch {
+      } catch (error) {
+        this.logger.debug(
+          { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+          'Neo MCP availability check failed',
+        );
         // shortcut: standard macOS app locations only; add discovery when custom installs are supported.
         return ['/Applications/BrowserOS neo.app', join(homedir(), 'Applications/BrowserOS neo.app')].some(existsSync)
           ? 'not_running'
