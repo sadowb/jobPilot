@@ -36,6 +36,32 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
       );
       localStorage.setItem('jobpilot.markets.v1', JSON.stringify([{ code: 'FR', workAuth: 'sponsorship' }]));
     });
+    // Main may already include profile migration; restore the pre-migration fixture before upgrading.
+    await oldApp.evaluate(({ app }) => {
+      const fs = process.getBuiltinModule('node:fs')!;
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+      const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
+      const key = Buffer.from(
+        safeStorage.decryptString(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc'))),
+        'base64',
+      );
+      const db = new Database(path.join(app.getPath('userData'), 'jobpilot.db'));
+      try {
+        db.pragma("cipher='sqlcipher'");
+        db.key(key);
+        db.transaction(() => {
+          db.prepare("DELETE FROM settings WHERE key = 'profile.localStorageMigration.v1'").run();
+          db.prepare('DELETE FROM profile').run();
+        })();
+      } finally {
+        key.fill(0);
+        db.close();
+      }
+    });
     const oldCloseTimer = setTimeout(() => oldApp?.process().kill('SIGKILL'), 5_000);
     try {
       await oldApp.close();
