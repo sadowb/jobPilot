@@ -4,6 +4,8 @@ import type {
   IngestResult,
   ProfileData,
   ProfileSave,
+  ClaudeKeyStatus,
+  ClaudeKeyTest,
   ThemeSource,
   ThemeState,
   RunSummaryDto,
@@ -13,6 +15,10 @@ import { z } from 'zod';
 export type { ThemeSource, ThemeState };
 
 export const Channels = {
+  setClaudeKey: 'secrets:claude:set',
+  getClaudeKeyStatus: 'secrets:claude:status',
+  removeClaudeKey: 'secrets:claude:remove',
+  testClaudeKey: 'secrets:claude:test',
   startRun: 'runs:start',
   cancelRun: 'runs:cancel',
   pauseRuns: 'runs:pause',
@@ -43,6 +49,12 @@ export const RendererErrorInputSchema = z.object({
 export const RecoveryKeySchema = z.string().regex(/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/);
 
 export interface JobPilotBridge {
+  claudeKey: {
+    set(key: string): Promise<void>;
+    status(): Promise<ClaudeKeyStatus>;
+    remove(): Promise<void>;
+    test(): Promise<ClaudeKeyTest>;
+  };
   runs: {
     start(applicationId: string): Promise<RunSummaryDto>;
     cancel(runId: string): Promise<RunSummaryDto>;

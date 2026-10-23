@@ -8,6 +8,8 @@ import {
   RecoveryKeySchema,
 } from '../shared/ipc';
 import {
+  ClaudeKeyStatusSchema,
+  ClaudeKeyTestSchema,
   RunSummarySchema,
   StartRunSchema,
   CancelRunSchema,
@@ -19,6 +21,20 @@ import {
 } from '../shared/dto';
 
 const bridge: JobPilotBridge = {
+  claudeKey: {
+    async set(key) {
+      await ipcRenderer.invoke(Channels.setClaudeKey, key);
+    },
+    async status() {
+      return ClaudeKeyStatusSchema.parse(await ipcRenderer.invoke(Channels.getClaudeKeyStatus));
+    },
+    async remove() {
+      await ipcRenderer.invoke(Channels.removeClaudeKey);
+    },
+    async test() {
+      return ClaudeKeyTestSchema.parse(await ipcRenderer.invoke(Channels.testClaudeKey));
+    },
+  },
   runs: {
     async start(applicationId) {
       return RunSummarySchema.parse(
