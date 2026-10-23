@@ -133,13 +133,21 @@ const atsDomains = ['greenhouse.io', 'lever.co', 'ashbyhq.com', 'workable.com', 
 
 export async function request(
   url: string,
-  init: { method?: 'GET' | 'POST'; body?: string; accept?: string; allowCrossDomainRedirects?: boolean } = {},
+  init: {
+    method?: 'GET' | 'POST';
+    body?: string;
+    accept?: string;
+    allowCrossDomainRedirects?: boolean;
+    redirects?: 'same-host-once';
+  } = {},
 ): Promise<{ text: string; url: URL }> {
   let target = canonicalUrl(url);
   // These six ATS registrable domains are fixed; no public-suffix guessing for arbitrary sites.
   const domain = atsDomains.find((domain) => target.hostname === domain || target.hostname.endsWith(`.${domain}`));
   if (!init.allowCrossDomainRedirects && !domain) throw new Error('Unsupported ATS request host');
-  for (let redirects = 0; redirects <= 3; redirects++) {
+  const originalHost = target.hostname;
+  const redirectLimit = init.redirects === 'same-host-once' ? 1 : 3;
+  for (let redirects = 0; redirects <= redirectLimit; redirects++) {
     const addresses = DnsAddresses.parse(await lookup(target.hostname, { all: true }));
     if (
       addresses.some(
@@ -188,8 +196,10 @@ export async function request(
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get('location');
         await response.body?.cancel();
-        if (!location || redirects === 3) throw new Error(`HTTP redirect limit/status ${response.status}`);
+        if (!location || redirects === redirectLimit) throw new Error(`HTTP redirect limit/status ${response.status}`);
         target = canonicalUrl(new URL(location, target).href);
+        if (init.redirects === 'same-host-once' && target.hostname !== originalHost)
+          throw new Error('Posting redirect left its host');
         if (!init.allowCrossDomainRedirects && target.hostname !== domain && !target.hostname.endsWith(`.${domain}`))
           throw new Error('ATS redirect left its domain');
         continue;

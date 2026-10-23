@@ -86,6 +86,33 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
         .intercept({ path: `${source.pathname}${source.search}`, method: 'GET' })
         .reply(200, fixture.response, { headers: { 'content-type': 'application/json' } })
         .persist();
+      const workable = mock.get('https://apply.workable.com');
+      workable
+        .intercept({ path: '/j/3A8C3159E7' })
+        .reply(301, '', { headers: { location: '/we-are-social-1/j/3A8C3159E7/' } })
+        .persist();
+      workable.intercept({ path: '/we-are-social-1/j/3A8C3159E7/' }).reply(200, '<html></html>').persist();
+      workable
+        .intercept({ path: '/api/v1/accounts/we-are-social-1/jobs/3A8C3159E7' })
+        .reply(200, { title: 'Social Media Manager', location: { city: 'London', country: 'United Kingdom' } })
+        .persist();
+      workable
+        .intercept({ path: '/api/v1/jobs/3A8C3159E7/form' })
+        .reply(200, [{ fields: [{ id: 'name', label: 'Full name', type: 'text', required: true }] }])
+        .persist();
+      for (const [code, location] of [
+        ['BAD001', 'https://evil.example/job'],
+        ['BAD002', 'https://other.workable.com/job'],
+        ['BAD003', 'http://apply.workable.com/job'],
+        ['BAD004', '/redirect-again'],
+        ['BAD005', '/we-are-social-1/j/DIFFERENT'],
+      ])
+        workable.intercept({ path: `/j/${code}` }).reply(301, '', { headers: { location } });
+      workable
+        .intercept({ path: '/redirect-again' })
+        .reply(302, '', { headers: { location: '/we-are-social-1/j/BAD004' } });
+      workable.intercept({ path: '/we-are-social-1/j/DIFFERENT' }).reply(200, '<html></html>');
+      workable.intercept({ path: '/j/BAD006' }).reply(200, '<html></html>');
       let requests = 0;
       const dispatch = mock.dispatch.bind(mock);
       mock.dispatch = (...args) => {
@@ -247,6 +274,56 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     expect(
       await window.evaluate(() => window.jobpilot!.postings.ingest('https://boards.greenhouse.io/perpay/jobs/111')),
     ).toMatchObject({ ok: true });
+
+    for (const [code, hops] of [
+      ['BAD001', 1],
+      ['BAD002', 1],
+      ['BAD003', 1],
+      ['BAD004', 2],
+      ['BAD005', 2],
+      ['BAD006', 1],
+    ] as const) {
+      const before = await requestCount();
+      expect(
+        await window.evaluate((url) => window.jobpilot!.postings.ingest(url), `https://apply.workable.com/j/${code}`),
+      ).toMatchObject({ ok: false, code: 'FETCH_FAILED' });
+      expect(await requestCount()).toBe(before + hops);
+    }
+
+    await window.evaluate(() => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text', 'https://apply.workable.com/j/3A8C3159E7');
+      document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true }));
+    });
+    await expect(window.getByLabel('Job URL', { exact: true })).toHaveValue('https://apply.workable.com/j/3A8C3159E7');
+    await window.getByRole('button', { name: 'Preview job', exact: true }).click();
+    await expect(window.getByRole('region', { name: 'Posting preview' })).toContainText('Social Media Manager');
+    await window.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(window.getByRole('dialog')).toHaveCount(0);
+
+    let workablePostingId: string | undefined;
+    for (const url of [
+      'https://apply.workable.com/j/3A8C3159E7',
+      'https://apply.workable.com/we-are-social-1/j/3A8C3159E7',
+      'https://apply.workable.com/we-are-social-1/j/3A8C3159E7/',
+      'https://apply.workable.com/j/3A8C3159E7/apply?utm_source=share#application',
+    ]) {
+      const result = await window.evaluate((url) => window.jobpilot!.postings.ingest(url), url);
+      expect(result).toMatchObject({
+        ok: true,
+        posting: {
+          ats: 'workable',
+          ats_tenant: 'we-are-social-1',
+          ats_job_id: '3A8C3159E7',
+          canonical_url: 'https://apply.workable.com/we-are-social-1/j/3A8C3159E7',
+          title: 'Social Media Manager',
+          questions: [expect.objectContaining({ external_id: 'workable:name', required: true })],
+        },
+      });
+      if (!result.ok) throw new Error(result.message);
+      workablePostingId ??= result.posting.postingId;
+      expect(result.posting.postingId).toBe(workablePostingId);
+    }
 
     await window.evaluate((url) => {
       const clipboardData = new DataTransfer();
