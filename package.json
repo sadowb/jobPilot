@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "e2e": "npm run build && playwright test",
     "tokens": "node scripts/gen-tokens.mjs",
     "dist": "npm run build && electron-builder",
     "dist:dir": "npm run build && electron-builder --dir",

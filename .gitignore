@@ -1,5 +1,7 @@
 out
 release
+test-results
+playwright-report
 node_modules
 .DS_Store
 *.log

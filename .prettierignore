@@ -3,6 +3,8 @@ dist
 node_modules
 design
 release
+test-results
+playwright-report
 package-lock.json
 src/renderer/src/styles/board.css
 src/renderer/src/styles/tokens.css
