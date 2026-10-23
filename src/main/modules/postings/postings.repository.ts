@@ -1,0 +1,171 @@
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import type { FillPlanDto, PostingFormDto } from '../../../shared/dto';
+import * as schema from '../../platform/db/schema';
+import { canonicalKey } from './canonical';
+import { answerLibrary, company, jobPosting, postingQuestion } from './postings.entity';
+
+export type PostingsDb = BetterSQLite3Database<typeof schema>;
+
+export class PostingsRepository {
+  constructor(private readonly db: PostingsDb) {}
+
+  ingest(form: PostingFormDto): void {
+    this.db.transaction((tx) => {
+      const normalizedName = form.company.normalize('NFKC').toLocaleLowerCase();
+      const nameKey = normalizedName.replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || normalizedName;
+      const companyRow = tx
+        .insert(company)
+        .values({ name: form.company, nameKey })
+        .onConflictDoUpdate({ target: company.nameKey, set: { name: form.company } })
+        .returning({ id: company.id })
+        .get();
+      const posted = tx
+        .insert(jobPosting)
+        .values({
+          companyId: companyRow.id,
+          url: form.canonical_url,
+          canonicalUrl: form.canonical_url,
+          ats: form.ats,
+          atsJobId: form.ats_job_id,
+          title: form.title,
+          location: form.location,
+          description: form.description,
+          salaryMin: form.salary_min,
+          salaryMax: form.salary_max,
+          salaryCurrency: form.salary_currency,
+          fetchedAt: Date.now(),
+          deletedAt: null,
+        })
+        .onConflictDoUpdate({
+          target: jobPosting.canonicalUrl,
+          set: {
+            companyId: companyRow.id,
+            url: form.canonical_url,
+            ats: form.ats,
+            atsJobId: form.ats_job_id,
+            title: form.title,
+            location: form.location,
+            description: form.description,
+            salaryMin: form.salary_min,
+            salaryMax: form.salary_max,
+            salaryCurrency: form.salary_currency,
+            fetchedAt: Date.now(),
+            deletedAt: null,
+          },
+        })
+        .returning({ id: jobPosting.id })
+        .get();
+
+      const keys = [
+        ...new Set(form.questions.map((q) => q.canonical_key).filter((key): key is string => key !== null)),
+      ];
+      const known = keys.length
+        ? new Set(
+            tx
+              .select({ key: answerLibrary.canonicalKey })
+              .from(answerLibrary)
+              .where(inArray(answerLibrary.canonicalKey, keys))
+              .all()
+              .map((row) => row.key),
+          )
+        : new Set<string>();
+      const fields = form.questions.map((q) => q.external_id);
+      if (fields.length) {
+        tx.delete(postingQuestion)
+          .where(and(eq(postingQuestion.postingId, posted.id), notInArray(postingQuestion.fieldKey, fields)))
+          .run();
+      } else {
+        tx.delete(postingQuestion).where(eq(postingQuestion.postingId, posted.id)).run();
+      }
+      for (const q of form.questions) {
+        tx.insert(postingQuestion)
+          .values({
+            postingId: posted.id,
+            fieldKey: q.external_id,
+            position: q.position,
+            label: q.label,
+            type: q.type,
+            required: q.required,
+            options: q.options,
+            canonicalKey: q.canonical_key && known.has(q.canonical_key) ? q.canonical_key : null,
+          })
+          .onConflictDoUpdate({
+            target: [postingQuestion.postingId, postingQuestion.fieldKey],
+            set: {
+              position: q.position,
+              label: q.label,
+              type: q.type,
+              required: q.required,
+              options: q.options,
+              canonicalKey: q.canonical_key && known.has(q.canonical_key) ? q.canonical_key : null,
+            },
+          })
+          .run();
+      }
+    });
+  }
+
+  resolveFillPlan(applicationId: string): FillPlanDto {
+    const app = this.db
+      .select({ postingId: schema.application.postingId })
+      .from(schema.application)
+      .where(eq(schema.application.id, applicationId))
+      .get();
+    if (!app) throw new Error(`Application ${applicationId} was not found`);
+    const profileRow = this.db.select().from(schema.profile).get();
+    const questions = this.db
+      .select({
+        fieldKey: postingQuestion.fieldKey,
+        label: postingQuestion.label,
+        required: postingQuestion.required,
+        canonicalKey: postingQuestion.canonicalKey,
+        answer: answerLibrary.answer,
+      })
+      .from(postingQuestion)
+      .leftJoin(answerLibrary, eq(postingQuestion.canonicalKey, answerLibrary.canonicalKey))
+      .where(eq(postingQuestion.postingId, app.postingId))
+      .orderBy(postingQuestion.position)
+      .all();
+    const answerMap = new Map(
+      this.db
+        .select({ key: answerLibrary.canonicalKey, answer: answerLibrary.answer })
+        .from(answerLibrary)
+        .all()
+        .map((row) => [row.key, row.answer]),
+    );
+
+    const profileAnswers: Record<string, string | null> = {
+      work_authorization: profileRow?.workAuthorization ?? null,
+      requires_sponsorship:
+        profileRow?.requiresSponsorship == null ? null : profileRow.requiresSponsorship ? 'Yes' : 'No',
+      salary_expectation:
+        profileRow?.salaryMin == null && profileRow?.salaryMax == null
+          ? null
+          : `${profileRow.salaryCurrency ?? ''} ${profileRow.salaryMin ?? ''}${profileRow.salaryMin != null && profileRow.salaryMax != null ? '–' : ''}${profileRow.salaryMax ?? ''}`.trim(),
+      notice_period: profileRow?.noticePeriodDays == null ? null : `${profileRow.noticePeriodDays} days`,
+      linkedin_url: profileRow?.linkedinUrl ?? null,
+      website_url: profileRow?.portfolioUrl ?? null,
+    };
+    const entries = questions.map((q) => {
+      const key = q.canonicalKey ?? canonicalKey(q.label);
+      const libraryValue = q.answer ?? (key ? (answerMap.get(key) ?? null) : null);
+      const profileValue = key ? (profileAnswers[key] ?? null) : null;
+      const value = libraryValue ?? profileValue;
+      return {
+        field_key: q.fieldKey,
+        label: q.label,
+        value,
+        source: libraryValue ? ('library' as const) : profileValue ? ('profile' as const) : null,
+        required: q.required,
+      };
+    });
+    return {
+      application_id: applicationId,
+      entries,
+      unresolved_required: entries
+        .filter((entry) => entry.required && entry.value === null)
+        .map(({ field_key, label }) => ({ field_key, label })),
+    };
+  }
+}
