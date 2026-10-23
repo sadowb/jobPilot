@@ -1,5 +1,6 @@
-import { isIP } from 'node:net';
-import { fetch } from 'undici';
+import { lookup } from 'node:dns/promises';
+import { BlockList, isIP } from 'node:net';
+import { Agent, fetch } from 'undici';
 import { z } from 'zod';
 import { PostingFormSchema, type PostingFormDto, type PostingQuestionDto } from '../../../../shared/dto';
 import { canonicalKey } from '../canonical';
@@ -81,8 +82,9 @@ export function question(
 
 export function canonicalUrl(input: string): URL {
   const u = new URL(input);
-  if (!['https:', 'http:'].includes(u.protocol) || u.username || u.password)
-    throw new Error('Only public HTTP(S) posting URLs are supported');
+  if (u.protocol !== 'https:' || u.username || u.password || u.port)
+    throw new Error('Only public HTTPS posting URLs without credentials or custom ports are supported');
+  u.hostname = u.hostname.replace(/\.$/, '');
   const ip = u.hostname.replace(/^\[|\]$/g, '');
   if (
     u.hostname === 'localhost' ||
@@ -98,62 +100,128 @@ export function canonicalUrl(input: string): URL {
   return u;
 }
 
+const blockedV4 = new BlockList();
+for (const [network, prefix] of [
+  ['0.0.0.0', 8],
+  ['10.0.0.0', 8],
+  ['100.64.0.0', 10],
+  ['127.0.0.0', 8],
+  ['169.254.0.0', 16],
+  ['172.16.0.0', 12],
+  ['192.0.0.0', 24],
+  ['192.0.2.0', 24],
+  ['192.168.0.0', 16],
+  ['198.18.0.0', 15],
+  ['198.51.100.0', 24],
+  ['203.0.113.0', 24],
+  ['224.0.0.0', 4],
+  ['240.0.0.0', 4],
+] as const)
+  blockedV4.addSubnet(network, prefix, 'ipv4');
+const globalV6 = new BlockList();
+globalV6.addSubnet('2000::', 3, 'ipv6');
+const blockedV6 = new BlockList();
+// Exclude transition mechanisms (including embedded IPv4) and documentation ranges.
+blockedV6.addSubnet('2001::', 23, 'ipv6');
+blockedV6.addSubnet('2001:db8::', 32, 'ipv6');
+blockedV6.addSubnet('2002::', 16, 'ipv6');
+blockedV6.addSubnet('3fff::', 20, 'ipv6');
+const DnsAddresses = z
+  .array(z.object({ address: z.union([z.ipv4(), z.ipv6()]), family: z.union([z.literal(4), z.literal(6)]) }))
+  .min(1);
+const atsDomains = ['greenhouse.io', 'lever.co', 'ashbyhq.com', 'workable.com', 'smartrecruiters.com', 'bamboohr.com'];
+
 export async function request(
   url: string,
-  init: { method?: 'GET' | 'POST'; body?: string; accept?: string } = {},
-): Promise<string> {
+  init: { method?: 'GET' | 'POST'; body?: string; accept?: string; allowCrossDomainRedirects?: boolean } = {},
+): Promise<{ text: string; url: URL }> {
   let target = canonicalUrl(url);
+  // These six ATS registrable domains are fixed; no public-suffix guessing for arbitrary sites.
+  const domain = atsDomains.find((domain) => target.hostname === domain || target.hostname.endsWith(`.${domain}`));
+  if (!init.allowCrossDomainRedirects && !domain) throw new Error('Unsupported ATS request host');
   for (let redirects = 0; redirects <= 3; redirects++) {
-    let response;
-    for (let attempt = 0; ; attempt++) {
-      try {
-        response = await fetch(target, {
-          method: init.method ?? 'GET',
-          body: init.body,
-          headers: {
-            'user-agent': UA,
-            accept: init.accept ?? 'application/json, text/html;q=0.9',
-            ...(init.body ? { 'content-type': 'application/json' } : {}),
-          },
-          signal: AbortSignal.timeout(9000),
-          redirect: 'manual',
-        });
-        if (![408, 429, 500, 502, 503, 504].includes(response.status) || attempt >= 2) break;
+    const addresses = DnsAddresses.parse(await lookup(target.hostname, { all: true }));
+    if (
+      addresses.some(
+        ({ address, family }) =>
+          isIP(address) !== family ||
+          (family === 4
+            ? blockedV4.check(address, 'ipv4')
+            : !globalV6.check(address, 'ipv6') || blockedV6.check(address, 'ipv6')),
+      )
+    )
+      throw new Error('Posting host resolved to a non-public address');
+    const pinned = addresses[0]!;
+    // A fresh dispatcher per hop prevents connection reuse from bypassing this hop's DNS check.
+    const dispatcher = new Agent({
+      connect: {
+        autoSelectFamily: false,
+        lookup: (_hostname, options, callback) => {
+          callback(null, options.all ? [pinned] : pinned.address, pinned.family);
+        },
+      },
+    });
+    try {
+      let response;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          response = await fetch(target, {
+            dispatcher,
+            method: init.method ?? 'GET',
+            body: init.body,
+            headers: {
+              'user-agent': UA,
+              accept: init.accept ?? 'application/json, text/html;q=0.9',
+              ...(init.body ? { 'content-type': 'application/json' } : {}),
+            },
+            signal: AbortSignal.timeout(9000),
+            redirect: 'manual',
+          });
+          if (![408, 429, 500, 502, 503, 504].includes(response.status) || attempt >= 2) break;
+          await response.body?.cancel();
+          await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+        } catch (error) {
+          if (attempt >= 2) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+        }
+      }
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get('location');
         await response.body?.cancel();
-        await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
-      } catch (error) {
-        if (attempt >= 2) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+        if (!location || redirects === 3) throw new Error(`HTTP redirect limit/status ${response.status}`);
+        target = canonicalUrl(new URL(location, target).href);
+        if (!init.allowCrossDomainRedirects && target.hostname !== domain && !target.hostname.endsWith(`.${domain}`))
+          throw new Error('ATS redirect left its domain');
+        continue;
       }
-    }
-    if ([301, 302, 303, 307, 308].includes(response.status)) {
-      const location = response.headers.get('location');
-      if (!location || redirects === 3) throw new Error(`HTTP redirect limit/status ${response.status}`);
-      target = canonicalUrl(new URL(location, target).href);
-      continue;
-    }
-    if (!response.ok) throw new Error(`HTTP ${response.status} for ${target.hostname}`);
-    const reader = response.body?.getReader();
-    if (!reader) return '';
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      size += chunk.value.byteLength;
-      if (size > 2_000_000) {
-        await reader.cancel();
-        throw new Error('Posting response exceeds 2 MB');
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error(`HTTP ${response.status} for ${target.hostname}`);
       }
-      chunks.push(chunk.value);
+      const reader = response.body?.getReader();
+      if (!reader) return { text: '', url: target };
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        size += chunk.value.byteLength;
+        if (size > 2_000_000) {
+          await reader.cancel();
+          throw new Error('Posting response exceeds 2 MB');
+        }
+        chunks.push(chunk.value);
+      }
+      const output = new Uint8Array(size);
+      let offset = 0;
+      for (const chunk of chunks) {
+        output.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return { text: new TextDecoder('utf-8', { fatal: false }).decode(output), url: target };
+    } finally {
+      await dispatcher.destroy();
     }
-    const output = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      output.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    return new TextDecoder('utf-8', { fatal: false }).decode(output);
   }
   throw new Error('Too many redirects');
 }
@@ -171,7 +239,7 @@ export async function jsonValue(
   schema: z.ZodType,
   init?: { method?: 'GET' | 'POST'; body?: string },
 ): Promise<unknown> {
-  const raw: unknown = JSON.parse(await request(url, init));
+  const raw: unknown = JSON.parse((await request(url, init)).text);
   return schema.parse(raw);
 }
 

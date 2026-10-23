@@ -365,7 +365,7 @@ const adapters = [greenhouse, lever, ashby, workable, smartRecruiters, bamboo];
 
 async function parseHtmlQuestions(url: string) {
   const markup = await (await import('./common')).request(url, { accept: 'text/html,application/xhtml+xml' });
-  const { document } = parseHTML(markup);
+  const { document } = parseHTML(markup.text);
   return questionsFromDocument(document);
 }
 
@@ -450,9 +450,14 @@ function jsonLdPosting(document: LinkedomDocument): Dict | null {
 }
 
 async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
-  const { document } = parseHTML(
-    await (await import('./common')).request(url.href, { accept: 'text/html,application/xhtml+xml' }),
-  );
+  const response = await (
+    await import('./common')
+  ).request(url.href, {
+    accept: 'text/html,application/xhtml+xml',
+    allowCrossDomainRedirects: true,
+  });
+  url = response.url;
+  const { document } = parseHTML(response.text);
   const ld = jsonLdPosting(document) ?? {};
   const org = asObject(ld.hiringOrganization);
   const location = asObject(asObject(ld.jobLocation).address);
@@ -469,7 +474,15 @@ async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
     titleFrom(url.hostname.split('.')[0]!);
   const questions = questionsFromDocument(document);
   const canonical = str(document.querySelector('link[rel="canonical"]')?.getAttribute('href'));
-  const canonicalHref = canonical ? canonicalUrl(new URL(canonical, url).href).href : url.href;
+  let canonicalHref = url.href;
+  if (canonical) {
+    try {
+      const candidate = canonicalUrl(new URL(canonical, url).href);
+      if (candidate.host === url.host) canonicalHref = candidate.href;
+    } catch {
+      /* Ignore invalid canonical metadata. */
+    }
+  }
   return form({
     company,
     title,
