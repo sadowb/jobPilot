@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -87,6 +87,15 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     await window.getByLabel('Claude executable path', { exact: true }).fill(join(userData, 'missing'));
     await card().getByRole('button', { name: 'Confirm path and save' }).click();
     await expect(card().getByRole('status')).toContainText('Choose an absolute');
+    const removable = join(userData, 'removable-claude');
+    writeFileSync(removable, '#!/bin/sh\nprintf "fixture version\\n"\n', { mode: 0o700 });
+    await window.getByLabel('Claude executable path', { exact: true }).fill(removable);
+    await window.getByLabel('Agent authentication').selectOption('login');
+    await card().getByRole('button', { name: 'Confirm path and save' }).click();
+    await expect(window.getByTestId('agent-status')).toHaveText('Claude · ready');
+    unlinkSync(removable);
+    expect((await window.evaluate(() => window.jobpilot!.agent.get())).status).toBe('tool_not_installed');
+
     await window
       .getByLabel('Claude executable path', { exact: true })
       .fill(resolve('scripts/fixtures/claude/fake-claude'));
