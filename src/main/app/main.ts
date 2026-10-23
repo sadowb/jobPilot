@@ -57,8 +57,8 @@ if (!app.requestSingleInstanceLock()) {
         await recovered;
         await openDatabase(loggerFor('database'));
       }
-    } catch {
-      logger.fatal('Encrypted database could not be opened');
+    } catch (error) {
+      logger.fatal({ err: error }, 'Encrypted database could not be opened');
       await dialog.showMessageBox({
         type: 'error',
         title: 'JobPilot database error',
@@ -89,6 +89,6 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
-// Main-process exports let the inspector-only E2E harness exercise the shipped services.
+// shortcut: exposed for the inspector-only E2E harness; shipped builds have the inspector fuse off, so unreachable. Move to a test entry if the fuse policy changes.
 export { loggerFor } from '../modules/observability/log.service';
 export { RunTraceService } from '../modules/observability/observability.service';

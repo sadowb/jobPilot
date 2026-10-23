@@ -122,6 +122,14 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         'otp',
         'totp',
         'code',
+        'dbPassword',
+        'clientSecret',
+        'x-api-key',
+        'set-cookie',
+        'sessionToken',
+        'githubToken',
+        'signingPrivateKey',
+        'databaseHexKey',
       ];
       const values = names.map((name) => `redaction-fixture-${name}-private`);
       const metadata = {
@@ -132,6 +140,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         zip_code: '12345',
         status_code: 'failed',
         sqlite_status: 'busy',
+        error_class: 'DatabaseError',
       };
       const payload = {
         ...metadata,
@@ -140,6 +149,8 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
             c: Object.fromEntries(names.map((name, index) => [name, values[index]])),
             list: [{ password: values[0] }],
             visible: 'kept',
+            diagnostic:
+              'file:jobpilot.db?cipher=sqlcipher&hexkey=deadbeef key=key-private password=password-private token=token-private Bearer bearer-private',
           },
         },
       };
@@ -149,7 +160,11 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       logger.error(
         {
           ...payload,
-          err: Object.assign(new Error('boom'), { code: 'SQLITE_NOTADB', password: values[0], extra: payload }),
+          err: Object.assign(new Error('open failed file:jobpilot.db?cipher=sqlcipher&hexkey=deadbeef'), {
+            code: 'SQLITE_NOTADB',
+            password: values[0],
+            extra: payload,
+          }),
         },
         'Error redaction fixture',
       );
@@ -167,10 +182,17 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       const tracePayload = JSON.parse(row.payload);
       return {
         unmodified: JSON.stringify(payload) === before,
-        allRedacted: values.every((value) => !row.payload.includes(value) && !trace.includes(value)),
+        allRedacted:
+          values.every((value) => !row.payload.includes(value) && !trace.includes(value)) &&
+          !row.payload.includes('deadbeef') &&
+          !trace.includes('deadbeef') &&
+          !row.payload.includes('-private') &&
+          !trace.includes('-private'),
         markers: Object.values(tracePayload.a.b.c).every((value) => value === '[REDACTED]'),
         kept:
           tracePayload.a.b.visible === 'kept' &&
+          tracePayload.a.b.diagnostic ===
+            'file:jobpilot.db?cipher=sqlcipher&hexkey=[REDACTED] key=[REDACTED] password=[REDACTED] token=[REDACTED] Bearer [REDACTED]' &&
           Object.entries(metadata).every(([key, value]) => tracePayload[key] === value),
         traceMatches: JSON.stringify(JSON.parse(trace).payload) === row.payload,
       };
@@ -302,7 +324,10 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         errorPreserved: {
           type: errorEntry?.err.type,
           message: errorEntry?.err.message,
-          stack: errorEntry?.err.stack?.includes('Error: boom') ?? false,
+          stack:
+            errorEntry?.err.stack?.startsWith(
+              'Error: open failed file:jobpilot.db?cipher=sqlcipher&hexkey=[REDACTED]\n',
+            ) && /\n\s+at /.test(errorEntry.err.stack),
           code: errorEntry?.err.code,
           password: errorEntry?.err.password,
           extraPassword: errorEntry?.err.extra?.a.b.c.password,
@@ -313,6 +338,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         },
         nestedLoggerRedacted:
           !logText.includes('-private') &&
+          !logText.includes('deadbeef') &&
           logText.includes('Nested redaction fixture') &&
           logText.includes('[Circular]') &&
           logText.includes('[Depth limit]'),
@@ -330,7 +356,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
 
     expect(state.errorPreserved).toEqual({
       type: 'Error',
-      message: 'boom',
+      message: 'open failed file:jobpilot.db?cipher=sqlcipher&hexkey=[REDACTED]',
       stack: true,
       code: 'SQLITE_NOTADB',
       password: '[REDACTED]',
