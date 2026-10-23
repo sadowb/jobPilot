@@ -41,13 +41,21 @@ export class AgentSettingsService implements AgentProvider {
       this.detected = await this.detection;
     }
     const path = saved.confirmed ? saved.path : (this.detected?.path ?? null);
+    let available = path !== null;
+    if (saved.confirmed && path) {
+      try {
+        await executablePath(path);
+      } catch {
+        available = false;
+      }
+    }
     return AgentStateSchema.parse({
       ...saved,
       path,
       version: saved.confirmed ? saved.version : (this.detected?.version ?? null),
       tool: 'claude',
       login: this.login,
-      status: !path
+      status: !available
         ? 'tool_not_installed'
         : !saved.confirmed
           ? 'needs_confirmation'
@@ -80,12 +88,6 @@ export class AgentSettingsService implements AgentProvider {
   async prepare(): Promise<void> {
     const saved = this.preferences();
     if (!saved.confirmed || !saved.path) throw new Error('Confirm the Claude path in Settings → Agent.');
-    try {
-      await executablePath(saved.path);
-    } catch {
-      await this.detect(saved.path);
-      throw new Error('tool_not_installed');
-    }
     const state = await this.state();
     if (state.status !== 'ready') throw new Error(state.status);
   }
