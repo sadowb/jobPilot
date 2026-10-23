@@ -4,8 +4,11 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  main: { build: { rollupOptions: { input: { index: resolve('src/main/index.ts') } } } },
-  preload: { build: { rollupOptions: { input: { index: resolve('src/preload/index.ts') } } } },
+  main: { build: { rollupOptions: { input: { index: resolve('src/main/app/main.ts') } } } },
+  preload: {
+    // Sandboxed preloads can only require('electron'): bundle every other dependency (zod).
+    build: { externalizeDeps: false, rollupOptions: { input: { index: resolve('src/preload/index.ts') } } },
+  },
   renderer: {
     root: resolve('src/renderer'),
     base: './', // file:// in the packaged app

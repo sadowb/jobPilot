@@ -72,7 +72,7 @@ let clockMode = 'fixed';
 
 for (const theme of THEMES) {
   const userData = mkdtempSync(join(tmpdir(), 'jp-visual-'));
-  // Electron's native theme is authoritative (src/main/index.ts reads this file); localStorage covers browser mode.
+  // Electron's native theme is authoritative (src/main/modules/settings/settings.service.ts reads this file); localStorage covers browser mode.
   writeFileSync(join(userData, 'theme-preference'), theme, 'utf8');
   const app = await electron.launch({
     executablePath: electronPath,

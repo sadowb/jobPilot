@@ -1,14 +1,24 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { Channels, type JobPilotBridge, type ThemeSource, type ThemeState } from '../shared/ipc';
+import { z } from 'zod';
+import { Channels, type JobPilotBridge, type ThemeSource } from '../shared/ipc';
+import { ThemeStateSchema } from '../shared/dto';
 
 const bridge: JobPilotBridge = {
   platform: process.platform,
-  documents: { save: (name, bytes) => ipcRenderer.invoke(Channels.saveDocument, name, bytes) as Promise<boolean> },
+  documents: {
+    async save(name, bytes) {
+      return z.boolean().parse(await ipcRenderer.invoke(Channels.saveDocument, { name, bytes }));
+    },
+  },
   theme: {
-    get: () => ipcRenderer.invoke(Channels.getTheme) as Promise<ThemeState>,
-    set: (source: ThemeSource) => ipcRenderer.invoke(Channels.setTheme, source) as Promise<ThemeState>,
+    async get() {
+      return ThemeStateSchema.parse(await ipcRenderer.invoke(Channels.getTheme));
+    },
+    async set(source: ThemeSource) {
+      return ThemeStateSchema.parse(await ipcRenderer.invoke(Channels.setTheme, source));
+    },
     onChange(listener) {
-      const handler = (_event: Electron.IpcRendererEvent, state: ThemeState) => listener(state);
+      const handler = (_event: Electron.IpcRendererEvent, state: unknown) => listener(ThemeStateSchema.parse(state));
       ipcRenderer.on(Channels.themeChanged, handler);
       return () => ipcRenderer.removeListener(Channels.themeChanged, handler);
     },

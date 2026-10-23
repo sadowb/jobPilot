@@ -1,0 +1,14 @@
+# Installed automatically by `npm ci` (lefthook's postinstall). Needs `brew install gitleaks`.
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      run: gitleaks protect --staged --redact --no-banner
+    typecheck:
+      run: npm run typecheck
+    eslint:
+      glob: '*.{ts,tsx,mjs}'
+      run: npx eslint --no-warn-ignored {staged_files}
+    drizzle:
+      glob: '{drizzle/**,src/main/modules/*/*.entity.ts,src/main/platform/db/**,drizzle.config.ts}'
+      run: npm run db:check
