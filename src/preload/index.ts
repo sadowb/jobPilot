@@ -8,6 +8,9 @@ import {
   RecoveryKeySchema,
 } from '../shared/ipc';
 import {
+  RunSummarySchema,
+  StartRunSchema,
+  CancelRunSchema,
   ApplicationListItemSchema,
   IngestResultSchema,
   ProfileDataSchema,
@@ -16,6 +19,25 @@ import {
 } from '../shared/dto';
 
 const bridge: JobPilotBridge = {
+  runs: {
+    async start(applicationId) {
+      return RunSummarySchema.parse(
+        await ipcRenderer.invoke(Channels.startRun, StartRunSchema.parse({ applicationId })),
+      );
+    },
+    async cancel(runId) {
+      return RunSummarySchema.parse(await ipcRenderer.invoke(Channels.cancelRun, CancelRunSchema.parse({ runId })));
+    },
+    async list() {
+      return z.array(RunSummarySchema).parse(await ipcRenderer.invoke(Channels.listRuns));
+    },
+    async pause() {
+      return z.boolean().parse(await ipcRenderer.invoke(Channels.pauseRuns));
+    },
+    async resume() {
+      return z.boolean().parse(await ipcRenderer.invoke(Channels.resumeRuns));
+    },
+  },
   postings: {
     async ingest(url) {
       return IngestResultSchema.parse(await ipcRenderer.invoke(Channels.ingestPosting, url));

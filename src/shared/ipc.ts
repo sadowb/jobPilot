@@ -1,10 +1,23 @@
 /** Single source of truth for IPC channel names and the renderer bridge (imported by main, preload and renderer). */
-import type { ApplicationListItem, IngestResult, ProfileData, ProfileSave, ThemeSource, ThemeState } from './dto';
+import type {
+  ApplicationListItem,
+  IngestResult,
+  ProfileData,
+  ProfileSave,
+  ThemeSource,
+  ThemeState,
+  RunSummaryDto,
+} from './dto';
 import { z } from 'zod';
 
 export type { ThemeSource, ThemeState };
 
 export const Channels = {
+  startRun: 'runs:start',
+  cancelRun: 'runs:cancel',
+  pauseRuns: 'runs:pause',
+  resumeRuns: 'runs:resume',
+  listRuns: 'runs:list',
   ingestPosting: 'postings:ingest',
   listApplications: 'applications:list',
   createApplication: 'applications:create',
@@ -30,6 +43,13 @@ export const RendererErrorInputSchema = z.object({
 export const RecoveryKeySchema = z.string().regex(/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/);
 
 export interface JobPilotBridge {
+  runs: {
+    start(applicationId: string): Promise<RunSummaryDto>;
+    cancel(runId: string): Promise<RunSummaryDto>;
+    pause(): Promise<boolean>;
+    resume(): Promise<boolean>;
+    list(): Promise<RunSummaryDto[]>;
+  };
   postings: { ingest(url: string): Promise<IngestResult> };
   applications: { list(): Promise<ApplicationListItem[]>; create(postingId: string): Promise<ApplicationListItem> };
   profile: {
