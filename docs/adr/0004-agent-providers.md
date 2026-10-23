@@ -30,7 +30,7 @@ For this owner's personal build, using their own CLI login is the owner decision
 Without an API key the provider sets neither `ANTHROPIC_API_KEY` nor
 `CLAUDE_CONFIG_DIR`: the unmodified CLI finds its own login. Packaged/distributed
 builds default to API-key authentication through #66, with a private config
-under `userData/agents/claude/config/`. A saved key is read only in main through
+under `userData/agents/claude/<run-id>/config/`. A saved key is read only in main through
 `platform/secrets`; no key is accepted from a run or renderer. The provider's
 `readApiKey` dependency is optional, and an unavailable explicitly selected key
 fails closed instead of silently billing a subscription.
@@ -50,7 +50,7 @@ reapplies this exact environment. OAuth variables, endpoint overrides and inject
 flags are dropped. Errors use fixed messages; nonempty API keys are scrubbed from
 events and diagnostics.
 
-The workspace stays under `userData/agents/claude/`. Each run disables filesystem
+Each run has a private workspace under `userData/agents/claude/<run-id>/`. Each run disables filesystem
 settings (`settingSources: []`), ambient MCP (`strictMcpConfig: true`), built-in
 tools (`tools: []`), and grants only named run MCP tools (plus structured output)
 through `canUseTool`. This excludes personal hooks, plugins and CLAUDE.md. Host

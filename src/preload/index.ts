@@ -35,13 +35,13 @@ async function invoke(channel: string, ...args: unknown[]): Promise<unknown> {
 const bridge: JobPilotBridge = {
   agent: {
     async get() {
-      return AgentStateSchema.parse(await ipcRenderer.invoke(Channels.getAgent));
+      return AgentStateSchema.parse(await invoke(Channels.getAgent));
     },
     async detect(path) {
-      return AgentStateSchema.parse(await ipcRenderer.invoke(Channels.detectAgent, DetectAgentSchema.parse({ path })));
+      return AgentStateSchema.parse(await invoke(Channels.detectAgent, DetectAgentSchema.parse({ path })));
     },
     async save(input) {
-      return AgentStateSchema.parse(await ipcRenderer.invoke(Channels.saveAgent, SaveAgentSchema.parse(input)));
+      return AgentStateSchema.parse(await invoke(Channels.saveAgent, SaveAgentSchema.parse(input)));
     },
   },
   claudeKey: {

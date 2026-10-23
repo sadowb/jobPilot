@@ -105,7 +105,12 @@ export class AgentSettingsService implements AgentProvider {
       try {
         await service.prepare();
         const saved = service.preferences();
-        const cwd = join(service.userData, 'agents/claude');
+        const runId = z
+          .string()
+          .regex(/^[A-Za-z0-9_-]+$/)
+          .max(128)
+          .parse(spec.runId);
+        const cwd = join(service.userData, 'agents/claude', runId);
         const configDirectory = join(cwd, 'config');
         await mkdir(configDirectory, { recursive: true, mode: 0o700 });
         provider = new ClaudeProvider({

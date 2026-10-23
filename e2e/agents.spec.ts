@@ -148,7 +148,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
       }, theme);
       if (theme === 'dark') await expect(window.locator('html')).toHaveClass(/dark/);
       else await expect(window.locator('html')).not.toHaveClass(/dark/);
-      await window.screenshot({ path: testInfo.outputPath(`settings-agent-${theme}.png`) });
+      await window.screenshot({ path: testInfo.outputPath(`settings-agent-${theme}.png`), animations: 'disabled' });
     }
     await card().getByRole('button', { name: 'Re-detect' }).click();
     await expect(card().getByRole('status')).toHaveText('Confirm a path before starting a run.');
@@ -160,7 +160,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     await expect(window.getByTestId('agent-status')).toHaveText('Claude · ready');
     expect((await runFixture('wait')).status).toBe('waiting');
     const pids = ['child.pid', 'descendant.pid'].map((file) =>
-      Number(readFileSync(join(userData, 'agents/claude', file), 'utf8')),
+      Number(readFileSync(join(userData, 'agents/claude/fixture', file), 'utf8')),
     );
     await app!.close();
     app = undefined;

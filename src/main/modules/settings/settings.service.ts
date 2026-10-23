@@ -47,7 +47,7 @@ export function markProfileMigrated(database: JobPilotDb): void {
 }
 
 export function applyConcurrency(database: JobPilotDb): number {
-  return z.number().int().min(1).max(64).default(6).parse(new SettingsRepository(database).applyConcurrency());
+  return z.number().int().min(1).max(64).default(2).parse(new SettingsRepository(database).applyConcurrency());
 }
 
 export function claudeKeyService(database: JobPilotDb): AnthropicKeyStore {
