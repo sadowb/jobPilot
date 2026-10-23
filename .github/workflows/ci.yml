@@ -71,6 +71,7 @@ jobs:
           security unlock-keychain -p "$keychain_password" "$keychain"
           security list-keychains -d user -s "$keychain"
           security import "$certdir/jobpilot.p12" -k "$keychain" -P "$p12_password" -T /usr/bin/codesign
+          security add-trusted-cert -r trustRoot -p codeSign -k "$keychain" "$certdir/jobpilot.crt"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
             -k "$keychain_password" "$keychain"
           identity=$(security find-identity -v -p codesigning "$keychain" | awk '/"JobPilot CI"/ { print $2; exit }')
