@@ -18,7 +18,8 @@ flowchart LR
   Agents --> CLI[CLI adapters via execa]
   Agents --> Browser[BrowserProvider: Neo]
   Agents --> Memory[Mnemosyne MCP via bundled uv]
-  Modules --> Secrets[Keychain / safeStorage]
+  Modules --> Secrets[Keychain / safeStorage: DB key]
+  Agents --> Vault[Bitwarden MCP: dedicated job-site vault]
   Modules --> Logs[LogService + RunTraceService + AuditService]
   Browser --> Sites[ATS / career sites]
   Modules --> Mail[Email provider]
@@ -80,7 +81,7 @@ erDiagram
   CAP_CONVERSATION ||--o{ CAP_MESSAGE : contains
 ```
 
-`site_account`, `email_signal`, and `settings` are owner records with no required parent. Secrets are encrypted before persistence. Mnemosyne owns its separate memory store; it is not part of this ERD.
+`site_account`, `email_signal`, and `settings` are owner records with no required parent. `site_account` holds login metadata only; passwords live in a dedicated Bitwarden account (ADR 0013). Mnemosyne owns its separate memory store; it is not part of this ERD.
 
 ## Run flow
 
@@ -118,7 +119,7 @@ sequenceDiagram
 - SQLite uses SQLCipher, WAL, foreign keys, STRICT tables, ULID text keys, and Unix-millisecond integer timestamps. Drizzle owns table definitions and migrations. Views are maintained in `drizzle/0001_views.sql` and have typed `.existing()` handles.
 - IPC, agent outputs, ATS/HTTP responses, and imported files are parsed with zod at entry. The main process is the only writer of product state.
 - The renderer has no Node access. The preload exposes named operations only. IPC accepts only the trusted main frame from the app origin (or configured development origin).
-- The app stores secrets through Keychain / Electron `safeStorage`, redacts logs, and gives agents only per-run environment and host-scoped credentials.
+- The SQLCipher key lives in Keychain via Electron `safeStorage`; builds are signed with one stable self-signed certificate so updates keep Keychain access (ADR 0014). Job-site passwords live in a dedicated Bitwarden account reached through the official Bitwarden MCP (ADR 0013). Logs and run traces are redacted.
 - Every state change is auditable. Agent events are stored in `run_event` and mirrored to per-run JSONL logs.
 
 ## Package-by-feature layout
