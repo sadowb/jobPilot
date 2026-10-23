@@ -142,6 +142,8 @@ export class ClaudeProvider implements AgentProvider {
           if (value !== undefined) env[key] = z.string().parse(value);
         }
         env.CLAUDE_CODE_DISABLE_AUTO_MEMORY = '1';
+        env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1';
+        env.CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL = '1';
         if (apiKey) {
           env.CLAUDE_CONFIG_DIR = options.configDirectory;
           env.ANTHROPIC_API_KEY = apiKey;

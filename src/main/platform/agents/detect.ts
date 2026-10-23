@@ -2,8 +2,11 @@ import { constants } from 'node:fs';
 import { access, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
-import { execa } from 'execa';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { z } from 'zod';
+
+const execute = promisify(execFile);
 
 export async function executablePath(path: string): Promise<string> {
   if (!isAbsolute(path)) throw new Error('Choose an absolute executable path.');
@@ -19,7 +22,12 @@ export async function detectClaude(override?: string | null): Promise<{ path: st
   if (!override && process.platform === 'darwin') {
     try {
       const shell = process.env.SHELL === '/bin/bash' ? '/bin/bash' : '/bin/zsh';
-      const result = await execa(shell, ['-lc', 'printf "%s" "$PATH"'], { timeout: 5000, maxBuffer: 16384 });
+      const result = await execute(shell, ['-lc', 'printf "%s" "$PATH"'], {
+        timeout: 5000,
+        killSignal: 'SIGKILL',
+        maxBuffer: 16384,
+        encoding: 'utf8',
+      });
       pathValue = z.string().max(16384).parse(result.stdout);
     } catch {
       /* Fall back to the GUI environment and standard install locations. */
@@ -39,12 +47,12 @@ export async function detectClaude(override?: string | null): Promise<{ path: st
   for (const candidate of new Set(candidates)) {
     try {
       const path = await executablePath(candidate);
-      const { stdout } = await execa(path, ['--version'], {
+      const { stdout } = await execute(path, ['--version'], {
         timeout: 5000,
+        killSignal: 'SIGKILL',
         maxBuffer: 4096,
-        stdin: 'ignore',
+        encoding: 'utf8',
         env: { PATH: pathValue, HOME: homedir(), USER: process.env.USER, LOGNAME: process.env.LOGNAME },
-        extendEnv: false,
       });
       return { path, version: z.string().trim().min(1).max(256).parse(stdout) };
     } catch {

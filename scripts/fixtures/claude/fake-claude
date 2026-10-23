@@ -20,6 +20,8 @@ if (process.env.ANTHROPIC_API_KEY) {
   assert(process.env.CLAUDE_CONFIG_DIR);
 } else assert.equal(process.env.CLAUDE_CONFIG_DIR, undefined);
 assert.equal(process.env.CLAUDE_CODE_DISABLE_AUTO_MEMORY, '1');
+assert.equal(process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC, '1');
+assert.equal(process.env.CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL, '1');
 const send = (value) => process.stdout.write(JSON.stringify(value) + '\n');
 const argument = (flag) => {
   const inline = process.argv.find((value) => value.startsWith(flag + '='));

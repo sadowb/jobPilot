@@ -42,7 +42,9 @@ not collect, store or intermediate subscription tokens. See the upstream
 
 Only `PATH`, `HOME`, `TMPDIR`, `LANG`, `LC_ALL`, `USER` and `LOGNAME` are copied
 from the run environment. The provider adds `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`
-and, only in API-key mode, the key and private config directory. The spawn callback
+plus fixed flags disabling nonessential traffic (telemetry, error reporting and
+auto-updates) and official marketplace auto-install; see the upstream
+[environment reference](https://code.claude.com/docs/en/env-vars). It adds, only in API-key mode, the key and private config directory. The spawn callback
 reapplies this exact environment. OAuth variables, endpoint overrides and injection
 flags are dropped. Errors use fixed messages; nonempty API keys are scrubbed from
 events and diagnostics.
