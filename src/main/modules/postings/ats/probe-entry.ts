@@ -1,1 +1,0 @@
-export { fetchPosting } from './index';

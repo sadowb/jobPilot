@@ -29,7 +29,7 @@
     "db:generate": "drizzle-kit generate && node scripts/db-strict.mjs",
     "db:check": "drizzle-kit check && node scripts/db-strict.mjs --check",
     "smoke:native": "ELECTRON_RUN_AS_NODE=1 electron scripts/smoke-native.mjs",
-    "postings:probe": "node src/main/modules/postings/probe.mjs",
+    "postings:probe": "node scripts/probe-postings.mjs",
     "agents:probe": "tsx src/main/platform/agents/claude.probe.mts"
   },
   "dependencies": {
