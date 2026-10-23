@@ -11,6 +11,46 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
   const userData = mkdtempSync(join(tmpdir(), 'jobpilot-upgrade-'));
   let oldApp: Awaited<ReturnType<typeof electron.launch>> | undefined;
   let newApp: Awaited<ReturnType<typeof electron.launch>> | undefined;
+  const migrationFixture = async (instance: NonNullable<typeof newApp>, action: 'reset' | 'fail' | 'retry') =>
+    instance.evaluate(async ({ app }, action) => {
+      const fs = process.getBuiltinModule('node:fs')!;
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+      const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
+      const key = Buffer.from(
+        (await safeStorage.decryptStringAsync(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc'))))
+          .result,
+        'base64',
+      );
+      const db = new Database(path.join(app.getPath('userData'), 'jobpilot.db'));
+      try {
+        db.pragma("cipher='sqlcipher'");
+        db.key(key);
+        if (action === 'reset') {
+          // The current base may already have migrated; seed the pre-migration state explicitly.
+          db.transaction(() => {
+            db.prepare("DELETE FROM settings WHERE key = 'profile.localStorageMigration.v1'").run();
+            db.prepare('DELETE FROM profile').run();
+          })();
+        } else if (action === 'fail')
+          db.exec(
+            "CREATE TRIGGER fail_profile_migration BEFORE INSERT ON settings WHEN NEW.key = 'profile.localStorageMigration.v1' BEGIN SELECT RAISE(ABORT, 'migration fixture'); END",
+          );
+        else db.exec('DROP TRIGGER fail_profile_migration');
+        return {
+          profiles: db.prepare('SELECT count(*) AS count FROM profile').get().count as number,
+          markers: db
+            .prepare("SELECT count(*) AS count FROM settings WHERE key = 'profile.localStorageMigration.v1'")
+            .get().count as number,
+        };
+      } finally {
+        key.fill(0);
+        db.close();
+      }
+    }, action);
   try {
     oldApp = await electron.launch({
       executablePath: baseExecutable!,
@@ -36,6 +76,7 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
       );
       localStorage.setItem('jobpilot.markets.v1', JSON.stringify([{ code: 'FR', workAuth: 'sponsorship' }]));
     });
+    await migrationFixture(oldApp, 'reset');
     const oldCloseTimer = setTimeout(() => oldApp?.process().kill('SIGKILL'), 5_000);
     try {
       await oldApp.close();
@@ -77,46 +118,12 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
         }),
       ),
     );
-    const migrationFailure = async (fail: boolean) =>
-      newApp!.evaluate(async ({ app }, fail) => {
-        const fs = process.getBuiltinModule('node:fs')!;
-        const path = process.getBuiltinModule('node:path')!;
-        const nodeRequire = process
-          .getBuiltinModule('node:module')!
-          .createRequire(path.join(app.getAppPath(), 'package.json'));
-        const { safeStorage } = nodeRequire('electron') as typeof import('electron');
-        const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
-        const key = Buffer.from(
-          (await safeStorage.decryptStringAsync(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc'))))
-            .result,
-          'base64',
-        );
-        const db = new Database(path.join(app.getPath('userData'), 'jobpilot.db'));
-        try {
-          db.pragma("cipher='sqlcipher'");
-          db.key(key);
-          if (fail)
-            db.exec(
-              "CREATE TRIGGER fail_profile_migration BEFORE INSERT ON settings WHEN NEW.key = 'profile.localStorageMigration.v1' BEGIN SELECT RAISE(ABORT, 'migration fixture'); END",
-            );
-          else db.exec('DROP TRIGGER fail_profile_migration');
-          return {
-            profiles: db.prepare('SELECT count(*) AS count FROM profile').get().count as number,
-            markers: db
-              .prepare("SELECT count(*) AS count FROM settings WHERE key = 'profile.localStorageMigration.v1'")
-              .get().count as number,
-          };
-        } finally {
-          key.fill(0);
-          db.close();
-        }
-      }, fail);
-    await migrationFailure(true);
+    await migrationFixture(newApp, 'fail');
     await newWindow.getByRole('button', { name: 'Retry' }).click();
     await expect(newWindow.getByRole('alert')).toContainText('Could not load your profile');
     expect(await newWindow.evaluate(() => localStorage.getItem('jobpilot.profile.v1'))).toContain('Ada');
     expect(await newWindow.evaluate(() => localStorage.getItem('jobpilot.answers.v1'))).not.toBeNull();
-    expect(await migrationFailure(false)).toEqual({ profiles: 0, markers: 0 });
+    expect(await migrationFixture(newApp, 'retry')).toEqual({ profiles: 0, markers: 0 });
     await newWindow.getByRole('button', { name: 'Retry' }).click();
     await expect(newWindow.getByRole('navigation', { name: 'Main' })).toBeVisible({ timeout: 30_000 });
     const migrated = await newWindow.evaluate(() => window.jobpilot!.profile.get());
