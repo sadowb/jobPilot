@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+import process from 'node:process';
+import assert from 'node:assert/strict';
+import { createInterface } from 'node:readline';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+
+// Deterministic CLI protocol fixture: real SDK transport + stdio MCP, no model or credentials.
+assert.equal(process.env.POISON, undefined);
+assert.equal(process.env.CLAUDE_CODE_OAUTH_TOKEN, undefined);
+assert.equal(process.env.ANTHROPIC_API_KEY, 'fixture-key');
+const send = (value) => process.stdout.write(JSON.stringify(value) + '\n');
+const argument = (flag) => {
+  const inline = process.argv.find((value) => value.startsWith(flag + '='));
+  return inline ? inline.slice(flag.length + 1) : process.argv[process.argv.indexOf(flag) + 1];
+};
+process.on('uncaughtException', (error) => {
+  send({ type: 'assistant', message: { content: [{ type: 'text', text: 'Fixture failure: ' + error.message }] } });
+  process.exit(1);
+});
+for await (const line of createInterface({ input: process.stdin })) {
+  const request = JSON.parse(line);
+  if (request.type === 'control_request') {
+    send({ type: 'control_response', response: { subtype: 'success', request_id: request.request_id, response: {} } });
+  } else if (request.type === 'user') {
+    send({ type: 'system', subtype: 'init', session_id: 'fixture-session' });
+    const prompt = JSON.stringify(request.message);
+    assert.equal(argument('--model'), 'fixture-model');
+    assert(argument('--json-schema'));
+    assert(process.argv.includes('--strict-mcp-config'));
+    if (prompt.includes('Fill again')) assert.equal(argument('--resume'), 'fixture-session');
+    if (prompt.includes('wait')) continue;
+    if (prompt.includes('crash')) {
+      process.stderr.write('token=fixture-token ' + 'x'.repeat(175) + 'fixture-key' + 'x'.repeat(250) + 'beyond-limit');
+      process.exit(23);
+    }
+    const config = JSON.parse(argument('--mcp-config'));
+    const server = config.mcpServers.form;
+    const client = new Client({ name: 'fixture', version: '1.0.0' });
+    try {
+      await client.connect(new StdioClientTransport({ command: server.command, args: server.args, env: server.env }));
+      send({
+        type: 'assistant',
+        message: {
+          content: [
+            { type: 'text', text: 'fixture-key' },
+            { type: 'tool_use', id: 'fill-1', name: 'mcp__form__fill', input: { name: 'Example' } },
+          ],
+        },
+      });
+      const filled = await client.callTool({ name: 'fill', arguments: { name: 'Example' } });
+      assert.match(JSON.stringify(filled), /value=\\?"Example/);
+      send({
+        type: 'user',
+        message: { content: [{ type: 'tool_result', tool_use_id: 'fill-1', content: filled.content }] },
+      });
+      send({
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        modelUsage: {},
+        total_cost_usd: 0,
+        structured_output: prompt.includes('invalid')
+          ? { status: 'bogus' }
+          : {
+              status: 'filled',
+              answers_used: [],
+              answers_added: [],
+              questions_needed: [],
+              learned: [],
+              blockers: [],
+              form_hash: 'fixture-form',
+            },
+      });
+    } finally {
+      await client.close();
+    }
+    process.exit(0);
+  }
+}
