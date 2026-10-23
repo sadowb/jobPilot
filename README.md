@@ -8,6 +8,7 @@
 ![macOS](https://img.shields.io/badge/macOS-arm64-black)
 ![Electron](https://img.shields.io/badge/Electron-45-47848F)
 ![Status](https://img.shields.io/badge/status-in%20development-orange)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 <img src="docs/screenshots/welcome-1-dark.png" alt="JobPilot welcome screen: Cap, the app's agent, offers to fill job applications" width="900">
 
@@ -165,3 +166,7 @@ npm run visual:diff -- --base /tmp/vis/base --head /tmp/vis/head --out /tmp/vis/
 - Limits: compare captures from the same machine (device scale factor); timers still run; a screen whose selector fails is recorded as ERROR.
 
 </details>
+
+## License
+
+[MIT](LICENSE)
