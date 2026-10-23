@@ -108,6 +108,13 @@ jobs:
           base_dr=$(codesign -dr - "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app" 2>&1 | sed -n 's/^.*designated => //p')
           printf 'PR DR:   %s\nBase DR: %s\n' "$pr_dr" "$base_dr"
           [[ "$pr_dr" == "$base_dr" && "$pr_dr" == *'certificate leaf = H"'* && "$pr_dr" != *cdhash* ]]
+          pr_cdhash=$(codesign -dv --verbose=4 release/mac-arm64/JobPilot.app 2>&1 | sed -n 's/^CDHash=//p')
+          base_cdhash=$(codesign -dv --verbose=4 "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app" 2>&1 | sed -n 's/^CDHash=//p')
+          pr_sha=$(shasum -a 256 release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot | awk '{ print $1 }')
+          base_sha=$(shasum -a 256 "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot" | awk '{ print $1 }')
+          printf 'PR CDHash: %s\nBase CDHash: %s\nPR executable SHA-256: %s\nBase executable SHA-256: %s\n' \
+            "$pr_cdhash" "$base_cdhash" "$pr_sha" "$base_sha"
+          [[ -n "$pr_cdhash" && -n "$base_cdhash" ]]
       - name: Run dev, packaged, and upgrade journeys
         run: node scripts/run-e2e.mjs
       - name: Verify exact shipped bytes (fuses, signature, real boot)
