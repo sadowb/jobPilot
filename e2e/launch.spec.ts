@@ -49,7 +49,12 @@ test('launches the built app, toggles theme, navigates routes, reports DB state'
 
     await test.step('no renderer or main-process errors after navigation', async () => {
       expect.soft(rendererErrors).toEqual([]);
-      expect.soft(mainStderr.join('')).not.toMatch(/error/i);
+      // macOS CI runners log Chromium helper XPC noise (com.apple.backupd); it is not from the app.
+      const appStderr = mainStderr
+        .join('')
+        .split('\n')
+        .filter((line) => !/XPC error for connection/.test(line));
+      expect.soft(appStderr.join('\n')).not.toMatch(/error/i);
     });
 
     await test.step('record userData DB presence (informational: DB is not opened at boot yet)', async () => {
