@@ -53,9 +53,9 @@ export interface LinkCheck {
 }
 
 export const LINKS: readonly LinkCheck[] = [
-  { label: 'Website', value: 'abdelhadimarjane.dev', status: '● checked today' },
-  { label: 'GitHub', value: 'github.com/abdelhadimarjane', status: '● 14 public repos' },
-  { label: 'LinkedIn', value: 'in/abdelhadimarjane', status: '● checked Oct 18' },
+  { label: 'Website', value: 'sara-benali.example', status: '● checked today' },
+  { label: 'GitHub', value: 'github.com/sara-benali-example', status: '● 14 public repos' },
+  { label: 'LinkedIn', value: 'in/sara-benali-example', status: '● checked Oct 18' },
 ];
 
 export const BASE_LETTER = {

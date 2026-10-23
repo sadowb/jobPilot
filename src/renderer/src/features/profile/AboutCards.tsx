@@ -105,7 +105,7 @@ export function ContactCard({ profile, onEdit }: { profile: PersonalProfile; onE
     .map((p) => p.trim())
     .filter(Boolean)
     .map((p) => parsePhone(p, region));
-  // "Avenue Hassan II, Ifrane 53000" / "Fès-Meknès · Morocco"
+  // "Avenue Hassan II, Rabat 10000" / "Rabat-Salé-Kénitra · Morocco"
   const cityLine = [profile.city, profile.postalCode].filter(Boolean).join(' ');
   const line1 = [profile.address, cityLine].filter(Boolean).join(', ');
   const line2 = [profile.region, (profile.countryCode && countryName(profile.countryCode)) || profile.country]

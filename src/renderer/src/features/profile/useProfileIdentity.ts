@@ -9,7 +9,7 @@ export interface ProfileIdentity {
   name: string;
   initials: string;
   headline: string;
-  /** "Ifrane, Morocco" or empty. */
+  /** "Rabat, Morocco" or empty. */
   location: string;
   /** What employers receive, e.g. "Ada Lovelace.pdf". */
   fileName: string;
