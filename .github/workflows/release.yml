@@ -35,9 +35,6 @@ jobs:
     needs: static
     runs-on: macos-14
     timeout-minutes: 12
-    env:
-      CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
-      CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -127,16 +124,9 @@ jobs:
       - name: Delete release signing identity
         if: always()
         run: |
-          if [ -f "$RUNNER_TEMP/jobpilot-release-cert/release.crt" ]; then
-            python3 - "$RUNNER_TEMP/jobpilot-release-cert/release.crt" <<'PY'
-          import subprocess
-          import sys
-
-          try:
-              subprocess.run(["sudo", "-n", "security", "remove-trusted-cert", "-d", sys.argv[1]], timeout=15)
-          except (subprocess.TimeoutExpired, subprocess.SubprocessError):
-              pass
-          PY
+          crt="$RUNNER_TEMP/jobpilot-release-cert/release.crt"
+          if [ -f "$crt" ]; then
+            sudo -n security remove-trusted-cert -d "$crt" || true
           fi
           security delete-keychain "$RUNNER_TEMP/jobpilot-release.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/jobpilot-release-cert"

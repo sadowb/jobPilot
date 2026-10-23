@@ -17,6 +17,8 @@ afterPack: scripts/after-pack.mjs
 mac:
   category: public.app-category.productivity
   target: [dmg]
+  # electron-builder ad-hoc signs; scripts/sign-app.mjs is the single signer for CI/release.
+  identity: null
 win:
   target: [nsis]
 linux:
