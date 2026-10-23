@@ -1,3 +1,6 @@
+import { MARKETS_KEY, readMarkets } from './markets';
+import type { JobPilotBridge } from '../../../../shared/ipc';
+import type { ProfileData } from '../../../../shared/dto';
 import { ANSWERS_V2_KEY, readAnswersV2, type Answer } from './answers';
 import { parseNoticeText } from './notice';
 import { ANSWERS_KEY, PROFILE_KEY, readProfile, type PersonalProfile } from './personal';
@@ -59,4 +62,27 @@ export function migrateStartAnswer(store: KeyValueStore = localStorage): void {
   } catch {
     /* unreadable or unwritable storage: leave everything as it is */
   }
+}
+
+/** Only remove legacy values after the main-process transaction has committed. */
+export async function initializeProfile(
+  bridge: JobPilotBridge['profile'],
+  store: Pick<Storage, 'getItem' | 'removeItem'>,
+): Promise<ProfileData> {
+  const keys = [PROFILE_KEY, MARKETS_KEY, ANSWERS_KEY, ANSWERS_V2_KEY];
+  if (await bridge.migrationDone()) {
+    const data = await bridge.get();
+    for (const key of keys) store.removeItem(key);
+    return data;
+  }
+  const personal = readProfile(store.getItem(PROFILE_KEY));
+  const answers = readAnswersV2(store.getItem(ANSWERS_V2_KEY), store.getItem(ANSWERS_KEY));
+  const plan = planStartMigration(personal, answers);
+  const data = await bridge.migrate({
+    personal: plan.profile ?? personal,
+    markets: readMarkets(store.getItem(MARKETS_KEY)),
+    answers: plan.answers ?? answers,
+  });
+  for (const key of keys) store.removeItem(key);
+  return data;
 }

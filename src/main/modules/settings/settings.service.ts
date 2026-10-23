@@ -1,3 +1,6 @@
+import { z } from 'zod';
+import type { JobPilotDb } from '../../platform/db/database';
+import { SettingsRepository } from './settings.repository';
 import { app, BrowserWindow, nativeTheme } from 'electron';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,4 +34,13 @@ export function broadcastThemeChanges(): void {
   nativeTheme.on('updated', () => {
     for (const window of BrowserWindow.getAllWindows()) window.webContents.send(Channels.themeChanged, themeState());
   });
+}
+
+export function profileMigrationDone(database: JobPilotDb): boolean {
+  const value = new SettingsRepository(database).profileMigrationValue();
+  return value === undefined ? false : z.literal(true).parse(value);
+}
+
+export function markProfileMigrated(database: JobPilotDb): void {
+  new SettingsRepository(database).markProfileMigrated();
 }
