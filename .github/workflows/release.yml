@@ -126,6 +126,16 @@ jobs:
       - name: Delete release signing identity
         if: always()
         run: |
-          sudo security remove-trusted-cert -d "$RUNNER_TEMP/jobpilot-release-cert/release.crt" 2>/dev/null || true
+          if [ -f "$RUNNER_TEMP/jobpilot-release-cert/release.crt" ]; then
+            python3 - "$RUNNER_TEMP/jobpilot-release-cert/release.crt" <<'PY'
+          import subprocess
+          import sys
+
+          try:
+              subprocess.run(["sudo", "-n", "security", "remove-trusted-cert", "-d", sys.argv[1]], timeout=15)
+          except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+              pass
+          PY
+          fi
           security delete-keychain "$RUNNER_TEMP/jobpilot-release.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/jobpilot-release-cert"
