@@ -58,7 +58,17 @@ try {
     'jobpilot.db',
     ...(existsSync(backups) ? readdirSync(backups).map((name) => join('backups', name)) : []),
   ];
-  if (!existsSync(join(userData, 'jobpilot.db'))) fail('jobpilot.db was not created in userData');
+  if (!existsSync(join(userData, 'jobpilot.db'))) {
+    const logs = join(userData, 'logs');
+    const tail = existsSync(logs)
+      ? readdirSync(logs)
+          .map((name) => readFileSync(join(logs, name), 'utf8').split('\n').slice(-20).join('\n'))
+          .join('\n')
+      : '(no logs dir)';
+    fail(
+      `jobpilot.db was not created in userData.\nuserData: ${readdirSync(userData).join(', ')}\nlogs:\n${tail}\nstderr:\n${stderr.slice(-3000)}`,
+    );
+  }
   for (const name of dbs) {
     const file = join(userData, name);
     const header = Buffer.alloc(16);
