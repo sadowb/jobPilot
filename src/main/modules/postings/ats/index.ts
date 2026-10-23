@@ -9,6 +9,7 @@ import {
   json,
   jsonValue,
   question,
+  request,
   salaryRange,
   str,
   titleFrom,
@@ -215,14 +216,21 @@ const ashby: Adapter = {
 const workable: Adapter = {
   match(url) {
     if (url.hostname.toLowerCase() !== 'apply.workable.com') return null;
-    const m = url.pathname.match(/^\/([A-Za-z0-9][A-Za-z0-9_-]{0,80})\/j\/([A-Za-z0-9]{6,20})(?:\/apply)?\/?$/);
+    const m = url.pathname.match(/^\/(?:([A-Za-z0-9][A-Za-z0-9_-]{0,80})\/)?j\/([A-Za-z0-9]{6,20})(?:\/apply)?\/?$/);
     if (!m) return null;
     const canonical = new URL(url);
-    canonical.pathname = canonical.pathname.replace(/\/apply\/?$/, '');
+    canonical.pathname = `/${m[1] ? `${m[1]}/` : ''}j/${m[2]}`;
     canonical.search = '';
-    return { ats: 'workable', tenant: m[1]!, jobId: m[2]!, url: canonical };
+    return { ats: 'workable', tenant: m[1] ?? null, jobId: m[2]!, url: canonical };
   },
   async fetch(m) {
+    if (!m.tenant) {
+      const response = await request(m.url.href, { redirects: 'same-host-once' });
+      const resolved = workable.match(response.url);
+      if (!resolved?.tenant || resolved.jobId !== m.jobId)
+        throw new Error('Workable short link did not resolve to the same job');
+      m = resolved;
+    }
     const job = await json(
       `https://apply.workable.com/api/v1/accounts/${encodeURIComponent(m.tenant!)}/jobs/${encodeURIComponent(m.jobId!)}`,
       ObjectResponse,
