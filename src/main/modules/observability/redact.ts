@@ -1,4 +1,5 @@
-const sensitiveKey = /password|secret|token|cookie|authorization|key|session|otp|code/i;
+const sensitiveKey =
+  /^(password|passwd|passphrase|secret|token|access_?token|refresh_?token|cookie|authorization|api_?key|hexkey|private_?key|key|session|session_?id|BW_SESSION|otp|totp|code)$/i;
 const censored = '[REDACTED]';
 
 /** Copy only data properties: getters/toJSON must not bypass redaction during serialization. */
@@ -7,17 +8,30 @@ export function redact(value: unknown, depth = 0, ancestors = new WeakSet<object
   if (depth >= 20) return '[Depth limit]';
   if (ancestors.has(value)) return '[Circular]';
   ancestors.add(value);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (value instanceof Error) {
+    descriptors.type = {
+      value:
+        descriptors.name?.value ??
+        Object.getOwnPropertyDescriptor(Object.getPrototypeOf(value), 'name')?.value ??
+        'Error',
+      enumerable: true,
+    };
+    for (const key of ['message', 'stack', 'code']) {
+      if (descriptors[key]) descriptors[key].enumerable = true;
+    }
+  }
   const result = Array.isArray(value)
     ? Array.from({ length: value.length }, (_, index) => {
         const descriptor = Object.getOwnPropertyDescriptor(value, index);
         return descriptor && 'value' in descriptor ? redact(descriptor.value, depth + 1, ancestors) : censored;
       })
     : Object.fromEntries(
-        Object.entries(Object.getOwnPropertyDescriptors(value))
+        Object.entries(descriptors)
           .filter(([, descriptor]) => descriptor.enumerable)
           .map(([key, descriptor]) => [
             key,
-            sensitiveKey.test(key) || !('value' in descriptor)
+            (sensitiveKey.test(key) && !(value instanceof Error && key === 'code')) || !('value' in descriptor)
               ? censored
               : redact(descriptor.value, depth + 1, ancestors),
           ]),

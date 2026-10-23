@@ -103,6 +103,12 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       ).run(id, id, 'claude', 'neo', now, now);
       const names = [
         'password',
+        'passwd',
+        'passphrase',
+        'access_token',
+        'refresh_token',
+        'private_key',
+        'session_id',
         'secret',
         'token',
         'cookie',
@@ -118,7 +124,17 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         'code',
       ];
       const values = names.map((name) => `redaction-fixture-${name}-private`);
+      const metadata = {
+        canonical_key: 'work_authorization',
+        field_key: 'q_123',
+        sqliteCode: 'SQLITE_NOTADB',
+        keyboard: 'QWERTY',
+        zip_code: '12345',
+        status_code: 'failed',
+        sqlite_status: 'busy',
+      };
       const payload = {
+        ...metadata,
         a: {
           b: {
             c: Object.fromEntries(names.map((name, index) => [name, values[index]])),
@@ -130,6 +146,13 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       const before = JSON.stringify(payload);
       const logger = loggerFor('redaction-e2e');
       logger.info(payload, 'Nested redaction fixture');
+      logger.error(
+        {
+          ...payload,
+          err: Object.assign(new Error('boom'), { code: 'SQLITE_NOTADB', password: values[0], extra: payload }),
+        },
+        'Error redaction fixture',
+      );
       const cycle: Record<string, unknown> = { password: values[0] };
       cycle.self = cycle;
       logger.info({ cycle }, 'Cycle redaction fixture');
@@ -146,7 +169,9 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         unmodified: JSON.stringify(payload) === before,
         allRedacted: values.every((value) => !row.payload.includes(value) && !trace.includes(value)),
         markers: Object.values(tracePayload.a.b.c).every((value) => value === '[REDACTED]'),
-        kept: tracePayload.a.b.visible === 'kept',
+        kept:
+          tracePayload.a.b.visible === 'kept' &&
+          Object.entries(metadata).every(([key, value]) => tracePayload[key] === value),
         traceMatches: JSON.stringify(JSON.parse(trace).payload) === row.payload,
       };
     });
@@ -261,13 +286,30 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         .filter(Boolean)
         .flatMap((line) => {
           try {
-            const entry = JSON.parse(line) as { level?: number };
+            const entry = JSON.parse(line) as { level?: number; msg?: string };
+            if (entry.msg === 'Error redaction fixture') return [];
             return typeof entry.level === 'number' && entry.level >= 50 ? [line] : [];
           } catch {
             return [];
           }
         });
+      const errorEntry = logText
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+        .find((entry) => entry.msg === 'Error redaction fixture');
       return {
+        errorPreserved:
+          errorEntry?.err.type === 'Error' &&
+          errorEntry.err.message === 'boom' &&
+          errorEntry.err.stack.includes('Error: boom') &&
+          errorEntry.err.code === 'SQLITE_NOTADB' &&
+          errorEntry.err.password === '[REDACTED]' &&
+          errorEntry.err.extra.a.b.c.password === '[REDACTED]' &&
+          errorEntry.canonical_key === 'work_authorization' &&
+          errorEntry.field_key === 'q_123' &&
+          errorEntry.sqliteCode === 'SQLITE_NOTADB' &&
+          errorEntry.a.b.c.password === '[REDACTED]',
         nestedLoggerRedacted:
           !logText.includes('-private') &&
           logText.includes('Nested redaction fixture') &&
@@ -285,6 +327,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       };
     });
 
+    expect(state.errorPreserved).toBe(true);
     expect(state.nestedLoggerRedacted).toBe(true);
     expect(state.encrypted).toBe(true);
     expect(state.mode).toBe(0o600);
