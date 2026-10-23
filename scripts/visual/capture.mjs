@@ -76,7 +76,7 @@ for (const theme of THEMES) {
   writeFileSync(join(userData, 'theme-preference'), theme, 'utf8');
   const app = await electron.launch({
     executablePath: electronPath,
-    args: [join(appDir, 'out/main/index.js'), `--user-data-dir=${userData}`],
+    args: [appDir, `--user-data-dir=${userData}`],
     env: { ...process.env, NODE_ENV: 'production' },
   });
   try {
