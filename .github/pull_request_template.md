@@ -31,7 +31,7 @@
 
 - [ ] **Renderer change?** Light and dark screenshots (1280x800, realistic data) of every changed screen are in the `screenshots-<run>` CI artifact. Name them here: <!-- e.g. bulk-after-light.png -->
 - [ ] **Approved mockup/spec linked in the issue?** Screenshots match it; deviations listed: <!-- or "none" -->
-- [ ] **Gentle footprint** (ADR in #70): no writes outside `userData`; no changes to the user's installed tools or config (`~/.claude`, PATH, shell rc); no new background presence (login item, LaunchAgent, tray, global shortcut); child processes and browser tabs end on cancel and quit.
+- [ ] **Gentle footprint: no writes outside userData, no new background presence, no changes to the user's tools.** Review [ADR 0016](../docs/adr/0016-gentle-footprint.md), including explicit exports, private agent state, resource limits, Keychain/network boundaries and owned child/tab cleanup on cancel and quit. Evidence or remaining gaps: <!-- list, or "documentation-only; no runtime changes" -->
 - [ ] **Trust boundary touched** (IPC, secrets, network, agent output, files)? Listed here for a full-read review: <!-- or "none" -->
 
 ## Haiku E2E result
