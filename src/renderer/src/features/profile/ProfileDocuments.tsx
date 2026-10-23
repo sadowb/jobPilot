@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 import { PButton, ghostLinkButton } from './buttons';
 import { documentError } from './personal';
 import { documentStore, type ProfileDocument } from './documents';
@@ -49,7 +49,7 @@ function DocumentRow({
     : `Updated ${updated.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
   return (
     <li
-      className={cx(
+      className={cn(
         DOC_COLUMNS,
         'min-h-16 border-t border-line px-5 py-2 text-sm first:border-t-0 [@media(width<=800px)]:grid-cols-[36px_minmax(0,1fr)]',
       )}
@@ -63,7 +63,7 @@ function DocumentRow({
       </div>
       <span className={docColumn}>{doc.language ?? 'Not set'}</span>
       <span className={docColumn}>{updatedText}</span>
-      <div className={cx(actionsRow, '[@media(width<=800px)]:col-span-full')}>
+      <div className={cn(actionsRow, '[@media(width<=800px)]:col-span-full')}>
         <a
           className={ghostLinkButton}
           ref={download}
@@ -93,7 +93,7 @@ const THUMB_LINE = 'block h-0.5 rounded-[1px] bg-[#dcdcdc]';
 function CvThumb({ large = false }: { large?: boolean }) {
   return (
     <span
-      className={cx(
+      className={cn(
         'box-border flex flex-col gap-[2.5px] rounded-[4px] border border-[#dadada] bg-[#fcfcfb] px-1 py-[5px] shadow-[0_1px_2px_rgb(0_0_0/0.08)]',
         large ? 'h-14 w-11' : 'h-9 w-7',
       )}
@@ -177,13 +177,15 @@ export function ProfileDocuments() {
     <section className="min-w-0" aria-labelledby="your-documents-title">
       <div className="mb-3.5 flex items-end justify-between gap-4">
         <div>
-          <h2 id="your-documents-title" className={cx(sectionTitle, 'flex items-baseline gap-2.5 leading-[1.2]')}>
+          <h2 id="your-documents-title" className={cn(sectionTitle, 'flex items-baseline gap-2.5 leading-[1.2]')}>
             CVs{' '}
             <span className="font-mono text-[11px] leading-[normal] font-medium tracking-[0.06em] text-muted">
               {docs.length}
             </span>
           </h2>
-          <p className="mt-1 text-[13px] text-muted">The agent reads what each CV is for and picks one per job. Uploads stay on this device.</p>
+          <p className="mt-1 text-[13px] text-muted">
+            The agent reads what each CV is for and picks one per job. Uploads stay on this device.
+          </p>
         </div>
         <PButton className="gap-1.5!" disabled={loading || busy} onClick={() => input.current?.click()}>
           <Glyph name="upload" size={15} /> {busy ? 'Saving…' : 'Upload CV'}
@@ -194,7 +196,8 @@ export function ProfileDocuments() {
         <span>
           {name ? (
             <>
-              Employers always receive <b className="font-[650] [overflow-wrap:anywhere]">{fileName}</b>. The names below are only for you.
+              Employers always receive <b className="font-[650] [overflow-wrap:anywhere]">{fileName}</b>. The names
+              below are only for you.
             </>
           ) : (
             'Add your name in About me to set the file name employers receive. The names below are only for you.'
@@ -215,7 +218,7 @@ export function ProfileDocuments() {
       ) : docs.length ? (
         <div className="min-w-0">
           <div
-            className={cx(
+            className={cn(
               DOC_COLUMNS,
               'px-5 pb-2 font-mono text-[11px] leading-none font-medium tracking-[0.06em] text-muted uppercase [@media(width<=800px)]:hidden',
             )}
@@ -244,7 +247,9 @@ export function ProfileDocuments() {
           <CvThumb large />
           <div>
             <strong className="text-sm">Your next chapter starts with your CV.</strong>
-            <p className="my-1.5 text-xs leading-[1.6] text-muted">Add a CV, cover letter, or transcript. PDF or DOCX, up to 20 MB.</p>
+            <p className="my-1.5 text-xs leading-[1.6] text-muted">
+              Add a CV, cover letter, or transcript. PDF or DOCX, up to 20 MB.
+            </p>
           </div>
         </div>
       )}

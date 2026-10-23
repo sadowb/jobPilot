@@ -1,6 +1,6 @@
 import { AgentBotArt } from '../../components/AgentBotArt';
 import { CapDartArt } from '../../components/CapDartArt';
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 import { cssVars } from '../../lib/css-vars';
 import { A_BAR, A_BOB, A_GUST, A_LIFT, A_RISE, A_TRAIL, BUBBLE, CELL, GoButton, PILL, S, SPEC } from '../shared-ui';
 import { FIRST_JOBS, SETUP_CHECKLIST } from './data';
@@ -34,7 +34,7 @@ export function LiftoffStep() {
               strokeLinecap="round"
             />
             <path
-              className={cx(A_TRAIL, '[--d:.1s] [--dur:1s]')}
+              className={cn(A_TRAIL, '[--d:.1s] [--dur:1s]')}
               pathLength="1"
               d={TRAIL}
               fill="none"
@@ -43,57 +43,55 @@ export function LiftoffStep() {
               strokeLinecap="round"
             />
           </svg>
-          <div className={cx('absolute top-[290px] left-[110px] size-[300px]', A_LIFT, A_GUST)}>
-            <div className={cx('size-[300px]', A_BOB)}>
+          <div className={cn('absolute top-[290px] left-[110px] size-[300px]', A_LIFT, A_GUST)}>
+            <div className={cn('size-[300px]', A_BOB)}>
               <CapDartArt size={300} gust />
             </div>
           </div>
-          <div className={cx(BUBBLE, 'absolute top-9 left-9 max-w-[360px] px-4 py-3 text-[16px] [--d:.9s]', A_RISE)}>
+          <div className={cn(BUBBLE, 'absolute top-9 left-9 max-w-[360px] px-4 py-3 text-[16px] [--d:.9s]', A_RISE)}>
             Mercury first. I’ll tell you when it’s sent.
           </div>
-          <div className={cx(SPEC, 'absolute bottom-6 left-7 text-muted tracking-[0.02em]!')}>Take-off · first application</div>
+          <div className={cn(SPEC, 'absolute bottom-6 left-7 text-muted tracking-[0.02em]!')}>
+            Take-off · first application
+          </div>
         </div>
         <div className="flex min-w-0 flex-col gap-3.5">
-          <div className={cx(CELL, 'gap-1 px-[22px] py-5')}>
+          <div className={cn(CELL, 'gap-1 px-[22px] py-5')}>
             <div className="flex items-center justify-between gap-3">
               <b className="text-[17px]">Checklist</b>
-              <span className={cx(SPEC, 'text-brand-text tracking-[0.02em]!')}>
+              <span className={cn(SPEC, 'text-brand-text tracking-[0.02em]!')}>
                 {n} of {n} done
               </span>
             </div>
             <div className="mt-1 mb-1.5 h-1 overflow-hidden rounded-[9px] bg-line">
-              <div className={cx('h-1 bg-brand [--d:.1s] [--dur:.8s]', A_BAR)} />
+              <div className={cn('h-1 bg-brand [--d:.1s] [--dur:.8s]', A_BAR)} />
             </div>
             {SETUP_CHECKLIST.map((item, i) => (
               <ChecklistRow key={item.title} item={item} delay={stagger(0.1, i)} />
             ))}
           </div>
-          <div className={cx(CELL, 'gap-2 px-[22px] py-5')}>
+          <div className={cn(CELL, 'gap-2 px-[22px] py-5')}>
             <div className="flex items-center justify-between gap-3">
               <b className="text-[17px]">Up next</b>
-              <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>{FIRST_JOBS.length} in Up next · about 6 min</span>
+              <span className={cn(SPEC, 'text-muted tracking-[0.02em]!')}>
+                {FIRST_JOBS.length} in Up next · about 6 min
+              </span>
             </div>
             {FIRST_JOBS.map((j, i) => (
               <div
                 key={j.url}
-                className={cx(
-                  'flex items-center gap-3 rounded-2xl border border-line bg-bg px-3.5 py-[7px]',
-                  A_RISE,
-                )}
+                className={cn('flex items-center gap-3 rounded-2xl border border-line bg-bg px-3.5 py-[7px]', A_RISE)}
                 style={cssVars({ '--d': stagger(0.45, i) })}
               >
                 <AgentBotArt company={j.company} state={i === 0 ? 'work' : 'idle'} size={36} />
                 <div className="min-w-0 flex-1">
                   <div className="text-[15px] font-semibold">{j.company}</div>
-                  <div className={cx(S, 'truncate text-[13px]')}>
+                  <div className={cn(S, 'truncate text-[13px]')}>
                     {j.role} · {j.site}
                   </div>
                 </div>
                 <span
-                  className={cx(
-                    PILL,
-                    i === 0 ? 'bg-[rgba(0,132,106,0.14)] text-brand-text' : 'bg-line text-muted',
-                  )}
+                  className={cn(PILL, i === 0 ? 'bg-[rgba(0,132,106,0.14)] text-brand-text' : 'bg-line text-muted')}
                 >
                   {i === 0 ? 'Running · ~2 min' : 'Queued'}
                 </span>
@@ -104,7 +102,7 @@ export function LiftoffStep() {
             <GoButton to={nextPath(5)} variant="primary" className="min-h-[52px]! w-full text-[16px]! text-on-pri!">
               Go to Dashboard →
             </GoButton>
-            <div className={cx(S, 'text-center text-[13px]')}>
+            <div className={cn(S, 'text-center text-[13px]')}>
               Cap keeps working in the background. Inbox shows only what needs you.
             </div>
           </div>

@@ -6,7 +6,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import { cx } from './cx';
+import { cn } from './cx';
 
 type FieldControlProps = AriaAttributes & { id?: string };
 
@@ -25,15 +25,15 @@ export function Field({ label, hint, error, wide = false, children, className, .
   const labelId = `${generatedId}-label`;
   const hintId = `${generatedId}-hint`;
   const errorId = `${generatedId}-error`;
-  const describedBy = cx(children.props['aria-describedby'], !!hint && hintId, !!error && errorId) || undefined;
+  const describedBy = cn(children.props['aria-describedby'], !!hint && hintId, !!error && errorId) || undefined;
   return (
-    <div className={cx('flex min-w-0 flex-col gap-[7px]', wide && 'col-span-full', className)} {...rest}>
+    <div className={cn('flex min-w-0 flex-col gap-[7px]', wide && 'col-span-full', className)} {...rest}>
       <label id={labelId} htmlFor={id} className="text-[13px] font-semibold">
         {label}
       </label>
       {cloneElement(children, {
         id,
-        'aria-labelledby': cx(labelId, children.props['aria-labelledby']),
+        'aria-labelledby': cn(labelId, children.props['aria-labelledby']),
         'aria-describedby': describedBy,
         'aria-invalid': error ? true : children.props['aria-invalid'],
       })}
@@ -53,6 +53,6 @@ export function Field({ label, hint, error, wide = false, children, className, .
 
 export function FieldGrid({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cx('grid grid-cols-2 gap-x-4 gap-y-5 [@media(width<=800px)]:grid-cols-1', className)} {...rest} />
+    <div className={cn('grid grid-cols-2 gap-x-4 gap-y-5 [@media(width<=800px)]:grid-cols-1', className)} {...rest} />
   );
 }

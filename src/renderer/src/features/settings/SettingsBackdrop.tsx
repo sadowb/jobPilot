@@ -1,5 +1,5 @@
 import { AgentBotArt } from '../../components/AgentBotArt';
-import { Card, cx, Segmented } from '../../components/ui';
+import { Card, cn, Segmented } from '../../components/ui';
 import { H1_STD, PILL, S, V17X } from '../shared-ui';
 import { KpiStrip } from '../analytics/KpiStrip';
 import { BACKDROP_ROWS } from './data';
@@ -22,11 +22,7 @@ const CHIP_TONES = {
 /** The dashboard as it sits behind the Settings sheet. Decorative: the live Dashboard screen owns the real table. */
 export function SettingsBackdrop() {
   return (
-    <div
-      aria-hidden="true"
-      inert
-      className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-hidden px-10 pt-7 pb-10"
-    >
+    <div aria-hidden="true" inert className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-hidden px-10 pt-7 pb-10">
       <div className="flex flex-none items-center gap-4">
         <h1 className={H1_STD}>Dashboard</h1>
         <Segmented label="View" options={VIEWS} value="applied" onChange={() => undefined} className="w-[260px]" />
@@ -52,43 +48,41 @@ export function SettingsBackdrop() {
       </div>
       <KpiStrip />
       <Card className="flex min-h-0 flex-[1_1_0] flex-col overflow-hidden">
-        <div className={cx(V17X, ROW_GRID, 'flex-none px-5 py-3')}>
+        <div className={cn(V17X, ROW_GRID, 'flex-none px-5 py-3')}>
           <span>Company · role</span>
           <span>Status</span>
           <span>Site</span>
           <span>Applied ↓</span>
         </div>
         {BACKDROP_ROWS.map((r) => (
-          <div key={r.company} className={cx(ROW_GRID, 'flex-none items-center border-t border-line px-5 py-2.5')}>
+          <div key={r.company} className={cn(ROW_GRID, 'flex-none items-center border-t border-line px-5 py-2.5')}>
             <div className="flex min-w-0 items-center gap-3">
               <AgentBotArt company={r.company} state={r.bot} size={32} />
               <div className="min-w-0">
                 <div className="text-[14px] font-semibold">{r.company}</div>
-                <div className={cx(S, 'truncate text-[13px]')}>{r.role}</div>
+                <div className={cn(S, 'truncate text-[13px]')}>{r.role}</div>
               </div>
             </div>
-            <span className={`${PILL} ${CHIP_TONES[r.tone]}`}>
-              {r.status}
-            </span>
+            <span className={`${PILL} ${CHIP_TONES[r.tone]}`}>{r.status}</span>
             <span className="text-[13.5px] text-muted">{r.site}</span>
             <span className="text-[13.5px] text-muted">{r.applied}</span>
           </div>
         ))}
         <div className="mt-auto flex flex-none items-center justify-between gap-3 border-t border-line px-5 py-3">
-          <span className={cx(S, 'text-[13px]')}>Showing 1–10 of 62</span>
+          <span className={cn(S, 'text-[13px]')}>Showing 1–10 of 62</span>
           <div className="flex items-center gap-0.5">
-            <span className={cx(PAGE_CELL, 'text-muted')}>‹</span>
+            <span className={cn(PAGE_CELL, 'text-muted')}>‹</span>
             {['1', '2', '3', '…', '7'].map((p, i) => (
               <span
                 key={p}
-                className={cx(PAGE_CELL, 'rounded-lg font-semibold', i === 0 ? 'bg-pri text-on-pri' : 'text-ink-2')}
+                className={cn(PAGE_CELL, 'rounded-lg font-semibold', i === 0 ? 'bg-pri text-on-pri' : 'text-ink-2')}
               >
                 {p}
               </span>
             ))}
-            <span className={cx(PAGE_CELL, 'text-ink-2')}>›</span>
+            <span className={cn(PAGE_CELL, 'text-ink-2')}>›</span>
           </div>
-          <span className={cx(S, 'flex items-center gap-1.5 text-[13px]')}>
+          <span className={cn(S, 'flex items-center gap-1.5 text-[13px]')}>
             10 per page
             <svg
               width="14"

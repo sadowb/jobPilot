@@ -1,4 +1,4 @@
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 import { StatusMenu } from './StatusMenu';
 import { APPLICATION_GRID, ApplicationRow } from './ApplicationRow';
 import { tokenize } from '../filter';
@@ -29,7 +29,7 @@ export function ApplicationsTable({
   const tokens = tokenize(query);
   return (
     <div
-      className={cx(
+      className={cn(
         'flex-none rounded-3xl border border-line bg-bg',
         statusMenu ? 'overflow-visible' : 'overflow-hidden',
       )}
@@ -37,7 +37,7 @@ export function ApplicationsTable({
       aria-label="Applications"
     >
       <div
-        className={cx(
+        className={cn(
           'grid min-h-10 items-center gap-4 px-5 font-mono text-[11.5px] font-medium tracking-[0.08em] text-muted uppercase',
           APPLICATION_GRID,
         )}

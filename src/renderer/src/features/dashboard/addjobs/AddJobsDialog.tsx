@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppButton } from '../components/AppButton';
-import { Eyebrow, cx } from '../../../components/ui';
+import { Eyebrow, cn } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
 import { V17Kbd } from '../../../components/V17Kbd';
@@ -59,7 +59,7 @@ function LinkRow({ link, index, onRemove }: { link: ParsedLink; index: number; o
       </div>
       <div className="col-start-1 row-start-1 min-w-0 animate-jp-aj-in motion-reduce:animate-none">
         <div
-          className={cx(
+          className={cn(
             'flex min-w-0 items-center gap-3',
             link.kind === 'invalid' ? 'opacity-55' : skipped && 'opacity-60',
           )}
@@ -76,7 +76,7 @@ function LinkRow({ link, index, onRemove }: { link: ParsedLink; index: number; o
             </div>
           </div>
           <span
-            className={cx(
+            className={cn(
               'inline-block rounded-full px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap',
               p.tone,
             )}

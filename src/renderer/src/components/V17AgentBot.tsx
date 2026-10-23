@@ -1,5 +1,5 @@
 import { BOT, BOT_BADGE, BOT_INK, BOT_MOTION, BOT_ORB } from './botStyles';
-import { cx } from './ui';
+import { cn } from './ui';
 import type { AgentState } from './v17-agent-state';
 
 export type { AgentState };
@@ -262,7 +262,7 @@ export function V17AgentBot({
   const { body, hat, fill } = look ?? agentLook(name);
   const g = GEOMETRY[body];
   return (
-    <span className={cx(BOT, BOT_INK, BOT_MOTION[state])} style={{ width: size, height: size }}>
+    <span className={cn(BOT, BOT_INK, BOT_MOTION[state])} style={{ width: size, height: size }}>
       <svg
         width={size}
         height={size}

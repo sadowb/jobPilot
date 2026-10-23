@@ -1,4 +1,4 @@
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 import { cssVars } from '../../lib/css-vars';
 import { A_RISE, S } from '../shared-ui';
 import type { ChecklistItem } from './data';
@@ -23,7 +23,7 @@ const CHECK = (
 export function ChecklistRow({ item, delay, compact }: { item: ChecklistItem; delay?: string; compact?: boolean }) {
   return (
     <div
-      className={cx(
+      className={cn(
         'flex items-center border-t border-line',
         compact ? 'gap-3 py-3' : 'gap-3.5 py-1.5',
         delay && A_RISE,
@@ -34,8 +34,8 @@ export function ChecklistRow({ item, delay, compact }: { item: ChecklistItem; de
         {CHECK}
       </span>
       <div className="min-w-0">
-        <div className={cx('font-semibold', compact ? 'text-[14.5px]' : 'text-[15px]')}>{item.title}</div>
-        <div className={cx(S, 'text-[13px]')}>{compact ? (item.shortDetail ?? item.detail) : item.detail}</div>
+        <div className={cn('font-semibold', compact ? 'text-[14.5px]' : 'text-[15px]')}>{item.title}</div>
+        <div className={cn(S, 'text-[13px]')}>{compact ? (item.shortDetail ?? item.detail) : item.detail}</div>
       </div>
     </div>
   );

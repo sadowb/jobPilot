@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, type FormEventHandler, type ReactNode } from 
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 import { controlFocus } from './controlStyles';
-import { cx } from './cx';
+import { cn } from './cx';
 
 let scrollLocks = 0;
 let bodyWasLocked = false;
@@ -75,7 +75,7 @@ export function Dialog({
       ref={dialog}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
-      className={cx(
+      className={cn(
         'm-auto w-[min(640px,calc(100vw-32px))] max-h-[min(760px,calc(100dvh-48px))]',
         'overflow-hidden rounded-3xl border border-line bg-bg p-0 font-sans text-ink shadow-float',
         'backdrop:bg-black/25 backdrop:backdrop-blur-[8px] dark:backdrop:bg-black/45',
@@ -138,7 +138,7 @@ export function Dialog({
             size="icon-sm"
             aria-label={closeLabel}
             onClick={onClose}
-            className={cx('h-auto! min-h-[34px] font-sans! text-ink-2! transition-none', controlFocus)}
+            className={cn('h-auto! min-h-[34px] font-sans! text-ink-2! transition-none', controlFocus)}
           >
             <svg
               aria-hidden="true"
@@ -154,7 +154,7 @@ export function Dialog({
             </svg>
           </Button>
         </header>
-        <div className={cx('min-h-0 flex-1 overflow-y-auto px-7 py-6 [@media(width<=800px)]:p-5', bodyClassName)}>
+        <div className={cn('min-h-0 flex-1 overflow-y-auto px-7 py-6 [@media(width<=800px)]:p-5', bodyClassName)}>
           {children}
         </div>
         <footer className="flex items-center justify-between gap-4 border-t border-line px-7 py-5 text-xs leading-[1.45] text-muted">
@@ -165,7 +165,7 @@ export function Dialog({
                 type="submit"
                 variant="primary"
                 size="sm"
-                className={cx(
+                className={cn(
                   'font-sans! text-[13.5px]! leading-[1.45]! font-semibold! text-on-pri! transition-none',
                   controlFocus,
                 )}

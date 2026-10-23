@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { CapDartArt } from '../../components/CapDartArt';
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 import { MONO_CAPS, S } from '../shared-ui';
 
 /** `.v17c` surface (Card's classes, on a <section>). */
@@ -28,7 +28,7 @@ export function AnalyticsPanel({
           <div className="flex items-center gap-2">
             <b className="text-[16px] font-[650] tracking-[-0.01em]">{title}</b>
           </div>
-          <div className={cx(S, 'mt-[3px] text-[13px]')}>{sub}</div>
+          <div className={cn(S, 'mt-[3px] text-[13px]')}>{sub}</div>
         </div>
         {/* `!`: the shell's unlayered `.app button` rule resets font and colour (see shared-ui). */}
         <button
@@ -42,7 +42,7 @@ export function AnalyticsPanel({
       </div>
       {children}
       <div className="mt-auto flex items-center gap-2.5 border-t border-line pt-3.5 text-[13px] leading-normal text-muted">
-        <span className={cx(MONO_CAPS, 'flex-none text-ink-2')}>Cap’s read</span>
+        <span className={cn(MONO_CAPS, 'flex-none text-ink-2')}>Cap’s read</span>
         <span>{read}</span>
       </div>
     </section>

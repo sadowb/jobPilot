@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Eyebrow, cx } from '../../../components/ui';
+import { Eyebrow, cn } from '../../../components/ui';
 import { V17Icon } from '../../../components/V17Icon';
 
 const filterChip = 'flex-none rounded-full border px-[13px] py-1.5 text-[13px] whitespace-nowrap';
@@ -95,9 +95,9 @@ export function FauxBrowser({
           <span className="text-[13px] text-muted">{badge} roles · Engineering, Sales, Data</span>
         </div>
         <div className="mt-4 flex flex-nowrap items-center gap-2">
-          <span className={cx(filterChip, 'border-pri bg-pri text-on-pri')}>Engineering</span>
-          <span className={cx(filterChip, 'border-line-2 text-ink-2')}>New York</span>
-          <span className={cx(filterChip, 'border-line-2 text-ink-2')}>Early career</span>
+          <span className={cn(filterChip, 'border-pri bg-pri text-on-pri')}>Engineering</span>
+          <span className={cn(filterChip, 'border-line-2 text-ink-2')}>New York</span>
+          <span className={cn(filterChip, 'border-line-2 text-ink-2')}>Early career</span>
         </div>
         <div className="mt-3.5 flex max-w-[820px] flex-col">
           {ROLES.map(([role, where]) => (

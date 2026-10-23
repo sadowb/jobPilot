@@ -1,5 +1,5 @@
 import type { CSSProperties, KeyboardEvent } from 'react';
-import { cx } from './ui';
+import { cn } from './ui';
 
 export interface SegmentOption<T extends string> {
   value: T;
@@ -45,7 +45,7 @@ export function SegmentedChoice<T extends string>({
         return (
           <span
             key={o.value}
-            className={cx(
+            className={cn(
               'flex cursor-pointer items-center justify-center gap-2 rounded-full px-3.5 py-[7px] text-[14px] font-semibold whitespace-nowrap',
               on ? 'bg-pri text-on-pri' : 'text-muted',
             )}

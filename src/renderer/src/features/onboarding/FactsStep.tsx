@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CapDartArt } from '../../components/CapDartArt';
-import { Eyebrow, cx } from '../../components/ui';
+import { Eyebrow, cn } from '../../components/ui';
 import { cssVars } from '../../lib/css-vars';
 import { A_POP, A_RISE, BUBBLE, CELL, GoButton, S, SPEC } from '../shared-ui';
 import { FACT_QUESTIONS, FACT_USES } from './data';
@@ -14,13 +14,20 @@ const CAP_AVATAR = (
   </span>
 );
 
-const CHIP = 'relative h-[42px] cursor-pointer rounded-full border px-[18px] text-[15px] font-medium! whitespace-nowrap';
+const CHIP =
+  'relative h-[42px] cursor-pointer rounded-full border px-[18px] text-[15px] font-medium! whitespace-nowrap';
 
 function Bubble({ text, delay, dim }: { text: string; delay: string; dim: boolean }) {
   return (
-    <div className={cx('flex items-end gap-3.5', A_RISE)} style={cssVars({ '--d': delay })}>
+    <div className={cn('flex items-end gap-3.5', A_RISE)} style={cssVars({ '--d': delay })}>
       {CAP_AVATAR}
-      <div className={cx(BUBBLE, 'max-w-[600px] self-start px-[18px] py-3.5 text-[16px] leading-normal', dim && 'opacity-45')}>
+      <div
+        className={cn(
+          BUBBLE,
+          'max-w-[600px] self-start px-[18px] py-3.5 text-[16px] leading-normal',
+          dim && 'opacity-45',
+        )}
+      >
         {text}
       </div>
     </div>
@@ -56,11 +63,11 @@ export function FactsStep() {
                 <div className="flex flex-col gap-3 pl-[54px]">
                   <div className="flex flex-wrap gap-2">
                     {i === 0 && !authOpen && chosen === null ? (
-                      <span className={cx('inline-flex', A_POP)} style={cssVars({ '--d': '0.05s' })}>
+                      <span className={cn('inline-flex', A_POP)} style={cssVars({ '--d': '0.05s' })}>
                         <button
                           type="button"
                           onClick={() => setAuthOpen(true)}
-                          className={cx(CHIP, 'border-dashed border-line-2 bg-bg font-medium text-muted!')}
+                          className={cn(CHIP, 'border-dashed border-line-2 bg-bg font-medium text-muted!')}
                         >
                           Your answer
                           <span
@@ -71,13 +78,13 @@ export function FactsStep() {
                       </span>
                     ) : (
                       q.options.map((o) => (
-                        <span key={o} className={cx('inline-flex [--d:0s]', A_POP)}>
+                        <span key={o} className={cn('inline-flex [--d:0s]', A_POP)}>
                           <button
                             type="button"
                             disabled={future}
                             aria-pressed={chosen === o}
                             onClick={() => pick(i, o)}
-                            className={cx(
+                            className={cn(
                               CHIP,
                               'text-ink!',
                               future && 'opacity-45',
@@ -91,7 +98,7 @@ export function FactsStep() {
                     )}
                   </div>
                   {i === 0 && (
-                    <div className={cx(S, 'text-[13px] [--d:.3s]', A_RISE)}>
+                    <div className={cn(S, 'text-[13px] [--d:.3s]', A_RISE)}>
                       Your decision. Cap won’t assume it. Change it any time in Profile → What the agents know.
                     </div>
                   )}
@@ -100,26 +107,30 @@ export function FactsStep() {
             );
           })}
           {done === FACT_QUESTIONS.length && (
-            <div className={cx('flex items-center gap-3.5 pl-[54px] [--d:0s]', A_RISE)}>
-              <GoButton to={nextPath(4)} variant="primary" className="min-h-[52px]! px-[26px]! text-[16px]! text-on-pri!">
+            <div className={cn('flex items-center gap-3.5 pl-[54px] [--d:0s]', A_RISE)}>
+              <GoButton
+                to={nextPath(4)}
+                variant="primary"
+                className="min-h-[52px]! px-[26px]! text-[16px]! text-on-pri!"
+              >
                 Save and continue →
               </GoButton>
             </div>
           )}
         </div>
-        <aside className={cx(CELL, 'gap-4 p-[26px]')}>
+        <aside className={cn(CELL, 'gap-4 p-[26px]')}>
           <Eyebrow>Saved to Profile · Facts</Eyebrow>
           <b className="-mt-1 text-[18px]">What I do with these</b>
           {FACT_USES.map((u) => (
             <div key={u.tag} className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 border-t border-line py-3">
-              <span className={cx(SPEC, 'text-brand-text tracking-[0.02em]!')}>{u.tag}</span>
+              <span className={cn(SPEC, 'text-brand-text tracking-[0.02em]!')}>{u.tag}</span>
               <span className="text-[14px] leading-normal">{u.text}</span>
             </div>
           ))}
           <div className="mt-auto border-t border-line pt-4">
             <div className="flex items-center justify-between gap-3">
-              <span className={cx(S, 'text-[13.5px]')}>Answered</span>
-              <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>
+              <span className={cn(S, 'text-[13.5px]')}>Answered</span>
+              <span className={cn(SPEC, 'text-muted tracking-[0.02em]!')}>
                 {done} of {FACT_QUESTIONS.length}
               </span>
             </div>
