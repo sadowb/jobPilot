@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
 import { AppButton } from './components/AppButton';
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 import { V17Icon } from '../../components/V17Icon';
 import { V17Kbd } from '../../components/V17Kbd';
 import { Pagination } from './components/Pagination';
@@ -125,7 +125,7 @@ export function UpNextView({
               role="status"
             >
               <i
-                className={cx(
+                className={cn(
                   'inline-block size-[7px] rounded-full',
                   state.paused
                     ? 'bg-need'
@@ -169,7 +169,7 @@ export function UpNextView({
                   key={key}
                   type="button"
                   aria-pressed={state.filter === key}
-                  className={cx(
+                  className={cn(
                     'flex-none cursor-pointer rounded-full border px-[13px] py-1.5 text-[13px]! whitespace-nowrap',
                     state.filter === key
                       ? 'border-pri bg-pri text-on-pri!'
@@ -189,10 +189,7 @@ export function UpNextView({
           role="table"
           aria-label="Up next"
         >
-          <div
-            role="row"
-            className={cx('grid items-center gap-x-3 border-b border-line bg-panel px-3.5', QUEUE_GRID)}
-          >
+          <div role="row" className={cn('grid items-center gap-x-3 border-b border-line bg-panel px-3.5', QUEUE_GRID)}>
             {HEADERS.map((h, i) => (
               <div
                 key={i}

@@ -8,7 +8,10 @@ export function CrewSlider({ value, onChange }: { value: number; onChange: (next
     <div>
       <div className="relative mt-1 h-6">
         <div className="absolute inset-x-0 top-[9px] h-1.5 rounded-full bg-line" />
-        <div className="absolute top-[9px] left-0 h-1.5 rounded-full bg-brand" style={{ width: `${pct.toFixed(2)}%` }} />
+        <div
+          className="absolute top-[9px] left-0 h-1.5 rounded-full bg-brand"
+          style={{ width: `${pct.toFixed(2)}%` }}
+        />
         <div
           className="absolute top-px size-[22px] rounded-full border-2 border-brand bg-bg shadow-float"
           style={{ left: `calc(${pct.toFixed(2)}% - 11px)` }}

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Button, cx, type ButtonProps } from '../components/ui';
+import { Button, cn, type ButtonProps } from '../components/ui';
 
 /** Class strings and helpers shared by the onboarding, settings, analytics and ⌘K features (V17 board vocabulary). */
 
@@ -17,7 +17,7 @@ export const MONO_CAPS = 'font-mono text-[11px] tracking-[0.06em] uppercase';
 /** `.v17x`: mono uppercase muted label. */
 export const V17X = `${MONO_CAPS} text-muted`;
 /** `.v17n`: serif tabular numeral. Size comes from the caller. */
-export const V17N = 'font-serif font-[350] leading-none tracking-[-0.02em] tabular-nums';
+export const V17N = 'font-serif font-[350] [line-height:1] tracking-[-0.02em] tabular-nums';
 /** `.h1` minus size and leading: serif display heading. */
 export const H1 = 'm-0 font-serif font-[350] tracking-[-0.025em]';
 /** `.h1` as the boards set it: 46px / 1.02. */
@@ -42,9 +42,9 @@ export const A_CARDIN =
 export const A_COLLAPSE =
   'max-h-0 overflow-hidden opacity-0 animate-[v17collapse_0.25s_ease-in-out_var(--d,0s)_both] motion-reduce:animate-none';
 export const A_LAND =
-  'animate-[v17land_0.9s_cubic-bezier(0.2,0.8,0.2,1)_var(--d,0s)_both] motion-reduce:animate-none';
+  'v17-land animate-[v17land_0.9s_cubic-bezier(0.2,0.8,0.2,1)_var(--d,0s)_both] motion-reduce:animate-none';
 export const A_LIFT =
-  'animate-[v17lift_1.1s_cubic-bezier(0.65,0,0.35,1)_var(--d,0s)_both] motion-reduce:animate-none';
+  'v17-lift animate-[v17lift_1.1s_cubic-bezier(0.65,0,0.35,1)_var(--d,0s)_both] motion-reduce:animate-none';
 export const A_BOB = 'animate-[v17bob_3.2s_ease-in-out_1.2s_infinite] motion-reduce:animate-none';
 /** `.v17-trail`: dashed path that draws itself. Reduced motion shows the finished line. */
 export const A_TRAIL =
@@ -65,7 +65,7 @@ const SHELL_BUTTON: Record<NonNullable<ButtonProps['variant']>, string> = {
   'danger-fill': 'text-white!',
 };
 export const shellButton = (variant: NonNullable<ButtonProps['variant']> = 'default') =>
-  `font-semibold! text-[13.5px]! ${SHELL_BUTTON[variant]}`;
+  cn('font-semibold! text-[13.5px]!', SHELL_BUTTON[variant]);
 
 /** A Button that navigates (the old `NavButton`). Inside the shell, add `shellButton(variant)` to its className. */
 export function GoButton({ to, onClick, className, ...rest }: { to: string } & ButtonProps) {
@@ -73,7 +73,7 @@ export function GoButton({ to, onClick, className, ...rest }: { to: string } & B
   return (
     <Button
       {...rest}
-      className={cx('cursor-pointer', className)}
+      className={cn('cursor-pointer', className)}
       onClick={(e) => {
         onClick?.(e);
         if (!e.defaultPrevented) void navigate(to);

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17StatusChip } from '../../../components/V17StatusChip';
 import { shortDate } from '../format';
@@ -32,7 +32,7 @@ export function ApplicationRow({
       role="row"
       aria-selected={selected}
       data-row-id={app.id}
-      className={cx(
+      className={cn(
         'grid min-h-[46px] cursor-pointer items-center gap-4 border-t border-line px-5 text-[13.5px] hover:bg-panel',
         APPLICATION_GRID,
         selected && 'bg-panel shadow-[inset_3px_0_0_var(--ink)]',
@@ -69,9 +69,7 @@ export function ApplicationRow({
             onOpenStatus();
           }}
         >
-          <V17StatusChip className={meta.chipClass}>
-            {meta.label}
-          </V17StatusChip>
+          <V17StatusChip className={meta.chipClass}>{meta.label}</V17StatusChip>
           <svg
             width="10"
             height="10"

@@ -38,7 +38,13 @@ export function AnalyticsScreen({ onAsk }: { onAsk?: (topic: string) => void }) 
           </h1>
         </div>
         <div className="flex flex-none flex-col items-end gap-2">
-          <Segmented label="Range" options={RANGE_OPTIONS} value={range} onChange={setRange} className={RANGE_CONTROL} />
+          <Segmented
+            label="Range"
+            options={RANGE_OPTIONS}
+            value={range}
+            onChange={setRange}
+            className={RANGE_CONTROL}
+          />
           <span className="font-mono text-[13px] whitespace-nowrap text-muted">{SPEND_LINE}</span>
         </div>
       </div>

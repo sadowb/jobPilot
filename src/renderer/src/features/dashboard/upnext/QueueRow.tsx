@@ -1,4 +1,4 @@
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
 import { isReorderable, type QueueItem } from './queue';
@@ -42,7 +42,7 @@ export function QueueRow(p: QueueRowProps) {
     <div
       role="row"
       aria-selected={p.selected}
-      className={cx(
+      className={cn(
         'grid min-h-[62px] items-center gap-x-3 border-t border-line px-3.5',
         QUEUE_GRID,
         running && 'bg-panel',
@@ -66,7 +66,7 @@ export function QueueRow(p: QueueRowProps) {
             role="checkbox"
             aria-checked={p.selected}
             aria-label={`Select ${item.company}`}
-            className={cx(
+            className={cn(
               'grid size-[18px] cursor-pointer place-items-center rounded-[5px] border-[1.5px] p-0 text-on-pri!',
               p.selected ? 'border-pri bg-pri' : 'border-line-2 bg-transparent',
             )}
@@ -78,7 +78,7 @@ export function QueueRow(p: QueueRowProps) {
       </div>
       <div>
         {tag ? (
-          <span className={cx('font-mono text-[11.5px] tracking-[0.06em]', tag.color)}>{tag.label}</span>
+          <span className={cn('font-mono text-[11.5px] tracking-[0.06em]', tag.color)}>{tag.label}</span>
         ) : (
           <span className="text-[13.5px] text-muted tabular-nums">{p.position}</span>
         )}
@@ -133,7 +133,7 @@ export function QueueRow(p: QueueRowProps) {
           </span>
         )}
         {draggable && (
-          <div className={cx('flex flex-nowrap items-center justify-end', showActions ? 'gap-1.5' : 'gap-0')}>
+          <div className={cn('flex flex-nowrap items-center justify-end', showActions ? 'gap-1.5' : 'gap-0')}>
             {showActions && item.stage === 'queued' && (
               <button
                 type="button"

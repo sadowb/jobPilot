@@ -1,6 +1,21 @@
 import { useRef, type HTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
+import { cva } from 'class-variance-authority';
 import { controlFocus } from './controlStyles';
-import { cx } from './cx';
+import { cn } from './cx';
+
+const optionStyles = cva(
+  'flex items-center justify-center gap-2 whitespace-nowrap rounded-full border-0 px-3.5 py-[7px] font-sans! text-sm! leading-[1.45]! font-semibold! disabled:cursor-not-allowed disabled:opacity-50',
+  {
+    variants: {
+      state: {
+        selected: 'bg-pri text-on-pri!',
+        unselected: 'bg-transparent text-muted!',
+        'disabled-selected': 'bg-pri text-on-pri!',
+        disabled: 'bg-transparent text-muted!',
+      },
+    },
+  },
+);
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -55,7 +70,7 @@ export function Segmented<T extends string>({
   };
   return (
     <div
-      className={cx(
+      className={cn(
         'grid auto-cols-fr grid-flow-col self-start gap-0.5 rounded-full border border-line bg-bg p-1',
         className,
       )}
@@ -75,11 +90,17 @@ export function Segmented<T extends string>({
           aria-checked={option.value === value}
           disabled={disabled || option.disabled}
           tabIndex={index === tabStop ? 0 : -1}
-          className={cx(
-            'flex items-center justify-center gap-2 whitespace-nowrap rounded-full border-0 px-3.5 py-[7px]',
-            // The unlayered `.app button` and global `button` rules otherwise reset these.
-            'font-sans! text-sm! leading-[1.45]! font-semibold! disabled:cursor-not-allowed disabled:opacity-50',
-            option.value === value ? 'bg-pri text-on-pri!' : 'bg-transparent text-muted!',
+          className={cn(
+            optionStyles({
+              state:
+                option.value === value
+                  ? disabled || option.disabled
+                    ? 'disabled-selected'
+                    : 'selected'
+                  : disabled || option.disabled
+                    ? 'disabled'
+                    : 'unselected',
+            }),
             controlFocus,
           )}
           onClick={() => onChange(option.value)}

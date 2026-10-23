@@ -2,15 +2,19 @@
 
 Everything here is extracted **verbatim** from the Claude Design canvas _JobPilot Dashboard Redesign_, page **"V 17 · Full flow"** (https://claude.ai/artifact/94Mti6VB8NuNJ49dqXbLSw). Nothing is paraphrased or "matched to similar": if a value is not in this file it is not in V17.
 
-| What                                                                | Where in this repo                                    |
-| ------------------------------------------------------------------- | ----------------------------------------------------- |
-| All 67 V17 artboards (HTML, 1 file each; `_L` light, `_D` dark)     | [`design/v17/boards/`](../design/v17/boards)          |
-| The stylesheet every artboard links (`jp8.css`, cascade v13 to v17) | [`design/v17/jp8.css`](../design/v17/jp8.css)         |
-| Canvas index (board sizes, titles, page list)                       | [`design/v17/canvas.json`](../design/v17/canvas.json) |
-| Resolved tokens, machine readable                                   | [`design/tokens.json`](../design/tokens.json)         |
-| Logo mark, Cap + dart mascot (SVG)                                  | [`design/brand/`](../design/brand)                    |
+| What                                                                                                  | Where in this repo                                    |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| All 67 V17 artboards (HTML, 1 file each; `_L` light, `_D` dark)                                       | [`design/v17/boards/`](../design/v17/boards)          |
+| Reference stylesheet linked by the artboards (`jp8.css`, cascade v13 to v17; not imported by the app) | [`design/v17/jp8.css`](../design/v17/jp8.css)         |
+| Canvas index (board sizes, titles, page list)                                                         | [`design/v17/canvas.json`](../design/v17/canvas.json) |
+| Resolved tokens, machine readable                                                                     | [`design/tokens.json`](../design/tokens.json)         |
+| Logo mark, Cap + dart mascot (SVG)                                                                    | [`design/brand/`](../design/brand)                    |
 
 **"One to one" rule.** A screen is done only when it matches its board at the board's size, in light and dark. The boards are the spec; this document indexes them. When the doc and a board disagree, the board wins and the doc is fixed.
+
+## Frontend class pattern
+
+Compose class names with `cn()` from `components/ui`; it combines `clsx` conditions and merges conflicting Tailwind utilities with `tailwind-merge`. Use `class-variance-authority` (`cva`) for primitives with three or more variants. Keep every Tailwind class as a static string so the v4 scanner can discover it; choose between complete class strings rather than building class names with interpolation.
 
 ---
 

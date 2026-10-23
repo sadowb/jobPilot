@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Card as Surface, cx } from '../../components/ui';
+import { Card as Surface, cn } from '../../components/ui';
 import { Glyph, CountryBadge, GlobeBadge, type GlyphName } from './icons';
 import { countryName, marketSummary, type Market } from './markets';
 import { PRESENT, sortCareer, yearRange } from './career';
@@ -16,7 +16,7 @@ const MAX_CHIPS = 4;
 
 /** `.pf-li` row; `where` is the taller "Where you apply" variant. Rows that are buttons keep the inherited 15px. */
 const row = (o: { where?: boolean; tall?: boolean; button?: boolean } = {}) =>
-  cx(
+  cn(
     'flex w-full min-w-0 items-center gap-2.5 border-t border-line text-left',
     o.where ? 'min-h-11' : 'min-h-[42px]',
     o.tall && 'items-start py-2.5',
@@ -24,14 +24,13 @@ const row = (o: { where?: boolean; tall?: boolean; button?: boolean } = {}) =>
   );
 /** First row of a list has no top rule, whether the `li` or the button inside it is the row. */
 const rowList = '[&>li:first-child]:border-t-0 [&>li:first-child>button]:border-t-0';
-const glyph = (tall?: boolean) => cx('grid w-[22px] flex-none place-items-center text-muted', tall && 'mt-0.5');
+const glyph = (tall?: boolean) => cn('grid w-[22px] flex-none place-items-center text-muted', tall && 'mt-0.5');
 const rowText = (where?: boolean) =>
-  cx('min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap', where && 'text-[15px]');
+  cn('min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap', where && 'text-[15px]');
 const rowSub = 'mt-px block overflow-hidden [font-size:12px] text-ellipsis text-muted';
 const status = (need?: boolean) =>
-  cx('flex-none text-[13px] font-semibold whitespace-nowrap', need ? 'text-need' : 'text-brand-text');
-const moreButton =
-  'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5';
+  cn('flex-none text-[13px] font-semibold whitespace-nowrap', need ? 'text-need' : 'text-brand-text');
+const moreButton = 'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5';
 const addPromptButton = 'inline-flex items-center gap-1.5 self-start mt-auto bg-transparent pt-2.5';
 
 function Card({
@@ -52,12 +51,7 @@ function Card({
   children: ReactNode;
 }) {
   return (
-    <Surface
-      role="region"
-      className="flex scroll-mt-6 flex-col px-[22px] py-5"
-      id={id}
-      aria-labelledby={`${id}-title`}
-    >
+    <Surface role="region" className="flex scroll-mt-6 flex-col px-[22px] py-5" id={id} aria-labelledby={`${id}-title`}>
       <div className="flex min-w-0 items-center gap-3">
         <span
           className="grid size-9 flex-none place-items-center rounded-xl border border-line bg-ground text-ink-2"
@@ -72,11 +66,7 @@ function Card({
           >
             {title}
           </h2>
-          <span
-            className={cx(monoMeta, 'mt-[3px] block overflow-hidden text-ellipsis whitespace-nowrap')}
-          >
-            {meta}
-          </span>
+          <span className={cn(monoMeta, 'mt-[3px] block overflow-hidden text-ellipsis whitespace-nowrap')}>{meta}</span>
         </div>
         <button
           type="button"
@@ -96,7 +86,7 @@ function AddPrompt({ children, onClick }: { children: ReactNode; onClick: () => 
   return (
     <button
       type="button"
-      className={cx(
+      className={cn(
         addPromptButton,
         'only:m-0 only:w-full only:justify-center only:rounded-[14px] only:border only:border-dashed only:border-line-2 only:px-4 only:py-3.5 only:text-ink-2!',
       )}
@@ -156,7 +146,7 @@ export function ContactCard({ profile, onEdit }: { profile: PersonalProfile; onE
                   {CHECK_NUMBER}
                 </span>
               ) : phone.type ? (
-                <span className={cx(monoMeta, 'flex-none')}>{phone.type}</span>
+                <span className={cn(monoMeta, 'flex-none')}>{phone.type}</span>
               ) : null}
             </li>
           ))}
@@ -234,13 +224,13 @@ export function WhereCard({
             <li key={m.code}>
               <button
                 type="button"
-                className={cx(row({ where: true, button: true }), 'group')}
+                className={cn(row({ where: true, button: true }), 'group')}
                 aria-label={`Edit ${name}`}
                 onClick={() => onOpen(m.code)}
               >
                 <CountryBadge code={m.code} name={name} />
                 <span
-                  className={cx(
+                  className={cn(
                     rowText(true),
                     'group-hover:underline group-hover:decoration-line-2 group-hover:underline-offset-[3px]',
                   )}
@@ -281,10 +271,13 @@ const PAPER_ACCENT = 'mt-1 block h-[3px] w-[34%] rounded-[2px] bg-[#00846a]';
 
 function PaperStack({ empty }: { empty: boolean }) {
   return (
-    <div className={cx('relative mt-0.5 ml-0.5 h-[100px] w-[84px] flex-none', empty && 'opacity-55')} aria-hidden="true">
-      <i className={cx(PAPER, 'bg-[#f1f1ef] [transform:translate(8px,4px)_rotate(5deg)]')} />
-      <i className={cx(PAPER, 'bg-[#f6f6f4] [transform:translate(4px,2px)_rotate(2.5deg)]')} />
-      <div className={cx(PAPER, 'flex flex-col gap-[3.5px] bg-[#fcfcfb] px-2 py-[9px]')}>
+    <div
+      className={cn('relative mt-0.5 ml-0.5 h-[100px] w-[84px] flex-none', empty && 'opacity-55')}
+      aria-hidden="true"
+    >
+      <i className={cn(PAPER, 'bg-[#f1f1ef] [transform:translate(8px,4px)_rotate(5deg)]')} />
+      <i className={cn(PAPER, 'bg-[#f6f6f4] [transform:translate(4px,2px)_rotate(2.5deg)]')} />
+      <div className={cn(PAPER, 'flex flex-col gap-[3.5px] bg-[#fcfcfb] px-2 py-[9px]')}>
         <i className={PAPER_HEAD} />
         <i className={PAPER_LINE} />
         <i className={PAPER_LINE} />
@@ -334,7 +327,9 @@ export function CvsCard({
       <button
         type="button"
         className="mt-auto flex min-h-10 w-full items-center justify-between border-t border-line bg-transparent p-0"
-        aria-label={none ? 'Add a CV' : 'See all CVs'} onClick={onSeeAll}>
+        aria-label={none ? 'Add a CV' : 'See all CVs'}
+        onClick={onSeeAll}
+      >
         <span>{none ? 'Add a CV' : 'See all CVs'}</span>
         <Glyph name="arrowRight" size={14} />
       </button>
@@ -381,7 +376,7 @@ export function CareerCard({ profile, onEdit }: { profile: PersonalProfile; onEd
                 className="relative grid grid-cols-[14px_minmax(0,1fr)] gap-3 not-last:after:absolute not-last:after:top-4 not-last:after:bottom-[-18px] not-last:after:left-1.5 not-last:after:w-px not-last:after:bg-line not-last:after:content-['']"
               >
                 <b
-                  className={cx(
+                  className={cn(
                     'mt-[3px] box-border size-[13px] rounded-full border-2 bg-bg dark:bg-panel',
                     e.current ? 'border-brand' : 'border-line-2',
                   )}
@@ -419,7 +414,7 @@ function Chips({ items, max = MAX_CHIPS }: { items: ReactNode[]; max?: number })
           {item}
         </li>
       ))}
-      {items.length > shown.length && <li className={cx(CHIP, 'text-muted')}>+{items.length - shown.length}</li>}
+      {items.length > shown.length && <li className={cn(CHIP, 'text-muted')}>+{items.length - shown.length}</li>}
     </ul>
   );
 }

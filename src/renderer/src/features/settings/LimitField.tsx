@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 import { S } from '../shared-ui';
 import { parseLimit, type LimitSpec } from './model';
 
@@ -35,7 +35,7 @@ export function LimitField({
             style={{ width: `${Math.max(2, String(value).length + 1)}ch` }}
           />
         </span>
-        <span className={cx(S, 'text-[13px] whitespace-nowrap')}>{spec.unit}</span>
+        <span className={cn(S, 'text-[13px] whitespace-nowrap')}>{spec.unit}</span>
       </div>
     </label>
   );

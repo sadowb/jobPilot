@@ -344,7 +344,7 @@ export function LiveTabPanel({ itemId, agent, driving, onHandBack, onFinish }: L
 export function UpNextPanel() {
   return (
     <PanelFrame>
-        <span className={MONO}>Up next · {CLEAR_STATS[1].value}</span>
+      <span className={MONO}>Up next · {CLEAR_STATS[1].value}</span>
       {UP_NEXT.map((q) => (
         <div key={q.agent} className={`flex flex-none items-center gap-3 py-2.5 ${RULE}`}>
           <CritterBot agent={q.agent} state={q.critter} size={34} />

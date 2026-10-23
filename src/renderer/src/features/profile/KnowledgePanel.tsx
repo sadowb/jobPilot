@@ -22,8 +22,12 @@ export function KnowledgePanel({
   const shown = tab === 'review' ? facts.review : facts.confirmed;
   return (
     <section className="flex flex-col items-start gap-3.5" aria-labelledby="agent-knowledge-title">
-      <h2 id="agent-knowledge-title" className={`${sectionTitle} leading-[1.2]`}>What the agents know</h2>
-      <p className="-mt-2 text-[13px] text-muted">Readable, editable, yours. Facts the agents infer wait here until you confirm them.</p>
+      <h2 id="agent-knowledge-title" className={`${sectionTitle} leading-[1.2]`}>
+        What the agents know
+      </h2>
+      <p className="-mt-2 text-[13px] text-muted">
+        Readable, editable, yours. Facts the agents infer wait here until you confirm them.
+      </p>
       <Segmented
         className="w-[300px]"
         label="Facts filter"

@@ -26,4 +26,4 @@ export const BOT_ORB =
 
 /** The waiting badge of a bot that needs the user. */
 export const BOT_BADGE =
-  'absolute -top-[3px] -right-[3px] grid size-2.5 place-items-center rounded-full border-[2.5px] border-bg bg-need-dot animate-[ping_1.8s_ease-out_infinite]';
+  'absolute -top-[3px] -right-[3px] grid size-2.5 place-items-center rounded-full border-[2.5px] border-bg bg-need-dot animate-jp-ping';

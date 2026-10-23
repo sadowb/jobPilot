@@ -1,5 +1,5 @@
 import { useId, useMemo, useState, type AriaAttributes, type KeyboardEvent } from 'react';
-import { Field, Input, Select, cx } from '../../components/ui';
+import { Field, Input, Select, cn } from '../../components/ui';
 import { PButton } from './buttons';
 import { CountryBadge, Glyph } from './icons';
 import { countryOptions } from './countries';
@@ -70,7 +70,7 @@ function CountryPicker({
         <button
           id={id}
           type="button"
-          className={cx(dialButton, 'w-full')}
+          className={cn(dialButton, 'w-full')}
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-labelledby={`${labelledBy} ${hintId}-value`}
@@ -78,13 +78,13 @@ function CountryPicker({
           onClick={() => setOpen((o) => !o)}
         >
           {value && name ? <CountryBadge code={value} name={name} /> : null}
-          <span id={`${hintId}-value`} className={cx(dialName, 'text-left')}>
+          <span id={`${hintId}-value`} className={cn(dialName, 'text-left')}>
             {name ?? 'Choose your country'}
           </span>
           <Glyph name="chevronDown" size={14} />
         </button>
         {open && (
-          <div className={cx(dialPanel, 'w-full')}>
+          <div className={cn(dialPanel, 'w-full')}>
             <input
               type="search"
               autoFocus
@@ -205,7 +205,7 @@ function SalaryControl({
           }}
         />
         <Select
-          className={cx(selectChevron, 'w-auto min-w-28 flex-none')}
+          className={cn(selectChevron, 'w-auto min-w-28 flex-none')}
           aria-label="Salary period"
           value={period}
           onChange={(e) => onChange(amount, e.target.value as SalaryPeriod)}

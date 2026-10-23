@@ -1,4 +1,4 @@
-import { Card, cx } from '../../components/ui';
+import { Card, cn } from '../../components/ui';
 import { S, V17N, V17X } from '../shared-ui';
 
 export interface Kpi {
@@ -20,10 +20,10 @@ export function KpiStrip() {
   return (
     <Card className="flex flex-none overflow-hidden">
       {KPIS.map((k, i) => (
-        <div key={k.label} className={cx('min-w-0 flex-1 px-6 py-4', i > 0 && 'border-l border-line')}>
+        <div key={k.label} className={cn('min-w-0 flex-1 px-6 py-4', i > 0 && 'border-l border-line')}>
           <div className={V17X}>{k.label}</div>
-          <div className={cx(V17N, 'mt-2.5 text-[44px]')}>{k.value}</div>
-          <div className={cx(S, 'mt-2 text-[13px]')}>{k.note}</div>
+          <div className={cn(V17N, 'mt-2.5 text-[44px]')}>{k.value}</div>
+          <div className={cn(S, 'mt-2 text-[13px]')}>{k.note}</div>
         </div>
       ))}
     </Card>

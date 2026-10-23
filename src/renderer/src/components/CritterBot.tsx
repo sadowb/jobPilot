@@ -1,6 +1,6 @@
 import { BOT, BOT_BADGE, BOT_MOTION, BOT_ORB } from './botStyles';
 import { CRITTER_ART } from './critterArt';
-import { cx } from './ui';
+import { cn } from './ui';
 import type { CritterState } from './critterState';
 
 export type { CritterState } from './critterState';
@@ -9,7 +9,7 @@ export type { CritterState } from './critterState';
 export function CritterBot({ agent, state, size }: { agent: string; state: CritterState; size: number }) {
   const art = CRITTER_ART[`${agent}:${state}`];
   return (
-    <span className={cx(BOT, BOT_MOTION[state])} style={{ width: size, height: size }}>
+    <span className={cn(BOT, BOT_MOTION[state])} style={{ width: size, height: size }}>
       <svg
         width={size}
         height={size}

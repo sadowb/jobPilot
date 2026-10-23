@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 
 export type DashboardTab = 'applied' | 'up-next';
 
@@ -28,7 +28,7 @@ export function SegTabs<T extends string>({
 }): ReactNode {
   return (
     <div
-      className={cx('box-border inline-flex gap-0.5 rounded-full border border-line bg-bg p-1', className)}
+      className={cn('box-border inline-flex gap-0.5 rounded-full border border-line bg-bg p-1', className)}
       role="tablist"
       aria-label={label}
     >
@@ -40,7 +40,7 @@ export function SegTabs<T extends string>({
             role="tab"
             tabIndex={0}
             aria-selected={on}
-            className={cx(
+            className={cn(
               'flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-[7px] text-[14px] font-semibold',
               on ? 'bg-pri text-on-pri' : 'text-muted',
             )}
@@ -52,7 +52,7 @@ export function SegTabs<T extends string>({
             {text}
             {count !== undefined && (
               <b
-                className={cx(
+                className={cn(
                   'rounded-full px-[7px] text-[12.5px]',
                   on ? 'bg-[color-mix(in_srgb,var(--on-pri)_18%,transparent)] text-on-pri' : 'bg-hover text-ink-2',
                 )}

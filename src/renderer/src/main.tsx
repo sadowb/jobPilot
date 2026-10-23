@@ -12,6 +12,8 @@ document.documentElement.style.setProperty(
 
 const root = document.getElementById('root');
 if (!root) throw new Error('missing #root');
+root.className =
+  'motion-reduce:animate-none! motion-reduce:duration-[120ms]! motion-reduce:**:animate-none! motion-reduce:**:duration-[120ms]!';
 createRoot(root).render(
   <StrictMode>
     <App />
