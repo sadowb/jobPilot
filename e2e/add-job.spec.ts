@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -27,9 +27,22 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
   let app: ElectronApplication | undefined;
   try {
     app = await electron.launch(options);
+    const diagnostics: string[] = [];
+    app.process().stderr?.on('data', (chunk: Buffer) => diagnostics.push(chunk.toString()));
     const window = await app.firstWindow();
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await expect.poll(() => window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
+    await app.evaluate(({ app }) => {
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { loggerFor } = nodeRequire(
+        path.join(app.getAppPath(), 'out/main/index.js'),
+      ) as typeof import('../src/main/app/main');
+      // Pino children inherit their root logger; enable debug only in this throwaway app.
+      Object.getPrototypeOf(loggerFor('ipc-e2e')).level = 'debug';
+    });
 
     // Mock the HTTP transport in main; the packaged adapters, parsers, IPC, and DB still execute.
     await app.evaluate(({ app }, fixture) => {
@@ -183,13 +196,35 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
           try {
             await window.jobpilot!.postings.ingest(url);
             return false;
-          } catch {
-            return true;
+          } catch (error) {
+            return error instanceof Error && error.message.includes('Invalid input');
           }
         }, url),
       ).toBe(true);
     }
     expect(await requestCount()).toBe(0);
+    expect(diagnostics.join('\n')).not.toContain("Error occurred in handler for 'postings:ingest'");
+    expect(diagnostics.join('\n')).not.toContain('invalid payload');
+    const validationLogs = () =>
+      readdirSync(join(userData, 'logs'), { withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .flatMap((entry) => readFileSync(join(userData, 'logs', entry.name), 'utf8').split('\n'))
+        .filter(Boolean)
+        .map((line) => z.object({ channel: z.string().optional() }).passthrough().parse(JSON.parse(line)))
+        .filter((entry) => entry.channel === 'postings:ingest');
+    await expect.poll(() => validationLogs().length).toBe(4);
+    for (const entry of validationLogs()) {
+      z.object({
+        level: z.literal(20),
+        time: z.number(),
+        app: z.literal('jobpilot'),
+        module: z.literal('ipc'),
+        channel: z.literal('postings:ingest'),
+        issue_codes: z.array(z.string()).min(1),
+      })
+        .strict()
+        .parse(entry);
+    }
 
     const blockedHosts = await app.evaluate(
       () => (globalThis as typeof globalThis & { blockedPostingHosts: string[] }).blockedPostingHosts,
