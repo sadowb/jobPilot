@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 const recording = z
   .object({ source: z.url(), response: z.object({ id: z.number(), title: z.string() }).passthrough() })
-  .parse(JSON.parse(readFileSync(new URL('./fixtures/greenhouse.json', import.meta.url), 'utf8')));
+  .parse(JSON.parse(readFileSync(join(__dirname, 'fixtures/greenhouse.json'), 'utf8')));
 const jobUrl = `https://boards.greenhouse.io/perpay/jobs/${recording.response.id}`;
 
 // eslint-disable-next-line no-empty-pattern
