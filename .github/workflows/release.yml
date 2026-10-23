@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false # release has contents: write; never restore a shared cache
       - run: npm ci
       - run: node -e "if (process.env.TAG_VERSION.replace(/^v/, '') !== require('./package.json').version) process.exit(1)"
         env:
@@ -25,7 +25,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm audit --audit-level=high
@@ -36,13 +36,13 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false # release has contents: write; never restore a shared cache
       - run: npm ci
       - run: npm run build
       - run: npm run smoke:native
@@ -57,13 +57,14 @@ jobs:
           npx electron-builder --dir --mac --arm64
           echo "JOBPILOT_BASE_EXECUTABLE=$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot" >> "$GITHUB_ENV"
       - run: node scripts/run-e2e.mjs
-      - name: Build arm64 DMG and checksum
+      - name: Verify exact shipped bytes (fuses, signature, real boot)
+        run: node scripts/verify-shipped.mjs
+      - name: Build arm64 DMG from the tested .app and checksum
         run: |
-          npx electron-builder --mac dmg --arm64
-          node scripts/run-e2e.mjs --project=packaged --grep "launches JobPilot"
+          npx electron-builder --mac dmg --arm64 --prepackaged release/mac-arm64/JobPilot.app
           cd release
           shasum -a 256 *.dmg > "$GITHUB_WORKSPACE/SHA256SUMS"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-dmg-${{ github.ref_name }}
           path: |

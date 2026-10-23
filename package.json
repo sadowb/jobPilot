@@ -19,7 +19,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "e2e": "npm run build && playwright test",
-    "verify": "npm run typecheck && npm run lint && npm run format:check && npm test && gitleaks dir .github --redact=100 && gitleaks dir docs --redact=100 && gitleaks dir e2e --redact=100 && gitleaks dir scripts --redact=100 && gitleaks dir src/main --redact=100 && npm audit --audit-level=high && npm run db:check && npm run build && npm run smoke:native && electron-builder --dir && node scripts/run-e2e.mjs",
+    "verify": "npm run typecheck && npm run lint && npm run format:check && npm test && gitleaks git --redact && npm audit --audit-level=high && npm run db:check && npm run build && npm run smoke:native && electron-builder --dir && node scripts/run-e2e.mjs && node scripts/verify-shipped.mjs",
     "tokens": "node scripts/gen-tokens.mjs",
     "dist": "npm run build && electron-builder",
     "dist:dir": "npm run build && electron-builder --dir",
