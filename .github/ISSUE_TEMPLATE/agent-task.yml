@@ -1,0 +1,50 @@
+name: Agent task
+description: Request a agent task with a clear completion condition.
+labels: [ci]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: Observable conditions that must hold when this is complete.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / module
+      options:
+        - src/main/modules/accounts
+        - src/main/modules/analytics
+        - src/main/modules/applications
+        - src/main/modules/cap
+        - src/main/modules/documents
+        - src/main/modules/inbox
+        - src/main/modules/observability
+        - src/main/modules/postings
+        - src/main/modules/profile
+        - src/main/modules/runs
+        - src/main/modules/settings
+        - Factory / CI / docs
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      options: [codex, gemini, sonnet, owner]
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2, P3]
+    validations:
+      required: true

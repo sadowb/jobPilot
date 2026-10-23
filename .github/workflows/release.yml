@@ -3,7 +3,7 @@ on:
   push:
     tags: ['v*']
 permissions:
-  contents: write
+  contents: read
   pull-requests: read
 jobs:
   static:
@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -32,12 +33,16 @@ jobs:
       - run: npm run db:check
 
   package:
+    environment: release
+    permissions:
+      contents: write
     needs: static
     runs-on: macos-14
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Require release signing secrets
         env:
@@ -105,31 +110,32 @@ jobs:
           security list-keychains -d user -s "$RUNNER_TEMP/shipped.keychain"
           security default-keychain -s "$RUNNER_TEMP/shipped.keychain"
           node scripts/verify-shipped.mjs
+      - name: Download SPDX dependency SBOM
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" --jq '.sbom' > jobpilot.spdx.json
       - name: Build arm64 DMG from the tested .app and checksum
         run: |
           npx electron-builder --mac dmg --arm64 --prepackaged release/mac-arm64/JobPilot.app
-          cd release
-          shasum -a 256 *.dmg > "$GITHUB_WORKSPACE/SHA256SUMS"
+          (cd release && shasum -a 256 *.dmg) > SHA256SUMS
+          shasum -a 256 jobpilot.spdx.json >> SHA256SUMS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-dmg-${{ github.ref_name }}
           path: |
             release/*.dmg
             SHA256SUMS
+            jobpilot.spdx.json
           if-no-files-found: error
       - name: Open draft GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" --draft release/*.dmg SHA256SUMS --title "JobPilot ${{ github.ref_name }}" --notes "Draft release. Owner review and publish required."
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --draft release/*.dmg SHA256SUMS jobpilot.spdx.json --title "JobPilot $TAG" --notes "Draft release. Owner review and publish required."
       - name: Delete release signing identity
         if: always()
-        # The runner is ephemeral; trust cleanup must not block the job.
-        timeout-minutes: 1
+        # Trust records disappear with the ephemeral runner.
         continue-on-error: true
         run: |
-          crt="$RUNNER_TEMP/jobpilot-release-cert/release.crt"
-          if [ -f "$crt" ]; then
-            sudo -n security remove-trusted-cert -d "$crt" || true
-          fi
           security delete-keychain "$RUNNER_TEMP/jobpilot-release.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/jobpilot-release-cert"

@@ -16,11 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
+      - name: Audit GitHub Actions security
+        uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        with:
+          advanced-security: false
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
@@ -42,6 +47,7 @@ jobs:
         run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -141,13 +147,8 @@ jobs:
           retention-days: 7
       - name: Delete per-job signing identity
         if: always()
-        # The runner is ephemeral; trust cleanup must not block the job.
-        timeout-minutes: 1
+        # Trust records disappear with the ephemeral runner.
         continue-on-error: true
         run: |
-          crt="$RUNNER_TEMP/jobpilot-ci-cert/jobpilot.crt"
-          if [ -f "$crt" ]; then
-            sudo -n security remove-trusted-cert -d "$crt" || true
-          fi
           security delete-keychain "$RUNNER_TEMP/jobpilot-ci.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/jobpilot-ci-cert"
