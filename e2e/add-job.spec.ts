@@ -41,6 +41,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       const mock = new MockAgent();
       mock.disableNetConnect();
       const source = new URL(fixture.source);
+      source.searchParams.sort();
       mock
         .get(source.origin)
         .intercept({ path: `${source.pathname}${source.search}`, method: 'GET' })
@@ -132,7 +133,8 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       );
       expect(ids).toEqual([item!.id, item!.id]);
     }
-    expect(await window.evaluate(() => window.jobpilot!.applications.list())).toHaveLength(1);
+    const persisted = await window.evaluate(() => window.jobpilot!.applications.list());
+    expect(persisted).toHaveLength(1);
 
     const events = await app.evaluate(async ({ app }) => {
       const path = process.getBuiltinModule('node:path')!;
@@ -166,7 +168,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       location.hash = '#/?tab=up-next';
     });
     await expect(restarted.getByRole('row').filter({ hasText: recording.response.title })).toHaveCount(1);
-    expect(await restarted.evaluate(() => window.jobpilot!.applications.list())).toEqual([item]);
+    expect(await restarted.evaluate(() => window.jobpilot!.applications.list())).toEqual(persisted);
   } finally {
     await app?.close();
     rmSync(userData, { recursive: true, force: true });

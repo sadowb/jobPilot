@@ -49,10 +49,12 @@ export const IngestUrlSchema = z
   .string()
   .max(2048)
   .url()
-  .refine((raw) => {
-    const url = new URL(raw);
-    return url.protocol === 'https:' && !url.username && !url.password && !url.port;
-  }, 'Use an HTTPS URL without credentials or a custom port.');
+  .pipe(
+    z.string().refine((raw) => {
+      const url = new URL(raw);
+      return url.protocol === 'https:' && !url.username && !url.password && !url.port;
+    }, 'Use an HTTPS URL without credentials or a custom port.'),
+  );
 
 export const PostingPreviewSchema = PostingFormSchema.extend({ postingId: z.ulid() });
 export type PostingPreview = z.infer<typeof PostingPreviewSchema>;
