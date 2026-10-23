@@ -71,6 +71,15 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
   }
   try {
     let window = await launch();
+    if (packaged) {
+      const bundled = await app!.evaluate(({ app }) => {
+        const fs = process.getBuiltinModule('node:fs')!;
+        const path = process.getBuiltinModule('node:path')!;
+        return fs.readdirSync(path.join(app.getAppPath(), 'node_modules/@anthropic-ai'));
+      });
+      expect(bundled.filter((name) => name.startsWith('claude-agent-sdk-'))).toEqual([]);
+    }
+
     const card = () => window.getByRole('region', { name: 'Agent settings' });
     await expect(window.getByLabel('Agent model', { exact: true })).toHaveValue('haiku');
     if (packaged) await expect(window.getByLabel('Agent authentication')).toHaveValue('api_key');
@@ -107,6 +116,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     expect(first.events).toContainEqual({ type: 'message', role: 'assistant', text: 'model:haiku' });
     await window.getByLabel('Agent model', { exact: true }).selectOption('sonnet');
     await card().getByRole('button', { name: 'Confirm path and save' }).click();
+    await expect(card().getByRole('button', { name: 'Confirm path and save' })).toBeEnabled();
     await expect(card().getByRole('status')).toContainText('Path confirmed');
     await app!.close();
     window = await launch();
