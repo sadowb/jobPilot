@@ -4,12 +4,13 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import Database from 'better-sqlite3-multiple-ciphers';
+import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
 const dir = mkdtempSync(join(tmpdir(), 'jobpilot-smoke-'));
 const file = join(dir, 'db.sqlite');
+process.env.SQLITE_USE_URI = '1';
 const open = (key) => {
   const db = new Database(file);
   db.pragma("cipher='sqlcipher'");
@@ -67,6 +68,24 @@ try {
   db.close();
 
   assert.ok(!readFileSync(file).subarray(0, 15).toString().startsWith('SQLite format 3'), 'file must not be plaintext');
+  const backup = join(dir, 'backup.sqlite');
+  const backupUrl = new URL(`file:${backup}`);
+  backupUrl.searchParams.set('cipher', 'sqlcipher');
+  backupUrl.searchParams.set('hexkey', Buffer.from('smoke-key').toString('hex'));
+  const source = new Database(file);
+  source.pragma("cipher='sqlcipher'");
+  source.key(Buffer.from('smoke-key'));
+  source.exec(`VACUUM INTO '${backupUrl.href}'`);
+  source.close();
+  assert.ok(!readFileSync(backup).subarray(0, 16).equals(Buffer.from('SQLite format 3\0')), 'backup must be encrypted');
+  const backupDb = new Database(backup, { readonly: true });
+  backupDb.pragma("cipher='sqlcipher'");
+  backupDb.key(Buffer.from('smoke-key'));
+  assert.equal(backupDb.prepare('SELECT COUNT(*) n FROM company').get().n, 1);
+  backupDb.close();
+  const noKey = new Database(backup, { readonly: true });
+  assert.throws(() => noKey.prepare('SELECT * FROM sqlite_schema').get(), /not a database|file is not/i);
+  noKey.close();
   const wrong = open('wrong-key');
   assert.throws(() => wrong.prepare('SELECT 1 FROM company').get(), /not a database|file is not/i);
   console.log(

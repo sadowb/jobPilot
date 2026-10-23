@@ -1,29 +1,17 @@
 import { app } from 'electron';
-import { createRequire } from 'node:module';
+import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { chmodSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as schema from './schema';
 import { getDatabaseKey } from '../secrets/db-key';
 
-type SqliteDatabase = import('better-sqlite3').Database & { key(key: Buffer): number };
-type SqliteConstructor = new (filename?: string, options?: import('better-sqlite3').Options) => SqliteDatabase;
-interface NativeBackup {
-  transfer(pages: number): { remainingPages: number };
-  close(): void;
-}
-interface NativeDatabase {
-  backup(source: SqliteDatabase, attached: string, destination: string, isNewFile: boolean): NativeBackup;
-}
+type SqliteDatabase = InstanceType<typeof Database> & { key(key: Buffer): number };
 
 process.env.SQLITE_USE_URI = '1';
-const require = createRequire(__filename);
-const databaseModule = 'better-sqlite3-multiple-ciphers';
-const Database = require(databaseModule) as SqliteConstructor;
-const { cppdb } = require(join(dirname(require.resolve(databaseModule)), 'util.js')) as { cppdb: symbol };
 
 export type JobPilotDb = BetterSQLite3Database<typeof schema>;
 export let db: JobPilotDb;
@@ -54,30 +42,10 @@ async function createBackup(sqlite: SqliteDatabase, key: Buffer, suffix: string)
     const uri = new URL(pathToFileURL(temporary));
     uri.searchParams.set('cipher', 'sqlcipher');
     uri.searchParams.set('hexkey', key.toString('hex'));
-    // shortcut: the wrapper's public backup() cannot configure target encryption; replace when it exposes target options.
-    const native = (sqlite as unknown as Record<symbol, NativeDatabase>)[cppdb]!.backup(sqlite, 'main', uri.href, true);
-    await new Promise<void>((resolve, reject) => {
-      let pages = 0;
-      const step = () => {
-        try {
-          const progress = native.transfer(pages);
-          if (!progress.remainingPages) {
-            native.close();
-            resolve();
-            return;
-          }
-          pages = 100;
-          setImmediate(step);
-        } catch (error) {
-          native.close();
-          reject(error);
-        }
-      };
-      step();
-    });
+    sqlite.exec(`VACUUM INTO '${uri.href.replaceAll("'", "''")}'`);
 
     chmodSync(temporary, 0o600);
-    const check = new Database(temporary, { readonly: true, fileMustExist: true });
+    const check = new Database(temporary, { readonly: true, fileMustExist: true }) as SqliteDatabase;
     try {
       check.pragma("cipher='sqlcipher'");
       check.key(key);
@@ -116,7 +84,7 @@ export async function openDatabase(): Promise<void> {
       'The encrypted database file is missing but its stored key exists. Restore a backup before continuing.',
     );
   }
-  const sqlite = new Database(file, { fileMustExist: existed });
+  const sqlite = new Database(file, { fileMustExist: existed }) as SqliteDatabase;
   try {
     sqlite.pragma("cipher='sqlcipher'");
     sqlite.key(key);

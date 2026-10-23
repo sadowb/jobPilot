@@ -34,6 +34,7 @@ e2e/                     Playwright `_electron` journeys
 - **Secrets**: only through `platform/secrets` (Keychain / `safeStorage`). Never in env files, logs, run prompts or the renderer.
 - **No network listeners.** IPC only; MCP servers run over stdio.
 - **No unit tests** (ADR 0011). Verification = typecheck, lint, build, and Haiku Playwright journeys in `e2e/` against the built app.
+- **Feature and bug coverage**: every feature PR adds or extends an `e2e/` journey that drives the feature through the packaged app; bug fixes add the journey assertion that would have caught the bug. Run `npm run verify` before every PR.
 - **Minimal code**: use a library or the platform before writing helpers; no abstractions without a second caller; comment only the non-obvious why. A shortcut with a known limit gets `// shortcut: <limit>, <when to upgrade>`.
 - **Stay in your lane**: touch only the folders your task names. Contract files (`*.entity.ts`, `shared/dto`, `platform/*/types.ts`) change only in a PR that says so in its title.
 

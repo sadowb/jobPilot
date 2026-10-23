@@ -1,0 +1,76 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node -e "if (process.env.TAG_VERSION.replace(/^v/, '') !== require('./package.json').version) process.exit(1)"
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm audit --audit-level=high
+      - run: npm run db:check
+
+  package:
+    needs: static
+    runs-on: macos-14
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run smoke:native
+      - run: npx electron-builder --dir --mac --arm64
+      - name: Package previous commit for upgrade journey
+        run: |
+          BASE_SHA=$(git rev-parse HEAD^)
+          git worktree add --detach "$RUNNER_TEMP/jobpilot-base" "$BASE_SHA"
+          cd "$RUNNER_TEMP/jobpilot-base"
+          npm ci
+          npm run build
+          npx electron-builder --dir --mac --arm64
+          echo "JOBPILOT_BASE_EXECUTABLE=$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot" >> "$GITHUB_ENV"
+      - run: node scripts/run-e2e.mjs
+      - name: Build arm64 DMG and checksum
+        run: |
+          npx electron-builder --mac dmg --arm64
+          node scripts/run-e2e.mjs --project=packaged --grep "launches JobPilot"
+          cd release
+          shasum -a 256 *.dmg > "$GITHUB_WORKSPACE/SHA256SUMS"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dmg-${{ github.ref_name }}
+          path: |
+            release/*.dmg
+            SHA256SUMS
+          if-no-files-found: error
+      - name: Open draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" --draft release/*.dmg SHA256SUMS --title "JobPilot ${{ github.ref_name }}" --notes "Draft release. Owner review and publish required."

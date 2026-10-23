@@ -1,0 +1,8 @@
+[
+  { "ats": "greenhouse", "tenant": "perpay", "questions": true },
+  { "ats": "lever", "tenant": "metr", "questions": true },
+  { "ats": "ashby", "tenant": "linear", "questions": true },
+  { "ats": "workable", "tenant": "we-are-social-1", "questions": true },
+  { "ats": "smartrecruiters", "tenant": "BoschGroup", "questions": false },
+  { "ats": "bamboohr", "tenant": "flyio", "questions": true }
+]
