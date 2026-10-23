@@ -58,3 +58,7 @@ These are local snapshots for implementation work. Source links below identify t
 | [TypeScript SDK README](mcp/typescript-sdk-README.md) | [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) | 2026-10-23 |
 | [Connect clients](mcp/clients-connect.md) | [MCP client concepts](https://modelcontextprotocol.io/docs/develop/build-client) | 2026-10-23 |
 | [Servers and tools](mcp/servers-tools.md) | [MCP server concepts](https://modelcontextprotocol.io/docs/develop/build-server) | 2026-10-23 |
+
+## Neo browser
+
+- [Neo adapter and owner verification](neo.md): pinned upstream MCP/tab references, lifecycle limits, and the owner-only dry probe.
