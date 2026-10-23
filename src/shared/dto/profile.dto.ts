@@ -3,6 +3,22 @@ import { isValidPhoneNumber } from 'libphonenumber-js';
 
 const text = z.string().max(10000);
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+const country = z
+  .string()
+  .regex(/^[A-Z]{2}$/)
+  .refine((code) => {
+    if (code === 'EU') return true;
+    const name = new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' }).of(code);
+    return Boolean(name && name !== code && code !== 'ZZ');
+  });
+const shortText = z
+  .string()
+  .max(80)
+  .refine((value) => Boolean(value.trim()));
+const careerText = z
+  .string()
+  .max(200)
+  .refine((value) => Boolean(value.trim()));
 const period = z.enum(['year', 'month']);
 const amount = z.number().int().min(0).max(1_000_000_000);
 const unique = (values: { id: string }[]) => new Set(values.map((value) => value.id)).size === values.length;
@@ -21,7 +37,7 @@ export const PersonalProfileSchema = z.object({
   region: text,
   postalCode: text,
   country: text,
-  countryCode: text,
+  countryCode: z.union([z.literal(''), country.refine((code) => code !== 'EU')]),
   website: text,
   linkedin: text,
   github: text,
@@ -41,8 +57,8 @@ export const PersonalProfileSchema = z.object({
     .array(
       z.object({
         id: z.string().min(1).max(200),
-        role: text,
-        organisation: text,
+        role: careerText,
+        organisation: careerText,
         start: month,
         end: z.union([month, z.literal('present')]),
       }),
@@ -52,12 +68,14 @@ export const PersonalProfileSchema = z.object({
     .refine((values) => values.every((value) => value.end === 'present' || value.end >= value.start)),
   languages: z
     .array(
-      z.object({
-        id: z.string().min(1).max(200),
-        language: z.string().max(20),
-        level: z.enum(['', 'Native', 'Fluent', 'Professional', 'Basic']),
-        raw: text.optional(),
-      }),
+      z
+        .object({
+          id: z.string().min(1).max(200),
+          language: z.string().max(20),
+          level: z.enum(['', 'Native', 'Fluent', 'Professional', 'Basic']),
+          raw: z.string().max(200).optional(),
+        })
+        .refine((value) => Boolean(value.language) || value.raw !== undefined),
     )
     .max(60)
     .refine(unique),
@@ -74,14 +92,14 @@ export const PersonalProfileSchema = z.object({
 export const MarketsSchema = z
   .array(
     z.object({
-      code: z.string().regex(/^[A-Z]{2}$/),
+      code: country,
       workAuth: z.enum(['authorized', 'sponsorship']),
-      phone: text.optional(),
+      phone: shortText.optional(),
       currency: z
         .string()
         .regex(/^[A-Z]{3}$/)
         .optional(),
-      cvLanguage: z.string().max(80).optional(),
+      cvLanguage: shortText.optional(),
       photo: z.boolean().optional(),
       salary: z.object({ amount, period }).optional(),
     }),
@@ -96,7 +114,7 @@ export const AnswersSchema = z
       question: z.string().max(500),
       default: text,
       overrides: z.record(
-        z.string().regex(/^[A-Z]{2}$/),
+        country,
         z
           .string()
           .max(10000)
