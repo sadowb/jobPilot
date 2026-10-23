@@ -11,7 +11,7 @@ export class PostingService {
 
   constructor(
     db: PostingsDb,
-    private readonly logger?: PostingsLogger,
+    private readonly logger: PostingsLogger,
   ) {
     this.repository = new PostingsRepository(db);
   }
@@ -29,7 +29,7 @@ export class PostingService {
           return null;
         }
       })();
-      this.logger?.warn(
+      this.logger.warn(
         { host, error_type: error instanceof Error ? error.name : 'unknown' },
         'Posting ingestion failed',
       );
