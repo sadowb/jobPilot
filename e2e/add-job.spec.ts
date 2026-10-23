@@ -404,11 +404,15 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
         .intercept({ path: '/about' })
         .reply(200, '<html><title>About us</title></html>')
         .persist();
-      mock.get('https://example.com').intercept({ path: '/retry' }).reply(503, 'Temporary failure');
+      // Exhaust the transport's three attempts before exercising the row's manual retry.
+      mock.get('https://example.com').intercept({ path: '/retry' }).reply(503, 'Temporary failure').times(3);
       mock
         .get('https://example.com')
         .intercept({ path: '/retry' })
-        .reply(200, '<html><title>Retry role</title><label>Name<input name="name" required></label></html>')
+        .reply(
+          200,
+          '<html><head><title>Retry role</title></head><body><label>Name<input name="name" required></label></body></html>',
+        )
         .persist();
       undici.Agent = class extends undici.Agent {
         override dispatch(
@@ -447,6 +451,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(
       window.getByRole('status').filter({ hasText: 'Added 3 · 1 already in your list · 1 unsupported' }),
     ).toBeVisible();
+    await window.getByRole('status').filter({ hasText: 'Added 3 ·' }).scrollIntoViewIfNeeded();
     await window.screenshot({ path: testInfo.outputPath('bulk-added.png') });
     const newApplications = () =>
       window.evaluate(

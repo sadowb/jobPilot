@@ -133,7 +133,7 @@ export function AddJobsDialog({
             rows={4}
             value={text}
             disabled={busy}
-            placeholder="https://…\nhttps://…"
+            placeholder={'https://…\nhttps://…'}
             onChange={(event) => {
               const value = event.target.value;
               setText(value);
