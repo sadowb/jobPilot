@@ -2,8 +2,10 @@ import { spawn } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { isAbsolute } from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
+import type { Logger } from 'pino';
 import {
   RunEventSchema,
   RunResultSchema,
@@ -48,6 +50,9 @@ export interface ClaudeProviderOptions {
   configDirectory: string;
   /** Main-process platform/secrets accessor; never sourced from RunSpec or the renderer. */
   readApiKey: () => Promise<string>;
+  /** LogService child and redactor supplied by the main-process composition root. */
+  logger: Pick<Logger, 'debug'>;
+  redact: (value: unknown) => unknown;
 }
 
 export class ClaudeProvider implements AgentProvider {
@@ -140,8 +145,41 @@ export class ClaudeProvider implements AgentProvider {
                 : { behavior: 'deny', message: 'Only run-scoped MCP tools are allowed.' },
             outputFormat: { type: 'json_schema', schema: z.toJSONSchema(spec.outputSchema, { io: 'input' }) },
             // Reapply our environment at the actual spawn boundary, even if SDK defaults change.
-            spawnClaudeCodeProcess: ({ args, signal }) =>
-              spawn(options.executablePath, args, { cwd: options.cwd, env, signal, stdio: ['pipe', 'pipe', 'ignore'] }),
+            spawnClaudeCodeProcess: ({ args, signal }) => {
+              const child = spawn(options.executablePath, args, {
+                cwd: options.cwd,
+                env,
+                signal,
+                stdio: ['pipe', 'pipe', 'pipe'],
+              });
+              const key = apiKey;
+              // Keep enough lookahead to scrub a key that crosses the diagnostic byte limit.
+              const limit = 200 + Buffer.byteLength(key);
+              let stderr = Buffer.alloc(0);
+              let spawnFailed = false;
+              child.stderr.on('data', (chunk: Buffer) => {
+                stderr = Buffer.concat([stderr, chunk.subarray(0, Math.max(0, limit - stderr.length))]);
+              });
+              child.once('error', () => {
+                spawnFailed = true;
+              });
+              child.once('close', (code) => {
+                if (code === 0 && !spawnFailed) return;
+                let diagnostic = new StringDecoder('utf8').write(stderr.subarray(0, 200));
+                const keyStart = stderr.toString('utf8').lastIndexOf(key, diagnostic.length);
+                if (keyStart >= 0 && keyStart + key.length > diagnostic.length)
+                  diagnostic = diagnostic.slice(0, keyStart) + '[REDACTED]';
+                diagnostic = z.string().parse(options.redact(diagnostic.replaceAll(key, '[REDACTED]')));
+                options.logger.debug({
+                  run_id: spec.runId,
+                  agent: 'claude',
+                  error_class: spawnFailed ? 'ClaudeProcessError' : 'ClaudeProcessExit',
+                  exit_code: code,
+                  stderr: new StringDecoder('utf8').write(Buffer.from(diagnostic).subarray(0, 200)),
+                });
+              });
+              return child;
+            },
           },
         });
         let output: z.infer<typeof RunResultSchema> | undefined;

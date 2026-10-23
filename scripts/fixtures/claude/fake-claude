@@ -30,6 +30,10 @@ for await (const line of createInterface({ input: process.stdin })) {
     assert(process.argv.includes('--strict-mcp-config'));
     if (prompt.includes('Fill again')) assert.equal(argument('--resume'), 'fixture-session');
     if (prompt.includes('wait')) continue;
+    if (prompt.includes('crash')) {
+      process.stderr.write('token=fixture-token ' + 'x'.repeat(175) + 'fixture-key' + 'x'.repeat(250) + 'beyond-limit');
+      process.exit(23);
+    }
     const config = JSON.parse(argument('--mcp-config'));
     const server = config.mcpServers.form;
     const client = new Client({ name: 'fixture', version: '1.0.0' });
