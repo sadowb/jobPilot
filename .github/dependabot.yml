@@ -4,17 +4,22 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    cooldown: { default-days: 7 }
     schedule: { interval: weekly, day: monday }
     groups:
       actions: { patterns: ['*'] }
     commit-message: { prefix: ci }
   - package-ecosystem: npm
     directory: /
+    cooldown: { default-days: 7 }
     schedule: { interval: weekly, day: monday }
     open-pull-requests-limit: 5
     groups:
       npm-minor-patch: { update-types: [minor, patch] }
     ignore:
+      # Track Electron’s bundled Node major; bump @types/node with Electron.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
       # typescript-eslint 8.72.0 supports TypeScript <6.1.0; remove when it supports TS 7.
       - dependency-name: typescript
         update-types: [version-update:semver-major]

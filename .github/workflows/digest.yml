@@ -1,0 +1,42 @@
+name: weekly factory digest
+on:
+  schedule:
+    - cron: '13 6 * * 1'
+  workflow_dispatch:
+permissions:
+  actions: read
+  issues: write
+  pull-requests: read
+concurrency:
+  group: weekly-digest
+  cancel-in-progress: false
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create this week's digest once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          title="Weekly digest $(date -u +%G-W%V)"
+          existing=$(gh issue list --state all --search "in:title $title" --json title --jq ".[] | select(.title == \"$title\") | .title")
+          if [ -n "$existing" ]; then exit 0; fi
+          week_ago=$(date -u -d '7 days ago' +%FT%TZ)
+          three_days_ago=$(date -u -d '3 days ago' +%FT%TZ)
+          body="$RUNNER_TEMP/digest.md"
+          printf '## PRs merged in the last 7 days\n\n' > "$body"
+          gh api --paginate "repos/$GH_REPO/pulls?state=closed&sort=updated&direction=desc&per_page=100" |
+            jq -r --arg since "$week_ago" '.[] | select(.merged_at != null and .merged_at >= $since) | "- [#\(.number)](\(.html_url)) \(.title)"' >> "$body"
+          printf '\n## Open PRs older than 3 days\n\n' >> "$body"
+          gh api --paginate "repos/$GH_REPO/pulls?state=open&per_page=100" |
+            jq -r --arg before "$three_days_ago" '.[] | select(.created_at < $before) | "- [#\(.number)](\(.html_url)) \(.title)"' >> "$body"
+          printf '\n## Blocked / owner-action issues\n\n' >> "$body"
+          gh api --paginate "repos/$GH_REPO/issues?state=open&per_page=100" |
+            jq -r '.[] | select(.pull_request == null) | select(any(.labels[]; .name == "blocked" or .name == "owner-action")) | "- [#\(.number)](\(.html_url)) \(.title)"' >> "$body"
+          printf '\n## Failed nightly runs in the last 7 days\n\n' >> "$body"
+          gh api --paginate "repos/$GH_REPO/actions/workflows/nightly.yml/runs?status=failure&created=%3E%3D$week_ago&per_page=100" > "$RUNNER_TEMP/nightly.json"
+          jq -r '.workflow_runs[] | "- [Run #\(.run_number)](\(.html_url)) (\(.created_at))"' "$RUNNER_TEMP/nightly.json" >> "$body"
+          gh issue create --title "$title" --label digest --body-file "$body"
