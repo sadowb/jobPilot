@@ -1,10 +1,14 @@
 /** Single source of truth for IPC channel names and the renderer bridge (imported by main, preload and renderer). */
-import type { ThemeSource, ThemeState } from './dto';
+import type { ProfileData, ProfileSave, ThemeSource, ThemeState } from './dto';
 import { z } from 'zod';
 
 export type { ThemeSource, ThemeState };
 
 export const Channels = {
+  getProfile: 'profile:get',
+  profileMigrationDone: 'profile:migration-done',
+  saveProfile: 'profile:save',
+  migrateProfile: 'profile:migrate',
   exportRecoveryKey: 'recovery:export',
   importRecoveryKey: 'recovery:import',
   getTheme: 'theme:get',
@@ -23,6 +27,12 @@ export const RendererErrorInputSchema = z.object({
 export const RecoveryKeySchema = z.string().regex(/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/);
 
 export interface JobPilotBridge {
+  profile: {
+    get(): Promise<ProfileData>;
+    migrationDone(): Promise<boolean>;
+    save(input: ProfileSave): Promise<ProfileData>;
+    migrate(input: ProfileData): Promise<ProfileData>;
+  };
   recovery: {
     export(): Promise<void>;
     import(key: string): Promise<boolean>;

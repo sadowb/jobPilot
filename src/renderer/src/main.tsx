@@ -1,5 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { setProfileData } from './features/profile/profileStorage';
+import { initializeProfile } from './features/profile/startMigration';
 import { App } from './app/App';
 import { WINDOW_LAYOUT } from '../../shared/window-layout';
 import './styles/index.css';
@@ -34,8 +36,24 @@ const root = document.getElementById('root');
 if (!root) throw new Error('missing #root');
 root.className =
   'motion-reduce:animate-none! motion-reduce:duration-[120ms]! motion-reduce:**:animate-none! motion-reduce:**:duration-[120ms]!';
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+const reactRoot = createRoot(root);
+async function start(): Promise<void> {
+  reactRoot.render(<p role="status">Loading your profile…</p>);
+  try {
+    if (window.jobpilot && !location.hash.includes('/recovery'))
+      setProfileData(await initializeProfile(window.jobpilot.profile, localStorage));
+    reactRoot.render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+  } catch {
+    reactRoot.render(
+      <div role="alert">
+        <p>Could not load your profile. Your saved information has been kept. Please retry.</p>
+        <button onClick={() => void start()}>Retry</button>
+      </div>,
+    );
+  }
+}
+void start();

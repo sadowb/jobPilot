@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
 import { initLogService, loggerFor } from '../modules/observability/log.service';
@@ -72,7 +73,10 @@ if (!app.requestSingleInstanceLock()) {
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
     loadTheme();
-    registerIpc([...settingsHandlers, ...documentsHandlers, ...observabilityHandlers], originCheck(isTrustedUrl));
+    registerIpc(
+      [...settingsHandlers, ...documentsHandlers, ...observabilityHandlers, ...profileHandlers],
+      originCheck(isTrustedUrl),
+    );
     broadcastThemeChanges();
     createWindow();
     if (recoveryWindow) {

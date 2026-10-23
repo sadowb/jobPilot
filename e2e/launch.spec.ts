@@ -478,3 +478,76 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
     else cpSync(userData, testInfo.outputPath('userData'), { recursive: true });
   }
 });
+
+// eslint-disable-next-line no-empty-pattern
+test('profile edits and common answers persist in the database after relaunch', async ({}, testInfo) => {
+  test.setTimeout(150_000);
+  const userData = mkdtempSync(join(tmpdir(), 'jobpilot-profile-'));
+  const packaged = testInfo.project.name === 'packaged';
+  const launch = () =>
+    electron.launch({
+      ...(packaged
+        ? {
+            executablePath:
+              process.env.JOBPILOT_PACKAGED_EXECUTABLE ?? 'release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot',
+          }
+        : {}),
+      args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
+      timeout: 60_000,
+    });
+  let instance: ElectronApplication | undefined;
+  const close = async () => {
+    if (!instance) return;
+    const timer = setTimeout(() => instance?.process().kill('SIGKILL'), 5_000);
+    try {
+      await instance.close();
+    } finally {
+      clearTimeout(timer);
+      instance = undefined;
+    }
+  };
+  try {
+    instance = await launch();
+    let window = await instance.firstWindow({ timeout: 60_000 });
+    await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await window.evaluate(() => {
+      location.hash = '#/profile';
+    });
+    await window.getByRole('button', { name: 'Edit identity' }).click();
+    await window.getByLabel('First name', { exact: true }).fill('Ada');
+    await window.getByLabel('Last name', { exact: true }).fill('Lovelace');
+    await window.getByRole('button', { name: 'Save changes', exact: true }).click();
+    await expect(window.getByRole('dialog')).toHaveCount(0);
+    await window.evaluate(async () => {
+      await window.jobpilot!.profile.save({
+        section: 'answers',
+        value: [
+          {
+            id: 'intro',
+            question: 'Tell us about yourself.',
+            default: 'I build useful software.',
+            overrides: { FR: 'Je crée des logiciels.' },
+          },
+        ],
+      });
+      localStorage.clear();
+    });
+    await close();
+    instance = await launch();
+    window = await instance.firstWindow({ timeout: 60_000 });
+    await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await window.evaluate(() => {
+      location.hash = '#/profile';
+    });
+    await window.getByRole('button', { name: 'Edit identity' }).click();
+    await expect(window.getByLabel('First name', { exact: true })).toHaveValue('Ada');
+    await expect(window.getByLabel('Last name', { exact: true })).toHaveValue('Lovelace');
+    const stored = await window.evaluate(() => window.jobpilot!.profile.get());
+    expect(stored.personal?.firstName).toBe('Ada');
+    expect(stored.answers?.[0]?.default).toBe('I build useful software.');
+    expect(stored.answers?.[0]?.overrides.FR).toBe('Je crée des logiciels.');
+  } finally {
+    await close();
+    if (testInfo.status === testInfo.expectedStatus) rmSync(userData, { recursive: true, force: true });
+  }
+});

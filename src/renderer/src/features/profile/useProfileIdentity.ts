@@ -1,7 +1,8 @@
+import { readProfileData } from './profileStorage';
 import { useEffect, useState } from 'react';
 import { ANSWERS_V2_KEY, answerMarkets, answerSummary, readAnswersV2 } from './answers';
 import { MARKETS_KEY, countryName, readMarkets } from './markets';
-import { ANSWERS_KEY, EMPTY_PROFILE, cvFileName, fullName, initials, PROFILE_KEY, readProfile } from './personal';
+import { EMPTY_PROFILE, cvFileName, fullName, initials, PROFILE_KEY, readProfile } from './personal';
 
 export interface ProfileIdentity {
   /** Empty when the user has not entered a name. Never a placeholder. */
@@ -29,7 +30,7 @@ function identity(): ProfileIdentity {
   let value = EMPTY;
   let profile: ReturnType<typeof readProfile> | undefined;
   try {
-    const p = readProfile(localStorage.getItem(PROFILE_KEY));
+    const p = readProfile(readProfileData(PROFILE_KEY));
     profile = p;
     const name = fullName(p);
     value = {
@@ -47,10 +48,10 @@ function identity(): ProfileIdentity {
     /* unreadable profile: show the empty identity, the About me tab explains why */
   }
   try {
-    const answers = readAnswersV2(localStorage.getItem(ANSWERS_V2_KEY), localStorage.getItem(ANSWERS_KEY));
+    const answers = readAnswersV2(readProfileData(ANSWERS_V2_KEY));
     let stored: ReturnType<typeof readMarkets> = [];
     try {
-      stored = readMarkets(localStorage.getItem(MARKETS_KEY));
+      stored = readMarkets(readProfileData(MARKETS_KEY));
     } catch {
       /* unreadable markets: counted as none */
     }
