@@ -52,6 +52,7 @@ jobs:
             exit 1
           fi
       - name: Import release signing identity into temporary keychain
+        timeout-minutes: 2
         env:
           MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
@@ -68,7 +69,7 @@ jobs:
           security list-keychains -d user -s "$keychain"
           security import "$certdir/release.p12" -k "$keychain" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
           openssl pkcs12 -in "$certdir/release.p12" -clcerts -nokeys -passin "pass:$MAC_CERT_PASSWORD" -out "$certdir/release.crt"
-          security add-trusted-cert -r trustRoot -p codeSign -k "$keychain" "$certdir/release.crt"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k "$keychain" "$certdir/release.crt"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
             -k "$keychain_password" "$keychain"
           identity=$(security find-identity -v -p codesigning "$keychain" | awk '/^[[:space:]]*[0-9]+\)/ { print $2; exit }')
@@ -125,5 +126,6 @@ jobs:
       - name: Delete release signing identity
         if: always()
         run: |
+          sudo security remove-trusted-cert -d "$RUNNER_TEMP/jobpilot-release-cert/release.crt" 2>/dev/null || true
           security delete-keychain "$RUNNER_TEMP/jobpilot-release.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/jobpilot-release-cert"
