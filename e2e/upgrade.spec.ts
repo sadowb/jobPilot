@@ -1,3 +1,4 @@
+import { skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test } from '@playwright/test';
 import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -58,6 +59,7 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
       timeout: 60_000,
     });
     const oldWindow = await oldApp.firstWindow({ timeout: 60_000 });
+    await skipOnboarding(oldWindow);
     await expect(oldWindow.getByRole('navigation', { name: 'Main' })).toBeVisible({ timeout: 30_000 });
     const toggle = oldWindow.getByRole('button', { name: /Switch to (dark|light) mode/ });
     const expectedDark = !(await oldWindow.evaluate(() => document.documentElement.classList.contains('dark')));

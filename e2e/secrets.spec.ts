@@ -1,3 +1,4 @@
+import { skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -27,6 +28,7 @@ test('Claude key persists encrypted, stays write-only, tests in main, and can be
     app = await electron.launch(options);
     app.process().stderr?.on('data', (chunk: Buffer) => diagnostics.push(chunk.toString()));
     const window = await app.firstWindow();
+    await skipOnboarding(window);
     window.on('console', (message) => diagnostics.push(message.text()));
     window.on('pageerror', (error) => diagnostics.push(error.message));
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();

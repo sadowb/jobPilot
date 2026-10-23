@@ -6,7 +6,7 @@ import { cn } from './ui';
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
-  { to: '/inbox', label: 'Inbox', badge: 3 },
+  { to: '/inbox', label: 'Inbox' },
   { to: '/analytics', label: 'Analytics' },
 ] as const;
 
@@ -33,8 +33,6 @@ const PILL =
   'aria-[current=page]:bg-pri aria-[current=page]:text-on-pri! ' +
   '[html[data-platform=darwin]_&]:min-h-8 [html[data-platform=darwin]_&]:px-3.5 [html[data-platform=darwin]_&]:text-[13px] ' +
   NO_DRAG;
-const BADGE =
-  'grid h-5 min-w-5 place-items-center rounded-full bg-need-dot px-1.5 text-[12px] font-bold text-[#1a1300]';
 const RIGHT =
   'flex items-center justify-self-end gap-2 [html[data-platform=darwin]_&]:col-start-3 [html[data-platform=darwin]_&]:row-start-1';
 // Keep the compact keyboard and icon controls explicitly colored and sized.
@@ -76,11 +74,6 @@ export function TopBar({ onAsk, onSettings }: { onAsk?: () => void; onSettings?:
         {NAV.map((item) => (
           <NavLink key={item.to} to={item.to} end={'end' in item} className={PILL}>
             {item.label}
-            {'badge' in item && (
-              <b className={BADGE} title={`${item.badge} need you`}>
-                {item.badge}
-              </b>
-            )}
           </NavLink>
         ))}
       </nav>

@@ -4,7 +4,7 @@ import { CritterBot } from '../../components/CritterBot';
 import { KeyCap } from '../../components/KeyCap';
 import { Button, cn } from '../../components/ui';
 import { PILL, S, shellButton } from '../shared-ui';
-import { SAMPLE_JOBS, type JobRecord } from './jobs';
+import type { JobRecord } from './jobs';
 import {
   answerFor,
   buildResults,
@@ -188,7 +188,7 @@ export interface CommandBoxProps {
 }
 
 /** The ⌘K command box: results (V17_CmdK) and the inline answer (V17_CmdK_Answer). Render only while open. */
-export function CommandBox({ jobs = SAMPLE_JOBS, initialQuery = '', onRun, onOpenInInbox, onClose }: CommandBoxProps) {
+export function CommandBox({ jobs = [], initialQuery = '', onRun, onOpenInInbox, onClose }: CommandBoxProps) {
   const [query, setQuery] = useState(initialQuery);
   const [selected, setSelected] = useState(0);
   const [mode, setMode] = useState<'results' | 'answer'>('results');

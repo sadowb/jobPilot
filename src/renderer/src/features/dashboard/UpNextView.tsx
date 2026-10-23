@@ -7,7 +7,6 @@ import { Pagination } from './components/Pagination';
 import { SearchField } from './components/SearchField';
 import { TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { clockTime } from './format';
-import { SAMPLE_TOTALS } from './sample';
 import { BulkBar } from './upnext/BulkBar';
 import {
   CREW_SIZE,
@@ -40,6 +39,7 @@ const isTextTarget = (t: EventTarget | null): boolean =>
 
 export function UpNextView({
   state,
+  appliedCount,
   dispatch,
   frozenNow,
   onTab,
@@ -49,6 +49,7 @@ export function UpNextView({
   addedIds = [],
 }: {
   state: QueueState;
+  appliedCount: number;
   dispatch: Dispatch<QueueAction>;
   /** Dev fixtures freeze the undo clock so the toast matches the board. */
   frozenNow?: number;
@@ -115,7 +116,7 @@ export function UpNextView({
             <h1 className="m-0 font-serif text-[42px] leading-[1.02] font-[350] tracking-[-0.025em]">Dashboard</h1>
             <TabSwitch
               active="up-next"
-              appliedCount={SAMPLE_TOTALS.applied}
+              appliedCount={appliedCount}
               upNextCount={state.items.length}
               onChange={onTab}
               className="flex-none"

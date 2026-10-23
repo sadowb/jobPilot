@@ -90,6 +90,7 @@ export function Dashboard() {
         />
       ) : (
         <UpNextView
+          appliedCount={applied.apps.length}
           state={queue}
           dispatch={dispatchQueue}
           onTab={goTab}

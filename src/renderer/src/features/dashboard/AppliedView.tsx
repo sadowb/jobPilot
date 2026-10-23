@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, type Dispatch } from 'react';
 import { AppButton } from './components/AppButton';
 
-import { CvViewerDialog } from './components/CvViewerDialog';
+import { Dialog } from '../../components/ui';
 import { ApplicationsTable } from './components/ApplicationsTable';
 import { EmptyResults } from './components/EmptyResults';
 import { FilterChips } from './components/FilterChips';
@@ -11,25 +11,13 @@ import { Pagination } from './components/Pagination';
 import { PeekPanel } from './components/PeekPanel';
 import { SearchField } from './components/SearchField';
 import { TabSwitch, type DashboardTab } from './components/TabSwitch';
-import { sentCvFor } from './cv';
-import { countByFilter, type FilterCounts } from './filter';
-import { SAMPLE_APPLICATIONS, SAMPLE_TOTALS } from './sample';
+import { countByFilter } from './filter';
 import { canUndo, selectedApp, visibleApps, type DashboardAction, type DashboardState } from './state';
 import { STATUS_MENU_ORDER } from './status';
 import { todayIso } from './format';
 import type { KeyEffect } from './keys';
 import type { ApplicationStatus } from './types';
 import { useDashboardKeys } from './useDashboardKeys';
-
-const BASE_COUNTS = countByFilter(SAMPLE_APPLICATIONS, '');
-
-/** Chip counts: the board's totals (62 applied, of which only ten rows are sample data), moved by any status edits. */
-function displayCounts(current: FilterCounts, query: string, live: FilterCounts): FilterCounts {
-  if (query.trim() !== '') return live;
-  const out = { ...SAMPLE_TOTALS.byFilter } as FilterCounts;
-  for (const k of Object.keys(out) as (keyof FilterCounts)[]) out[k] += current[k] - BASE_COUNTS[k];
-  return out;
-}
 
 export function AppliedView({
   state,
@@ -55,10 +43,9 @@ export function AppliedView({
   const rows = useMemo(() => visibleApps(state), [state]);
   const live = useMemo(() => countByFilter(state.apps, state.query), [state.apps, state.query]);
   const unfiltered = useMemo(() => countByFilter(state.apps, ''), [state.apps]);
-  const counts = displayCounts(unfiltered, state.query, live);
+  const counts = live;
   const selected = selectedApp(state);
-  const filtered = state.query.trim() !== '' || state.filter !== 'all';
-  const total = filtered ? rows.length : SAMPLE_TOTALS.applied;
+  const total = rows.length;
 
   const onEffect = useCallback(
     (effect: KeyEffect) => {
@@ -90,7 +77,7 @@ export function AppliedView({
               <h1 className="m-0 font-serif text-[42px] leading-[1.02] font-[350] tracking-[-0.025em]">Dashboard</h1>
               <TabSwitch
                 active="applied"
-                appliedCount={SAMPLE_TOTALS.applied}
+                appliedCount={state.apps.length}
                 upNextCount={upNextCount}
                 onChange={onTab}
                 className="flex-none"
@@ -102,7 +89,13 @@ export function AppliedView({
             <span className="ml-2 font-mono text-[12px] opacity-60">⌘V</span>
           </AppButton>
         </div>
-        <MetricRow />
+        <MetricRow
+          stats={[
+            { label: 'APPLIED', value: String(state.apps.length), sub: 'Applications sent' },
+            { label: 'INTERVIEWS', value: String(unfiltered.interview), sub: 'Current status' },
+            { label: 'OFFERS', value: String(unfiltered.offer), sub: 'Current status' },
+          ]}
+        />
         <div className="flex min-w-0 flex-nowrap items-center justify-between gap-3 [@media(width<=1194px)]:flex-wrap [@media(width<=1194px)]:items-stretch [@media(width<=1194px)]:[&>[role=group]]:w-full">
           <SearchField ref={searchRef} value={state.query} onChange={(query) => dispatch({ type: 'query', query })} />
           <FilterChips
@@ -114,7 +107,7 @@ export function AppliedView({
         {rows.length === 0 ? (
           <EmptyResults
             query={state.query.trim()}
-            appliedTotal={SAMPLE_TOTALS.applied}
+            appliedTotal={state.apps.length}
             upNextCompany={upNextCompany(state.query.toLowerCase().split(/\s+/).filter(Boolean))}
             onClear={() => {
               dispatch({ type: 'query', query: '' });
@@ -134,13 +127,7 @@ export function AppliedView({
               onPickStatus={pickStatus}
               onCloseStatus={() => dispatch({ type: 'closeStatus' })}
             />
-            <Pagination
-              from={1}
-              to={rows.length}
-              total={total}
-              perPage={SAMPLE_TOTALS.perPage}
-              totalPages={filtered ? 1 : SAMPLE_TOTALS.pages}
-            />
+            <Pagination from={1} to={rows.length} total={total} perPage={rows.length} totalPages={1} />
           </>
         )}
         <KeyHints mode={hintMode} />
@@ -158,11 +145,9 @@ export function AppliedView({
         />
       )}
       {state.cvOpen && selected && (
-        <CvViewerDialog
-          company={selected.company}
-          cv={sentCvFor(selected)}
-          onClose={() => dispatch({ type: 'closeCv' })}
-        />
+        <Dialog open title="Application CV" eyebrow={selected.company} onClose={() => dispatch({ type: 'closeCv' })}>
+          <p>Arrives with pinned application documents.</p>
+        </Dialog>
       )}
     </div>
   );

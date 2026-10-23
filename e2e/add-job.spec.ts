@@ -1,3 +1,4 @@
+import { skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -30,6 +31,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     const diagnostics: string[] = [];
     app.process().stderr?.on('data', (chunk: Buffer) => diagnostics.push(chunk.toString()));
     const window = await app.firstWindow();
+    await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await expect.poll(() => window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
     await app.evaluate(({ app }) => {
@@ -430,6 +432,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     await app.close();
     app = await electron.launch(options);
     const restarted = await app.firstWindow();
+    await skipOnboarding(restarted);
     await expect(restarted.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await restarted.evaluate(() => {
       location.hash = '#/?tab=up-next';
@@ -472,6 +475,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
           timeout: 60_000,
         });
         const window = await base.firstWindow();
+        await skipOnboarding(window);
         await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
         await window.evaluate((text) => {
           const clipboardData = new DataTransfer();
@@ -487,6 +491,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     }
     app = await electron.launch(options);
     let window = await app.firstWindow();
+    await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await app.evaluate(({ app }, fixture) => {
       const path = process.getBuiltinModule('node:path')!;
@@ -670,6 +675,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await app.close();
     app = await electron.launch(options);
     window = await app.firstWindow();
+    await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     expect(await newApplications()).toEqual(persisted);
   } finally {

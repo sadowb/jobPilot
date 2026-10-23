@@ -1,3 +1,4 @@
+import { skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -65,6 +66,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
   try {
     app = await electron.launch(options);
     const window = await app.firstWindow();
+    await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     const applicationIds = await app.evaluate(({ app }) => {
       const path = process.getBuiltinModule('node:path')!;
@@ -229,6 +231,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     app = undefined;
     app = await electron.launch(options);
     const restarted = await app.firstWindow();
+    await skipOnboarding(restarted);
     await expect(restarted.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await expect
       .poll(
@@ -276,6 +279,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     await app.close();
     app = await electron.launch(options);
     const configured = await app.firstWindow();
+    await skipOnboarding(configured);
     await expect(configured.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await expect
       .poll(async () =>
