@@ -1,3 +1,5 @@
+import { isNativeError } from 'node:util/types';
+
 const sensitiveKey =
   /^(password|passwd|passphrase|secret|token|access_?token|refresh_?token|cookie|authorization|api_?key|hexkey|private_?key|key|session|session_?id|BW_SESSION|otp|totp|code)$/i;
 const censored = '[REDACTED]';
@@ -9,7 +11,7 @@ export function redact(value: unknown, depth = 0, ancestors = new WeakSet<object
   if (ancestors.has(value)) return '[Circular]';
   ancestors.add(value);
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  if (value instanceof Error) {
+  if (isNativeError(value)) {
     descriptors.type = {
       value:
         descriptors.name?.value ??
@@ -31,7 +33,7 @@ export function redact(value: unknown, depth = 0, ancestors = new WeakSet<object
           .filter(([, descriptor]) => descriptor.enumerable)
           .map(([key, descriptor]) => [
             key,
-            (sensitiveKey.test(key) && !(value instanceof Error && key === 'code')) || !('value' in descriptor)
+            (sensitiveKey.test(key) && !(isNativeError(value) && key === 'code')) || !('value' in descriptor)
               ? censored
               : redact(descriptor.value, depth + 1, ancestors),
           ]),

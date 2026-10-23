@@ -299,17 +299,18 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         .map((line) => JSON.parse(line))
         .find((entry) => entry.msg === 'Error redaction fixture');
       return {
-        errorPreserved:
-          errorEntry?.err.type === 'Error' &&
-          errorEntry.err.message === 'boom' &&
-          errorEntry.err.stack.includes('Error: boom') &&
-          errorEntry.err.code === 'SQLITE_NOTADB' &&
-          errorEntry.err.password === '[REDACTED]' &&
-          errorEntry.err.extra.a.b.c.password === '[REDACTED]' &&
-          errorEntry.canonical_key === 'work_authorization' &&
-          errorEntry.field_key === 'q_123' &&
-          errorEntry.sqliteCode === 'SQLITE_NOTADB' &&
-          errorEntry.a.b.c.password === '[REDACTED]',
+        errorPreserved: {
+          type: errorEntry?.err.type,
+          message: errorEntry?.err.message,
+          stack: errorEntry?.err.stack?.includes('Error: boom') ?? false,
+          code: errorEntry?.err.code,
+          password: errorEntry?.err.password,
+          extraPassword: errorEntry?.err.extra?.a.b.c.password,
+          canonical_key: errorEntry?.canonical_key,
+          field_key: errorEntry?.field_key,
+          sqliteCode: errorEntry?.sqliteCode,
+          nestedPassword: errorEntry?.a.b.c.password,
+        },
         nestedLoggerRedacted:
           !logText.includes('-private') &&
           logText.includes('Nested redaction fixture') &&
@@ -327,7 +328,18 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       };
     });
 
-    expect(state.errorPreserved).toBe(true);
+    expect(state.errorPreserved).toEqual({
+      type: 'Error',
+      message: 'boom',
+      stack: true,
+      code: 'SQLITE_NOTADB',
+      password: '[REDACTED]',
+      extraPassword: '[REDACTED]',
+      canonical_key: 'work_authorization',
+      field_key: 'q_123',
+      sqliteCode: 'SQLITE_NOTADB',
+      nestedPassword: '[REDACTED]',
+    });
     expect(state.nestedLoggerRedacted).toBe(true);
     expect(state.encrypted).toBe(true);
     expect(state.mode).toBe(0o600);
