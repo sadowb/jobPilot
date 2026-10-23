@@ -1,4 +1,4 @@
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 import { FILTER_CHIPS } from '../status';
 import type { FilterCounts } from '../filter';
 import type { StatusFilter } from '../types';
@@ -25,7 +25,7 @@ export function FilterChips({
           <button
             key={key}
             type="button"
-            className={cx(CHIP, active === key ? CHIP_ON : CHIP_OFF)}
+            className={cn(CHIP, active === key ? CHIP_ON : CHIP_OFF)}
             aria-pressed={active === key}
             onClick={() => onChange(key)}
           >

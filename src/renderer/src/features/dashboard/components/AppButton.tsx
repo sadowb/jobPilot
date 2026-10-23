@@ -1,4 +1,4 @@
-import { Button, cx, type ButtonProps } from '../../../components/ui';
+import { Button, cn, type ButtonProps } from '../../../components/ui';
 
 // App buttons inherit the board's 400 weight and 15px default size, with compact controls at 13.5px.
 const fixVariant: Record<NonNullable<ButtonProps['variant']>, string> = {
@@ -21,7 +21,7 @@ export function AppButton({ variant = 'default', size = 'md', className, ...rest
     <Button
       variant={variant}
       size={size}
-      className={cx('font-sans! font-normal!', fixVariant[variant], fixSize[size], className)}
+      className={cn('font-sans! font-normal!', fixVariant[variant], fixSize[size], className)}
       {...rest}
     />
   );

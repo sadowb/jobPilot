@@ -1,4 +1,4 @@
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 import { V17Kbd } from '../../../components/V17Kbd';
 
 const cell = 'flex size-8 items-center justify-center rounded-[10px] border text-[13px] font-semibold tabular-nums';
@@ -45,22 +45,22 @@ export function Pagination({
           </svg>
         </span>
         <span className="w-2" />
-        <span className={cx(cell, 'border-line bg-bg text-ink opacity-35')} aria-disabled="true">
+        <span className={cn(cell, 'border-line bg-bg text-ink opacity-35')} aria-disabled="true">
           ‹
         </span>
-        <span className={cx(cell, 'border-pri bg-pri text-on-pri')} aria-current="page">
+        <span className={cn(cell, 'border-pri bg-pri text-on-pri')} aria-current="page">
           1
         </span>
         {more ? (
           <>
-            <span className={cx(cell, 'border-line bg-bg text-ink')}>2</span>
-            <span className={cx(cell, 'border-line bg-bg text-ink')}>3</span>
+            <span className={cn(cell, 'border-line bg-bg text-ink')}>2</span>
+            <span className={cn(cell, 'border-line bg-bg text-ink')}>3</span>
             <span className="flex h-8 w-5 items-center justify-center text-[13px] text-muted">…</span>
-            <span className={cx(cell, 'border-line bg-bg text-ink')}>{totalPages}</span>
-            <span className={cx(cell, 'border-line bg-bg text-ink')}>›</span>
+            <span className={cn(cell, 'border-line bg-bg text-ink')}>{totalPages}</span>
+            <span className={cn(cell, 'border-line bg-bg text-ink')}>›</span>
           </>
         ) : (
-          <span className={cx(cell, 'border-line bg-bg text-ink opacity-35')} aria-disabled="true">
+          <span className={cn(cell, 'border-line bg-bg text-ink opacity-35')} aria-disabled="true">
             ›
           </span>
         )}

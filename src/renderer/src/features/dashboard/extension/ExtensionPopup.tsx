@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef } from 'react';
 import { AppButton } from '../components/AppButton';
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 import { V17CapDart } from '../../../components/V17CapDart';
 import { V17Icon } from '../../../components/V17Icon';
 import { shortDate } from '../format';
@@ -21,7 +21,7 @@ function LinkRow({
   const applied = link.state.kind === 'applied';
   return (
     <div
-      className={cx(
+      className={cn(
         'flex cursor-pointer flex-nowrap items-center gap-2.5 border-t border-line py-1.5 text-[13px] aria-disabled:cursor-default',
         applied ? 'opacity-[0.72]' : link.state.kind === 'filtered' && matchRoles ? 'opacity-50' : 'opacity-100',
       )}
@@ -38,7 +38,7 @@ function LinkRow({
       }}
     >
       <span
-        className={cx(
+        className={cn(
           'grid size-[18px] flex-none place-items-center rounded-[5px] border-[1.5px] text-on-pri',
           applied ? 'border-line-2 bg-hover' : ticked ? 'border-pri bg-pri' : 'border-line-2 bg-transparent',
         )}
@@ -180,13 +180,13 @@ export function ExtensionPopup({
               className="flex cursor-pointer flex-nowrap items-center gap-2.5 border-0 bg-transparent p-0 text-[13px]! font-semibold!"
             >
               <span
-                className={cx(
+                className={cn(
                   'relative h-[26px] w-11 flex-none rounded-full',
                   state.matchRoles ? 'bg-brand' : 'bg-line-2',
                 )}
               >
                 <i
-                  className={cx(
+                  className={cn(
                     'absolute top-[3px] block size-5 rounded-full bg-white',
                     state.matchRoles ? 'left-[21px]' : 'left-[3px]',
                   )}

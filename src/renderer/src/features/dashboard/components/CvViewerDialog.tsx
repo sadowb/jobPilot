@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppButton } from './AppButton';
-import { Eyebrow, cx } from '../../../components/ui';
+import { Eyebrow, cn } from '../../../components/ui';
 import { SegTabs } from './TabSwitch';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { PAPER_PALETTE } from '../../../components/V17MiniPaper';
@@ -14,7 +14,7 @@ function Line({ line, view, nested }: { line: CvLine; view: 'sent' | 'current'; 
   const text = view === 'current' && line.currentText ? line.currentText : line.text;
   const changed = Boolean(line.currentText);
   if (!changed) {
-    return <div className={cx(bodyLine, nested && 'mt-[3px]')}>{text}</div>;
+    return <div className={cn(bodyLine, nested && 'mt-[3px]')}>{text}</div>;
   }
   const inner = (
     <div className={bodyLine}>

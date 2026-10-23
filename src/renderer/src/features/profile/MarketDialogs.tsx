@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Field, FieldGrid, Segmented, Select, cx } from '../../components/ui';
+import { Field, FieldGrid, Segmented, Select, cn } from '../../components/ui';
 import { PButton } from './buttons';
 import { Glyph, CountryBadge } from './icons';
 import { ProfileEditor } from './ProfileEditor';
@@ -118,7 +118,11 @@ export function CountryEditor({
           />
         </Field>
         <Field label="Phone number">
-          <Select className={selectChevron} value={draft.phone ?? ''} onChange={(e) => set({ phone: e.target.value || undefined })}>
+          <Select
+            className={selectChevron}
+            value={draft.phone ?? ''}
+            onChange={(e) => set({ phone: e.target.value || undefined })}
+          >
             <option value="">{phones.length ? 'Main phone' : 'Main phone (none saved yet)'}</option>
             {phones.map((p) => (
               <option key={p} value={p}>
@@ -129,7 +133,11 @@ export function CountryEditor({
           </Select>
         </Field>
         <Field label="Salary in">
-          <Select className={selectChevron} value={draft.currency ?? ''} onChange={(e) => set({ currency: e.target.value || undefined })}>
+          <Select
+            className={selectChevron}
+            value={draft.currency ?? ''}
+            onChange={(e) => set({ currency: e.target.value || undefined })}
+          >
             <option value="">Main details</option>
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
@@ -151,7 +159,11 @@ export function CountryEditor({
           }}
         />
         <Field label="CV language">
-          <Select className={selectChevron} value={draft.cvLanguage ?? ''} onChange={(e) => set({ cvLanguage: e.target.value || undefined })}>
+          <Select
+            className={selectChevron}
+            value={draft.cvLanguage ?? ''}
+            onChange={(e) => set({ cvLanguage: e.target.value || undefined })}
+          >
             <option value="">Main details</option>
             {CV_LANGUAGES.map((l) => (
               <option key={l}>{l}</option>
@@ -219,7 +231,7 @@ export function AddCountryDialog({
           <button
             type="button"
             key={c.code}
-            className={cx(pickButton, 'aria-pressed:bg-hover aria-pressed:font-semibold!')}
+            className={cn(pickButton, 'aria-pressed:bg-hover aria-pressed:font-semibold!')}
             aria-pressed={picked === c.code}
             onClick={() => setPicked(c.code)}
             onDoubleClick={() => onAdd(c.code)}
@@ -259,7 +271,7 @@ export function ManageCountriesDialog({
         <ul className="mb-3">
           {markets.map((m) => (
             <li key={m.code}>
-              <button type="button" className={cx(pickButton, 'py-2')} onClick={() => onOpen(m.code)}>
+              <button type="button" className={cn(pickButton, 'py-2')} onClick={() => onOpen(m.code)}>
                 <CountryBadge code={m.code} name={nameOf(m.code)} />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <strong>{nameOf(m.code)}</strong>

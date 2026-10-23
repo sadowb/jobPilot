@@ -1,4 +1,4 @@
-import { Button, cx, type ButtonProps, type ButtonSize, type ButtonVariant } from '../../components/ui';
+import { Button, cn, type ButtonProps, type ButtonSize, type ButtonVariant } from '../../components/ui';
 
 /**
  * `ui/Button` with inbox-specific 400 weight, 15px default and 13.5px compact sizes.
@@ -19,5 +19,5 @@ const FONT: Record<ButtonSize, string> = {
 };
 
 export function Btn({ variant = 'default', size = 'md', className, ...rest }: ButtonProps) {
-  return <Button variant={variant} size={size} className={cx(COLOR[variant], FONT[size], className)} {...rest} />;
+  return <Button variant={variant} size={size} className={cn(COLOR[variant], FONT[size], className)} {...rest} />;
 }

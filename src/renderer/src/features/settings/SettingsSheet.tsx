@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { KbdKey } from '../../components/KbdKey';
-import { Button, cx, Segmented, type SegmentedOption } from '../../components/ui';
+import { Button, cn, Segmented, type SegmentedOption } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
 import { IT, S, V17N, V17X, shellButton } from '../shared-ui';
@@ -40,7 +40,7 @@ function Section({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="m-0 font-sans text-[15px] font-[650] tracking-[0]">{title}</h2>
-          <div className={cx(S, 'mt-0.5 text-[13px] leading-[1.45]')}>{desc}</div>
+          <div className={cn(S, 'mt-0.5 text-[13px] leading-[1.45]')}>{desc}</div>
         </div>
         {aside}
       </div>
@@ -78,7 +78,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </span>
           <div>
             <div className={V17X}>Settings · Cap can change any of these</div>
-            <div className={cx(V17N, 'mt-1.5 text-[34px]')}>
+            <div className={cn(V17N, 'mt-1.5 text-[34px]')}>
               Crew <span className={IT}>controls.</span>
             </div>
           </div>
@@ -86,7 +86,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <Button
           variant="ghost"
           size="icon-sm"
-          className={cx(shellButton('ghost'), 'h-[34px]!')}
+          className={cn(shellButton('ghost'), 'h-[34px]!')}
           aria-label="Close settings"
           onClick={onClose}
         >
@@ -106,13 +106,13 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               aria-checked={autopilot}
               aria-label="Autopilot"
               onClick={() => setAutopilot((value) => !value)}
-              className={cx(
+              className={cn(
                 'relative h-[26px] w-11 flex-none cursor-pointer rounded-full border-0 p-0',
                 autopilot ? 'bg-brand' : 'bg-line-2',
               )}
             >
               <i
-                className={cx(
+                className={cn(
                   'absolute top-[3px] block size-5 rounded-full bg-white transition-[left] duration-[120ms]',
                   autopilot ? 'left-[21px]' : 'left-[3px]',
                 )}
@@ -120,8 +120,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </button>
           }
         >
-          <div className={cx(S, 'flex items-center gap-2 text-[13px]')}>
-            <i className={cx('block size-[7px] rounded-full', autopilot ? 'bg-brand' : 'bg-line-2')} />
+          <div className={cn(S, 'flex items-center gap-2 text-[13px]')}>
+            <i className={cn('block size-[7px] rounded-full', autopilot ? 'bg-brand' : 'bg-line-2')} />
             {autopilotStatus(autopilot, crew)}
           </div>
         </Section>
@@ -129,7 +129,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           title="Crew size"
           desc="Jobs in flight at once, up to 32"
           aside={
-            <span className={cx(V17N, 'text-[34px]')} aria-live="polite">
+            <span className={cn(V17N, 'text-[34px]')} aria-live="polite">
               {crew}
             </span>
           }
@@ -150,7 +150,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   onKeyDown={(e) =>
                     (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), setSubmitMode(m.value))
                   }
-                  className={cx(
+                  className={cn(
                     'flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 rounded-2xl px-[15px] py-[13px]',
                     on ? 'border-2 border-brand bg-brand-tint' : 'border border-line-2 bg-bg',
                   )}
@@ -158,7 +158,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center justify-between gap-2">
                     <b className="text-[14px]">{m.title}</b>
                     <span
-                      className={cx(
+                      className={cn(
                         'grid size-5 flex-none place-items-center rounded-md border-2 [&_svg]:size-3',
                         on ? 'border-ink bg-ink text-ground' : 'border-line-2 bg-bg',
                       )}
@@ -170,7 +170,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                       )}
                     </span>
                   </div>
-                  <div className={cx(S, 'text-[13px] leading-[1.45]')}>{m.body}</div>
+                  <div className={cn(S, 'text-[13px] leading-[1.45]')}>{m.body}</div>
                 </div>
               );
             })}
@@ -184,7 +184,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             <div key={s.name} className="flex items-center justify-between gap-3 border-t border-line py-[7px]">
               <div className="min-w-0">
                 <div className="text-[14px] font-semibold">{s.name}</div>
-                <div className={cx(S, 'text-[13px]')}>{s.stat}</div>
+                <div className={cn(S, 'text-[13px]')}>{s.stat}</div>
               </div>
               <Segmented
                 label={`${s.name} mode`}
@@ -214,7 +214,10 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                 strokeWidth="2"
                 {...stroke}
                 aria-hidden="true"
-                className={cx('transition-transform duration-[120ms] ease-[ease]', !advancedOpen && '[transform:rotate(-90deg)]')}
+                className={cn(
+                  'transition-transform duration-[120ms] ease-[ease]',
+                  !advancedOpen && '[transform:rotate(-90deg)]',
+                )}
               >
                 <path d="M6 9l6 6 6-6" />
               </svg>
@@ -237,7 +240,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <Section
           title="Site logins"
           desc="Accounts the crew created on job boards. Encrypted on this Mac; Reveal asks for your Mac password."
-          aside={<span className={cx(S, 'text-[13px]')}>{logins.length}</span>}
+          aside={<span className={cn(S, 'text-[13px]')}>{logins.length}</span>}
         >
           {logins.map((l) => (
             <div
@@ -253,7 +256,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                 </span>
                 <div className="min-w-0">
                   <div className="font-mono text-[13.5px] font-semibold">{l.host}</div>
-                  <div className={cx(S, 'text-[13px]')}>{l.meta}</div>
+                  <div className={cn(S, 'text-[13px]')}>{l.meta}</div>
                 </div>
               </div>
               <div className="flex flex-none items-center gap-1.5">
@@ -261,7 +264,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <Button
                   size="sm"
                   // The old `.btn` had no disabled styling; keep the full-strength look.
-                  className={cx(shellButton(), 'disabled:cursor-pointer disabled:opacity-100')}
+                  className={cn(shellButton(), 'disabled:cursor-pointer disabled:opacity-100')}
                   disabled
                   title="Needs the system keychain (not connected yet)"
                 >
@@ -289,13 +292,13 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </Section>
       </div>
       <div className="flex flex-none items-center justify-between gap-3 border-t border-line px-7 pt-4 pb-6">
-        <span className={cx(S, 'text-[13px]')}>Saved as you change them</span>
+        <span className={cn(S, 'text-[13px]')}>Saved as you change them</span>
         <button
           type="button"
           className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0"
           onClick={onClose}
         >
-          <span className={cx(S, 'text-[13px]')}>Close</span>
+          <span className={cn(S, 'text-[13px]')}>Close</span>
           <KbdKey>Esc</KbdKey>
         </button>
       </div>

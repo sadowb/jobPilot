@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { cx } from '../../../components/ui';
+import { cn } from '../../../components/ui';
 import { V17StatusChip } from '../../../components/V17StatusChip';
 import { STATUS_MENU_GROUPS, STATUS_META, STATUS_MENU_ORDER } from '../status';
 import type { ApplicationStatus } from '../types';
@@ -68,15 +68,13 @@ export function StatusMenu({
                 key={s}
                 role="option"
                 aria-selected={s === current}
-                className={cx(
+                className={cn(
                   'flex min-h-[34px] cursor-pointer flex-nowrap items-center gap-2 rounded-[10px] px-2',
                   active && 'bg-hover',
                 )}
                 onClick={() => onPick(s)}
               >
-                <V17StatusChip className={meta.chipClass}>
-                  {meta.longLabel}
-                </V17StatusChip>
+                <V17StatusChip className={meta.chipClass}>{meta.longLabel}</V17StatusChip>
                 <span className="flex-1" />
                 {s === current && <span className="text-[12px] font-bold text-ink">✓</span>}
               </div>

@@ -1,6 +1,6 @@
 import { forwardRef, type SelectHTMLAttributes } from 'react';
 import { controlBox } from './controlStyles';
-import { cx } from './cx';
+import { cn } from './cx';
 
 export type SelectSize = 'md' | 'sm';
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
@@ -15,10 +15,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   ref,
 ) {
   return (
-    <div className={cx('relative min-w-0 [:where(&)]:w-full', className)}>
+    <div className={cn('relative min-w-0 [:where(&)]:w-full', className)}>
       <select
         ref={ref}
-        className={cx(
+        className={cn(
           controlBox,
           'min-w-0 appearance-none text-ellipsis',
           size === 'sm'

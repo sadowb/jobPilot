@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { Logo } from './Logo';
 import { AppearanceControl } from './AppearanceControl';
 import { useProfileIdentity } from '../features/profile/useProfileIdentity';
-import { cx } from './ui';
+import { cn } from './ui';
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
@@ -24,7 +24,7 @@ const BAR =
   "[html[data-platform=darwin]_&]:before:col-start-1 [html[data-platform=darwin]_&]:before:row-start-1 [html[data-platform=darwin]_&]:before:h-8 [html[data-platform=darwin]_&]:before:w-20 [html[data-platform=darwin]_&]:before:content-['']";
 const NO_DRAG =
   '[html[data-platform=darwin]_&]:[-webkit-app-region:no-drag] [html[data-platform=darwin]_&]:[app-region:no-drag]';
-const PILL_NAV = cx(
+const PILL_NAV = cn(
   'flex justify-self-center gap-0.5 rounded-full border border-line bg-bg p-1 [html[data-platform=darwin]_&]:col-start-2 [html[data-platform=darwin]_&]:row-start-1',
   NO_DRAG,
 );

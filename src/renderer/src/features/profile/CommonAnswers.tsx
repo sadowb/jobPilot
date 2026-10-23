@@ -84,7 +84,9 @@ function MarketSwitch({
   return (
     <div
       className="mb-3.5 inline-flex items-center gap-0.5 self-start rounded-full border border-line bg-panel p-[3px]"
-      role="radiogroup" aria-label="Show answers for">
+      role="radiogroup"
+      aria-label="Show answers for"
+    >
       {ids.map((id, i) => {
         const market = markets.find((m) => m.code === id);
         return (
@@ -132,11 +134,10 @@ function Lines({ lines }: { lines: LineData[] }) {
       {lines.map((l, i) => (
         <div
           className="flex items-baseline gap-2 text-[12.5px] leading-[1.5] [overflow-wrap:anywhere] whitespace-pre-wrap text-ink-2"
-          key={`${l.code ?? 'main'}-${i}`}>
+          key={`${l.code ?? 'main'}-${i}`}
+        >
           {l.code && <CountryBadge code={l.code} name={nameOf(l.code)} className="mt-0.5 self-start" />}
-          <span className={l.text ? (l.action ? 'text-need' : '') : 'text-muted'}>
-            {l.text || 'No answer saved'}
-          </span>
+          <span className={l.text ? (l.action ? 'text-need' : '') : 'text-muted'}>{l.text || 'No answer saved'}</span>
           {l.action && (
             <button
               type="button"
@@ -224,7 +225,9 @@ export function CommonAnswers() {
         <div className="min-w-0">
           <h2 id="answers-title" className={`${sectionTitle} leading-[1.4]`}>
             Common answers{' '}
-            <span className="ml-1.5 font-mono text-[11px] leading-[normal] font-normal text-muted">{summary.answered}</span>
+            <span className="ml-1.5 font-mono text-[11px] leading-[normal] font-normal text-muted">
+              {summary.answered}
+            </span>
           </h2>
           <p className="mt-[3px] text-[12.5px] leading-[1.5] text-muted">
             Write an answer once. Give a country its own wording only where it differs.
@@ -261,7 +264,9 @@ export function CommonAnswers() {
       <div className="mb-[18px]">
         <div className="mb-1 flex items-baseline gap-3">
           <span className={monoLabel}>Auto</span>
-          <span className="[font-size:12px] text-muted">Filled from Where you apply and Job preferences. Edit them there, never twice.</span>
+          <span className="[font-size:12px] text-muted">
+            Filled from Where you apply and Job preferences. Edit them there, never twice.
+          </span>
         </div>
         <div className={answerList}>
           {markets.length > 0 && (
@@ -367,7 +372,9 @@ export function CommonAnswers() {
           );
         })}
       </div>
-      {!shown.length && <p className="text-[13.5px] text-muted">{query ? 'No matching answers.' : 'Add your first answer.'}</p>}
+      {!shown.length && (
+        <p className="text-[13.5px] text-muted">{query ? 'No matching answers.' : 'Add your first answer.'}</p>
+      )}
       <div className="flex justify-between gap-3 border-t border-line pt-3.5 text-[11.5px] text-muted">
         <span>
           {summary.answered} answered · {summary.total} questions

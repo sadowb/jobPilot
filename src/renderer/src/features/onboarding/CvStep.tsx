@@ -1,5 +1,5 @@
 import { CapDartArt } from '../../components/CapDartArt';
-import { Button, Eyebrow, cx } from '../../components/ui';
+import { Button, Eyebrow, cn } from '../../components/ui';
 import { cssVars } from '../../lib/css-vars';
 import { A_BAR, A_RISE, GoButton, S, SPEC } from '../shared-ui';
 import { CV_FIELDS, CV_FILE } from './data';
@@ -29,7 +29,7 @@ function PaperThumb() {
   return (
     <div className="flex h-[118px] w-[92px] flex-none flex-col gap-1.5 rounded-[9px] border border-line-2 bg-[rgb(255_255_255)] px-2.5 py-3 shadow-[0_6px_18px_color-mix(in_srgb,var(--ink)_12%,transparent)]">
       {THUMB_LINES.map((w, i) => (
-        <i key={i} className={cx('block h-1 rounded-xs bg-[rgb(17_17_17/0.22)]', w)} />
+        <i key={i} className={cn('block h-1 rounded-xs bg-[rgb(17_17_17/0.22)]', w)} />
       ))}
     </div>
   );
@@ -73,7 +73,7 @@ export function CvStep() {
             <Button variant="ghost" size="sm" className="cursor-pointer hover:bg-transparent! text-[13.5px]!">
               Replace file
             </Button>
-            <div className={cx(S, 'text-[13px]')}>Dropping another file replaces this one.</div>
+            <div className={cn(S, 'text-[13px]')}>Dropping another file replaces this one.</div>
           </div>
         </div>
         <div className="flex min-h-0 flex-col overflow-hidden rounded-[28px] border border-line bg-bg">
@@ -87,23 +87,23 @@ export function CvStep() {
                 <div className="mt-0.5 text-[19px] font-semibold">{CV_FILE.name}</div>
               </div>
             </div>
-            <span className={cx(SPEC, 'flex-none text-muted tracking-[0.02em]!')}>{CV_FIELDS.length} fields found</span>
+            <span className={cn(SPEC, 'flex-none text-muted tracking-[0.02em]!')}>{CV_FIELDS.length} fields found</span>
           </div>
           <div className="mx-[26px] h-1 flex-none overflow-hidden rounded-[9px] bg-line">
-            <div className={cx('h-1 bg-brand [--d:.1s] [--dur:1s]', A_BAR)} />
+            <div className={cn('h-1 bg-brand [--d:.1s] [--dur:1s]', A_BAR)} />
           </div>
           <div className="flex min-h-0 flex-[1_1_auto] flex-col pb-1">
             {CV_FIELDS.map((f) => (
               <div
                 key={f.label}
-                className={cx(
+                className={cn(
                   'grid flex-none grid-cols-[120px_minmax(0,1fr)_20px] items-center gap-3.5 border-t border-line px-[26px] py-[7px]',
                   A_RISE,
                 )}
                 // Stagger delay comes from the sample data.
                 style={cssVars({ '--d': `${f.delay}s` })}
               >
-                <span className={cx(SPEC, 'text-muted tracking-[0.02em]!')}>{f.label}</span>
+                <span className={cn(SPEC, 'text-muted tracking-[0.02em]!')}>{f.label}</span>
                 <div className="min-w-0 text-[15.5px] leading-[1.45]">
                   {f.chips ? (
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -119,7 +119,7 @@ export function CvStep() {
                       {f.secondary && (
                         <>
                           <br />
-                          <span className={cx(S, 'text-[13.5px]')}>{f.secondary}</span>
+                          <span className={cn(S, 'text-[13.5px]')}>{f.secondary}</span>
                         </>
                       )}
                     </>
@@ -130,14 +130,14 @@ export function CvStep() {
             ))}
           </div>
           <div
-            className={cx(
+            className={cn(
               'flex flex-none flex-col gap-2.5 border-t border-line bg-panel px-[26px] pt-3.5 pb-[18px] [--d:0s]',
               A_RISE,
             )}
           >
             <div>
               <b className="text-[18px]">Looks right?</b>
-              <div className={cx(S, 'text-[13.5px]')}>
+              <div className={cn(S, 'text-[13.5px]')}>
                 Every field can be changed. Fix one and I re-check the forms that use it.
               </div>
             </div>

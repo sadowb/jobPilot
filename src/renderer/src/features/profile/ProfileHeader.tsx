@@ -1,5 +1,5 @@
 import { useRef, type KeyboardEvent } from 'react';
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 import { PButton } from './buttons';
 import { Glyph } from './icons';
 import { EDIT_IDENTITY_EVENT } from './personal';
@@ -26,16 +26,20 @@ export function ProfileHeader() {
         </div>
         <div className="min-w-0 flex-1">
           <h1
-            className={cx(
+            className={cn(
               'm-0 font-serif text-[46px] leading-[1.08] font-normal tracking-[-0.02em] [overflow-wrap:anywhere] [@media(width<=800px)]:text-[34px]',
               !identity.name && 'text-muted',
             )}
           >
             {identity.name || 'Add your name'}
           </h1>
-          {identity.headline && <p className="mt-1.5 font-serif text-[19px] leading-[1.25] font-light text-ink-2 italic">{identity.headline}</p>}
+          {identity.headline && (
+            <p className="mt-1.5 font-serif text-[19px] leading-[1.25] font-light text-ink-2 italic">
+              {identity.headline}
+            </p>
+          )}
           {identity.location && (
-            <p className={cx(monoLabel, 'mt-2 flex items-center gap-1.5 leading-[normal] font-medium')}>
+            <p className={cn(monoLabel, 'mt-2 flex items-center gap-1.5 leading-[normal] font-medium')}>
               <Glyph name="pin" size={12} /> {identity.location}
             </p>
           )}
@@ -110,9 +114,11 @@ export function ProfileTabs({
             onKeyDown={(e) => move(e, i)}
           >
             {item.label}
-            {typeof count === 'number' && <span className="rounded-full bg-panel px-[7px] py-px font-mono text-[11px] leading-[normal] font-medium text-muted">
+            {typeof count === 'number' && (
+              <span className="rounded-full bg-panel px-[7px] py-px font-mono text-[11px] leading-[normal] font-medium text-muted">
                 {count}
-              </span>}
+              </span>
+            )}
           </button>
         );
       })}

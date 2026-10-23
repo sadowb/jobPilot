@@ -1,2 +1,5 @@
-/** Join class names, skipping falsy entries. No dependency: Tailwind utilities never need merging here. */
-export const cx = (...parts: Array<string | false | null | undefined>): string => parts.filter(Boolean).join(' ');
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export const cn = (...classes: ClassValue[]) => twMerge(clsx(classes));
+export const cx = cn;

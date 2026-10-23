@@ -1,4 +1,4 @@
-import { Eyebrow, cx } from '../../../components/ui';
+import { Eyebrow, cn } from '../../../components/ui';
 import { AppButton } from './AppButton';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Kbd } from '../../../components/V17Kbd';
@@ -24,7 +24,7 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
         <div key={i} className="relative pl-5">
           {i < events.length - 1 && <i className="absolute top-[15px] -bottom-3 left-1 w-[1.5px] bg-line" />}
           <i
-            className={cx(
+            className={cn(
               'absolute top-1.5 left-0 size-[9px] rounded-full shadow-[0_0_0_3px_var(--bg)]',
               ev.tone === 'screening' ? 'bg-[var(--st-teal-fg)]' : 'bg-muted',
             )}
@@ -111,9 +111,7 @@ export function PeekPanel({
         </div>
         <div>
           <div className="flex flex-nowrap items-center gap-2">
-            <V17StatusChip className={meta.chipClass}>
-              {meta.longLabel}
-            </V17StatusChip>
+            <V17StatusChip className={meta.chipClass}>{meta.longLabel}</V17StatusChip>
             <svg
               width="10"
               height="10"
@@ -180,7 +178,7 @@ export function PeekPanel({
         <div>
           <Eyebrow className="mb-1.5">Your notes</Eyebrow>
           <div
-            className={cx(
+            className={cn(
               'flex h-[34px] min-w-0 items-center gap-2.5 rounded-xl border border-line-2 bg-bg px-3.5 text-[13px]',
               d.notes ? 'text-ink' : 'text-muted',
             )}

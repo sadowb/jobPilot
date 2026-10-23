@@ -1,4 +1,4 @@
-import { Button, cx, type ButtonProps } from '../../components/ui';
+import { Button, cn, type ButtonProps } from '../../components/ui';
 
 /**
  * `Button size="sm"` with the unlayered `.app button{font:inherit;color:inherit}` accounted for: the old
@@ -17,7 +17,7 @@ export function PButton({ variant = 'default', className, ...rest }: Omit<Button
     <Button
       size="sm"
       variant={variant}
-      className={cx('text-[13.5px]!', 'disabled:opacity-100!', FIX[variant], className)}
+      className={cn('text-[13.5px]!', 'disabled:opacity-100!', FIX[variant], className)}
       {...rest}
     />
   );

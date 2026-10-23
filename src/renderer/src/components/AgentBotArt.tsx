@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { BOT, BOT_BADGE, BOT_MOTION, BOT_ORB } from './botStyles';
-import { cx } from './ui';
+import { cn } from './ui';
 
 /** Agent mascots ("Grok bots") as drawn on the V17 boards: one body shape per company, state carried by the wrapper classes. */
 export type AgentBotState = 'work' | 'idle' | 'done' | 'need';
@@ -790,7 +790,7 @@ export const AGENT_BOT_COMPANIES = Object.keys(SHAPES);
 export function AgentBotArt({ company, state, size }: { company: string; state: AgentBotState; size: number }) {
   const shape = SHAPES[company] ?? SHAPES.Vercel;
   return (
-    <span className={cx(BOT, BOT_MOTION[state])} style={{ width: size, height: size }}>
+    <span className={cn(BOT, BOT_MOTION[state])} style={{ width: size, height: size }}>
       <svg
         width={size}
         height={size}

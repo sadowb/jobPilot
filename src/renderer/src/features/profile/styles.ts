@@ -20,8 +20,7 @@ export const actionsRow = 'flex flex-none flex-wrap items-center gap-2';
 export const sectionTitle = 'm-0 font-sans text-base font-[650] tracking-[-0.01em]';
 
 /** Country / dial-code picker (`.pf-dial*`). The trigger keeps the inherited 15px: the old 13.5px rule never won. */
-export const dialButton =
-  'flex h-full min-h-11 items-center gap-2 rounded-xl border border-line-2 bg-bg px-2.5';
+export const dialButton = 'flex h-full min-h-11 items-center gap-2 rounded-xl border border-line-2 bg-bg px-2.5';
 export const dialPanel =
   'absolute top-[calc(100%+6px)] left-0 z-[5] w-[300px] rounded-[14px] border border-line bg-bg p-2 shadow-float';
 export const dialSearch =

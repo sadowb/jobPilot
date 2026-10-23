@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import { cx } from './ui';
+import { cn } from './ui';
 
 /** The boards' `.switch` (44×26, on = --brand) with switch semantics and Space/Enter toggling. */
 export function SwitchToggle({
@@ -19,7 +19,7 @@ export function SwitchToggle({
   };
   return (
     <span
-      className={cx(
+      className={cn(
         'relative block h-[26px] w-11 flex-none cursor-pointer rounded-full',
         on ? 'bg-brand' : 'bg-line-2',
       )}
@@ -30,7 +30,7 @@ export function SwitchToggle({
       onClick={() => onChange(!on)}
       onKeyDown={key}
     >
-      <i className={cx('absolute top-[3px] block size-5 rounded-full bg-white', on ? 'left-[21px]' : 'left-[3px]')} />
+      <i className={cn('absolute top-[3px] block size-5 rounded-full bg-white', on ? 'left-[21px]' : 'left-[3px]')} />
     </span>
   );
 }

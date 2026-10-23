@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cx } from '../../components/ui';
+import { cn } from '../../components/ui';
 
 /** Stroke glyphs used by the About me cards (24×24 grid, round caps and joins). */
 const GLYPHS = {
@@ -105,7 +105,7 @@ const BADGE =
 /** Monochrome country code badge. The accessible name is the country, never an emoji flag. */
 export function CountryBadge({ code, name, className }: { code: string; name: string; className?: string }) {
   return (
-    <span className={cx(BADGE, className)} role="img" aria-label={name}>
+    <span className={cn(BADGE, className)} role="img" aria-label={name}>
       {code}
     </span>
   );
