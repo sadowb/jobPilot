@@ -514,7 +514,7 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
       let keyReads = 0;
       safeStorage.decryptStringAsync = (...args) => {
         keyReads++;
-        return decrypt(...args);
+        return decrypt.call(safeStorage, ...args);
       };
       const today = new Date().toISOString().slice(0, 10);
       const original = path.join(directory, `jobpilot-${today}.db`);
@@ -543,7 +543,10 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
         const readsAfterFailure = keyReads;
         await Promise.all([timer._onTimeout(), timer._onTimeout()]);
         const retryReads = keyReads - readsAfterFailure;
-        const { result: encoded } = await decrypt(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc')));
+        const { result: encoded } = await decrypt.call(
+          safeStorage,
+          fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc')),
+        );
         const key = Buffer.from(encoded, 'base64');
         const backup = new Database(target, { readonly: true, fileMustExist: true });
         let opensWithKey = false;
