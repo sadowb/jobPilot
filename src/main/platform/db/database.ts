@@ -17,11 +17,12 @@ type SqliteDatabase = InstanceType<typeof Database> & { key(key: Buffer): number
 process.env.SQLITE_USE_URI = '1';
 
 export type JobPilotDb = BetterSQLite3Database<typeof schema>;
-export let db: JobPilotDb;
+export let db: JobPilotDb & { $client: Database.Database };
 
 const databasePath = () => join(app.getPath('userData'), 'jobpilot.db');
 const migrationsPath = () => join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'drizzle');
 const backupDirectory = () => join(app.getPath('userData'), 'backups');
+const backupDay = () => new Date().toISOString().slice(0, 10);
 
 function pendingMigrations(sqlite: SqliteDatabase, migrationFolder: string): boolean {
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
@@ -91,6 +92,59 @@ function pruneBackups(): void {
   }
 }
 
+async function backupToday(
+  sqlite: SqliteDatabase,
+  key: Buffer,
+  today: string,
+  logger: Pick<Logger, 'error'>,
+): Promise<void> {
+  if (!existsSync(join(backupDirectory(), `jobpilot-${today}.db`))) {
+    await createBackup(sqlite, key, today, logger);
+  }
+  pruneBackups();
+}
+
+// shortcut: hourly checks until the daily queue job lands in #19.
+export function startDailyBackups(logger: Pick<Logger, 'error'>): { timer: NodeJS.Timeout; stop: () => void } {
+  let inFlight = false;
+  let stopped = false;
+  const timer = setInterval(
+    async () => {
+      if (inFlight || stopped) return;
+      inFlight = true;
+      let key: Buffer | undefined;
+      try {
+        const today = backupDay();
+        if (existsSync(join(backupDirectory(), `jobpilot-${today}.db`))) return;
+        ({ key } = await getDatabaseKey());
+        if (!stopped) await backupToday(db.$client as SqliteDatabase, key, today, logger);
+      } catch (error) {
+        const code = z.object({ code: z.string().regex(/^SQLITE_[A-Z_]+$/) }).safeParse(error);
+        logger.error(
+          {
+            error_class:
+              error instanceof Database.SqliteError ? 'SqliteError' : error instanceof Error ? 'Error' : 'Unknown',
+            sqlite_status: code.success ? code.data.code : undefined,
+          },
+          'Daily database backup check failed; retrying next tick',
+        );
+      } finally {
+        key?.fill(0);
+        inFlight = false;
+      }
+    },
+    60 * 60 * 1000,
+  );
+  timer.unref();
+  return {
+    timer,
+    stop: () => {
+      stopped = true;
+      clearInterval(timer);
+    },
+  };
+}
+
 export class DatabaseUnlockError extends Error {}
 
 export async function recoverDatabaseKey(encoded: string): Promise<void> {
@@ -145,11 +199,9 @@ export async function openDatabase(logger: Pick<Logger, 'error'>): Promise<void>
 
     const migrationFolder = migrationsPath();
     const pending = pendingMigrations(sqlite, migrationFolder);
-    const today = new Date().toISOString().slice(0, 10);
-    const dailyBackup = join(backupDirectory(), `jobpilot-${today}.db`);
+    const today = backupDay();
     if (pending) await createBackup(sqlite, key, `${today}-migration-${Date.now()}`, logger);
-    if (!existsSync(dailyBackup)) await createBackup(sqlite, key, today, logger);
-    pruneBackups();
+    await backupToday(sqlite, key, today, logger);
 
     db = drizzle(sqlite, { schema });
     if (pending) migrate(db, { migrationsFolder: migrationFolder });
