@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  main: { build: { rollupOptions: { input: { index: resolve('src/main/index.ts') } } } },
+  main: { build: { rollupOptions: { input: { index: resolve('src/main/app/main.ts') } } } },
   preload: { build: { rollupOptions: { input: { index: resolve('src/preload/index.ts') } } } },
   renderer: {
     root: resolve('src/renderer'),

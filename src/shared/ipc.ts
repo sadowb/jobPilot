@@ -1,5 +1,7 @@
-/** Single source of truth for IPC channel names and payloads (imported by main, preload and renderer). */
-export type ThemeSource = 'system' | 'light' | 'dark';
+/** Single source of truth for IPC channel names and the renderer bridge (imported by main, preload and renderer). */
+import type { ThemeSource, ThemeState } from './dto';
+
+export type { ThemeSource, ThemeState };
 
 export const Channels = {
   getTheme: 'theme:get',
@@ -7,11 +9,6 @@ export const Channels = {
   setTheme: 'theme:set',
   themeChanged: 'theme:changed',
 } as const;
-
-export interface ThemeState {
-  source: ThemeSource;
-  dark: boolean;
-}
 
 export interface JobPilotBridge {
   platform: string;
