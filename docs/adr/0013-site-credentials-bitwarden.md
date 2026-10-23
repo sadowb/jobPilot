@@ -11,7 +11,7 @@
 
 ## How it works
 
-1. **Setup (owner, once):** create the Bitwarden account (own strong master password kept in the owner's main vault, 2FA on). JobPilot installs pinned `@bitwarden/cli` and `@bitwarden/mcp-server` into `userData/tools` on first use (runs on Electron's bundled Node via `ELECTRON_RUN_AS_NODE`; no system Node).
+1. **Setup (owner, once):** create the Bitwarden account (own strong master password kept in the owner's main vault, 2FA on). JobPilot installs pinned `@bitwarden/cli` and `@bitwarden/mcp-server` into `userData/tools` on first use, using the pinned Node runtime from ADR 0015 (the shipped app keeps the `RunAsNode` fuse off, so Electron cannot run them).
 2. **Unlock per app session:** a JobPilot "Unlock job vault" dialog sends the master password over typed IPC to main, which runs `bw unlock --raw --passwordenv` through execa with the password only in the child's env. Main keeps the returned `BW_SESSION` **in memory only**, passes it as env to each run's Bitwarden MCP process, and runs `bw lock` on quit or after the idle timeout. The master password is never stored, logged or sent to an agent.
 3. **Run time:** the agent looks up the item by host, logs in, and on a changed password updates the item. Login failure sets `site_account.status = 'needs_relogin'`, records an `application_event` (AuditService) and raises an Inbox item.
 4. **`site_account` becomes metadata:** `host`, `username`, `bitwarden_item_id`, `status`, `last_login_at`. Migration (drop `secret_enc`, add `bitwarden_item_id`) lands in the Phase 6 accounts PR, before any real secret is stored.
