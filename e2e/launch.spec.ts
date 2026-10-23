@@ -478,3 +478,108 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
     else cpSync(userData, testInfo.outputPath('userData'), { recursive: true });
   }
 });
+
+// eslint-disable-next-line no-empty-pattern
+test('profile edits and common answers persist in the database after relaunch', async ({}, testInfo) => {
+  test.setTimeout(150_000);
+  const userData = mkdtempSync(join(tmpdir(), 'jobpilot-profile-'));
+  const packaged = testInfo.project.name === 'packaged';
+  const launch = () =>
+    electron.launch({
+      ...(packaged
+        ? {
+            executablePath:
+              process.env.JOBPILOT_PACKAGED_EXECUTABLE ?? 'release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot',
+          }
+        : {}),
+      args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
+      timeout: 60_000,
+    });
+  let instance: ElectronApplication | undefined;
+  const close = async () => {
+    if (!instance) return;
+    const timer = setTimeout(() => instance?.process().kill('SIGKILL'), 5_000);
+    try {
+      await instance.close();
+    } finally {
+      clearTimeout(timer);
+      instance = undefined;
+    }
+  };
+  try {
+    instance = await launch();
+    let window = await instance.firstWindow({ timeout: 60_000 });
+    await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await window.evaluate(() => {
+      location.hash = '#/profile';
+    });
+    await window.getByRole('button', { name: 'Edit identity' }).click();
+    await window.getByLabel('First name', { exact: true }).fill('Ada');
+    await window.getByLabel('Last name', { exact: true }).fill('Lovelace');
+    await window.getByRole('button', { name: 'Save changes', exact: true }).click();
+    await expect(window.getByRole('dialog')).toHaveCount(0);
+    await window.evaluate(async () => {
+      const { personal } = await window.jobpilot!.profile.get();
+      if (!personal) throw new Error('Saved profile is missing');
+      await window.jobpilot!.profile.save({
+        section: 'personal',
+        value: { ...personal, salaryAmount: 5000, salaryPeriod: 'month', salaryCurrency: 'EUR' },
+      });
+      await window.jobpilot!.profile.save({
+        section: 'answers',
+        value: [
+          {
+            id: 'intro',
+            question: 'Tell us about yourself.',
+            default: 'I build useful software.',
+            overrides: { FR: 'Je crée des logiciels.' },
+          },
+        ],
+      });
+      localStorage.clear();
+    });
+    await close();
+    instance = await launch();
+    window = await instance.firstWindow({ timeout: 60_000 });
+    await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await window.evaluate(() => {
+      location.hash = '#/profile';
+    });
+    await window.getByRole('button', { name: 'Edit identity' }).click();
+    await expect(window.getByLabel('First name', { exact: true })).toHaveValue('Ada');
+    await expect(window.getByLabel('Last name', { exact: true })).toHaveValue('Lovelace');
+    const stored = await window.evaluate(() => window.jobpilot!.profile.get());
+    expect(stored.personal?.firstName).toBe('Ada');
+    expect(stored.personal?.salaryAmount).toBe(5000);
+    expect(stored.personal?.salaryPeriod).toBe('month');
+    const salary = await instance.evaluate(async ({ app }) => {
+      const fs = process.getBuiltinModule('node:fs')!;
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+      const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
+      const key = Buffer.from(
+        (await safeStorage.decryptStringAsync(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc'))))
+          .result,
+        'base64',
+      );
+      const db = new Database(path.join(app.getPath('userData'), 'jobpilot.db'), { readonly: true });
+      try {
+        db.pragma("cipher='sqlcipher'");
+        db.key(key);
+        return db.prepare('SELECT salary_min, salary_currency FROM profile').get();
+      } finally {
+        key.fill(0);
+        db.close();
+      }
+    });
+    expect(salary).toEqual({ salary_min: 60000, salary_currency: 'EUR' });
+    expect(stored.answers?.[0]?.default).toBe('I build useful software.');
+    expect(stored.answers?.[0]?.overrides.FR).toBe('Je crée des logiciels.');
+  } finally {
+    await close();
+    if (testInfo.status === testInfo.expectedStatus) rmSync(userData, { recursive: true, force: true });
+  }
+});

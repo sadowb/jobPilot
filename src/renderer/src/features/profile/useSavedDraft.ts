@@ -1,39 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
-import { commitSaved, loadSaved } from './savedStorage';
+import { readProfileData, saveProfileData } from './profileStorage';
 
 export function useSavedDraft<T>(key: string, read: (raw: string | null) => T) {
-  const [initial] = useState(() => loadSaved(localStorage, key, read));
-  // Raw value that failed to parse; kept until a save has backed it up and replaced it.
-  const unreadable = useRef(initial.unreadableRaw);
-  const [saved, setSaved] = useState(initial.value);
-  const [draft, setDraft] = useState(initial.value);
+  const [saved, setSaved] = useState(() => read(readProfileData(key)));
+  const [draft, setDraft] = useState(saved);
   const [message, setMessage] = useState('');
-  const [error, setError] = useState(initial.error);
-  // Success messages fade after a while; errors stay until resolved.
+  const [error, setError] = useState('');
+  const saving = useRef(false);
   useEffect(() => {
     if (!message) return;
     const timer = setTimeout(() => setMessage(''), 6000);
     return () => clearTimeout(timer);
   }, [message]);
   const dirty = JSON.stringify(saved) !== JSON.stringify(draft);
-  const save = (next = draft) => {
+  const save = async (next = draft) => {
+    if (saving.current) return false;
+    saving.current = true;
     try {
-      commitSaved(localStorage, key, next, unreadable.current);
-      const hadBackup = unreadable.current !== null;
-      unreadable.current = null;
+      await saveProfileData(key, next);
       setSaved(next);
       setDraft(next);
       setError('');
-      setMessage(
-        hadBackup ? 'Saved. The unreadable data was kept as a backup on this device.' : 'Saved on this device',
-      );
-      window.dispatchEvent(new Event('jobpilot:profile-changed'));
+      setMessage('Saved on this device');
       return true;
     } catch {
-      setError(
-        'Could not save on this device. Your edits are still here and nothing was overwritten. Please try again.',
-      );
+      setError('Could not save on this device. Your edits are still here. Please try again.');
       return false;
+    } finally {
+      saving.current = false;
     }
   };
   const cancel = () => {

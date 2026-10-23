@@ -1,3 +1,4 @@
+import { readProfileData } from './profileStorage';
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Card, Field, FieldGrid, Input, Select, Textarea } from '../../components/ui';
 import { PButton } from './buttons';
@@ -21,7 +22,6 @@ import {
 } from './answers';
 import { MARKETS_KEY, countryName, readMarkets, type Market } from './markets';
 import {
-  ANSWERS_KEY,
   EMPTY_PROFILE,
   OPEN_EDITOR_EVENT,
   PROFILE_KEY,
@@ -33,18 +33,18 @@ import { useLiveRead } from './useLiveRead';
 import { hintText, monoLabel, sectionTitle } from './styles';
 import { useSavedDraft } from './useSavedDraft';
 
-const readAnswersWithMigration = (raw: string | null) => readAnswersV2(raw, localStorage.getItem(ANSWERS_KEY));
+const readAnswersWithMigration = (raw: string | null) => readAnswersV2(raw);
 
 function readLiveProfile(): PersonalProfile {
   try {
-    return readProfile(localStorage.getItem(PROFILE_KEY));
+    return readProfile(readProfileData(PROFILE_KEY));
   } catch {
     return { ...EMPTY_PROFILE, career: [] };
   }
 }
 function readLiveMarkets(): Market[] {
   try {
-    return readMarkets(localStorage.getItem(MARKETS_KEY));
+    return readMarkets(readProfileData(MARKETS_KEY));
   } catch {
     return [];
   }
@@ -388,8 +388,8 @@ export function CommonAnswers() {
           dirty={store.dirty}
           error={store.error}
           onCancel={close}
-          onSave={() => {
-            if (store.save(cleaned(draft))) setEditing(null);
+          onSave={async () => {
+            if (await store.save(cleaned(draft))) setEditing(null);
           }}
         >
           <FieldGrid>
@@ -452,8 +452,8 @@ export function CommonAnswers() {
           <PButton
             variant="danger"
             className="mt-6"
-            onClick={() => {
-              if (store.save(cleaned(draft.filter((a) => a.id !== current.id)))) setEditing(null);
+            onClick={async () => {
+              if (await store.save(cleaned(draft.filter((a) => a.id !== current.id)))) setEditing(null);
             }}
           >
             Remove question

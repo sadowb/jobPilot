@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AboutMe } from '../features/profile/AboutMe';
 import { CommonAnswers } from '../features/profile/CommonAnswers';
@@ -6,15 +5,12 @@ import { KnowledgePanel, useProfileFacts } from '../features/profile/KnowledgePa
 import { ProfileDocuments } from '../features/profile/ProfileDocuments';
 import { panelId, ProfileHeader, ProfileTabs, tabId, type ProfileTab } from '../features/profile/ProfileHeader';
 import { useDocumentCount } from '../features/profile/useDocumentCount';
-import { migrateStartAnswer } from '../features/profile/startMigration';
 import { useProfileIdentity } from '../features/profile/useProfileIdentity';
 
 const TABS: ProfileTab[] = ['about', 'documents', 'answers', 'knowledge'];
 
 /** Every tab panel stays mounted (only hidden), so switching tabs preserves unsaved edits. */
 export function ProfilePage() {
-  // Runs once, before the panels below read storage: "When can you start?" now comes from Notice.
-  useState(() => migrateStartAnswer());
   const [params, setParams] = useSearchParams();
   const requested = params.get('section');
   const tab = TABS.find((t) => t === requested) ?? 'about';

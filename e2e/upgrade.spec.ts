@@ -25,6 +25,17 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
     await expect
       .poll(() => oldWindow.evaluate(() => document.documentElement.classList.contains('dark')))
       .toBe(expectedDark);
+    await oldWindow.evaluate(() => {
+      localStorage.setItem('jobpilot.profile.v1', '{broken');
+      localStorage.setItem(
+        'jobpilot.answers.v1',
+        JSON.stringify([
+          { id: 'start', question: 'When can you start?', answer: '2 weeks' },
+          { id: 'relocate', question: 'Are you willing to relocate?', answer: 'Yes, for the right role' },
+        ]),
+      );
+      localStorage.setItem('jobpilot.markets.v1', JSON.stringify([{ code: 'FR', workAuth: 'sponsorship' }]));
+    });
     const oldCloseTimer = setTimeout(() => oldApp?.process().kill('SIGKILL'), 5_000);
     try {
       await oldApp.close();
@@ -52,7 +63,85 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
       timeout: 60_000,
     });
     const newWindow = await newApp.firstWindow({ timeout: 60_000 });
+    await expect(newWindow.getByRole('alert')).toContainText('Could not load your profile');
+    expect(await newWindow.evaluate(() => localStorage.getItem('jobpilot.profile.v1'))).toBe('{broken');
+    expect(await newWindow.evaluate(() => localStorage.getItem('jobpilot.answers.v1'))).not.toBeNull();
+    await newWindow.evaluate(() =>
+      localStorage.setItem(
+        'jobpilot.profile.v1',
+        JSON.stringify({
+          firstName: 'Ada',
+          lastName: 'Lovelace',
+          email: 'ada@example.com',
+          linkedin: 'https://linkedin.com/in/ada',
+        }),
+      ),
+    );
+    const migrationFailure = async (fail: boolean) =>
+      newApp!.evaluate(async ({ app }, fail) => {
+        const fs = process.getBuiltinModule('node:fs')!;
+        const path = process.getBuiltinModule('node:path')!;
+        const nodeRequire = process
+          .getBuiltinModule('node:module')!
+          .createRequire(path.join(app.getAppPath(), 'package.json'));
+        const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+        const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
+        const key = Buffer.from(
+          (await safeStorage.decryptStringAsync(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc'))))
+            .result,
+          'base64',
+        );
+        const db = new Database(path.join(app.getPath('userData'), 'jobpilot.db'));
+        try {
+          db.pragma("cipher='sqlcipher'");
+          db.key(key);
+          if (fail)
+            db.exec(
+              "CREATE TRIGGER fail_profile_migration BEFORE INSERT ON settings WHEN NEW.key = 'profile.localStorageMigration.v1' BEGIN SELECT RAISE(ABORT, 'migration fixture'); END",
+            );
+          else db.exec('DROP TRIGGER fail_profile_migration');
+          return {
+            profiles: db.prepare('SELECT count(*) AS count FROM profile').get().count as number,
+            markers: db
+              .prepare("SELECT count(*) AS count FROM settings WHERE key = 'profile.localStorageMigration.v1'")
+              .get().count as number,
+          };
+        } finally {
+          key.fill(0);
+          db.close();
+        }
+      }, fail);
+    await migrationFailure(true);
+    await newWindow.getByRole('button', { name: 'Retry' }).click();
+    await expect(newWindow.getByRole('alert')).toContainText('Could not load your profile');
+    expect(await newWindow.evaluate(() => localStorage.getItem('jobpilot.profile.v1'))).toContain('Ada');
+    expect(await newWindow.evaluate(() => localStorage.getItem('jobpilot.answers.v1'))).not.toBeNull();
+    expect(await migrationFailure(false)).toEqual({ profiles: 0, markers: 0 });
+    await newWindow.getByRole('button', { name: 'Retry' }).click();
     await expect(newWindow.getByRole('navigation', { name: 'Main' })).toBeVisible({ timeout: 30_000 });
+    const migrated = await newWindow.evaluate(() => window.jobpilot!.profile.get());
+    expect(migrated.personal?.firstName).toBe('Ada');
+    expect(migrated.personal?.notice).toEqual({ kind: 'period', days: 14 });
+    expect(migrated.answers).toContainEqual({
+      id: 'relocate',
+      question: 'Are you willing to relocate?',
+      default: 'Yes, for the right role',
+      overrides: {},
+    });
+    expect(migrated.markets).toEqual([{ code: 'FR', workAuth: 'sponsorship' }]);
+    expect(
+      await newWindow.evaluate(() =>
+        ['jobpilot.profile.v1', 'jobpilot.answers.v1', 'jobpilot.answers.v2', 'jobpilot.markets.v1'].map((key) =>
+          localStorage.getItem(key),
+        ),
+      ),
+    ).toEqual([null, null, null, null]);
+    // A stale browser value cannot overwrite a completed migration.
+    await newWindow.evaluate(() => localStorage.setItem('jobpilot.profile.v1', '{stale and broken'));
+    await newWindow.reload();
+    await expect(newWindow.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    expect((await newWindow.evaluate(() => window.jobpilot!.profile.get())).personal?.firstName).toBe('Ada');
+
     expect(await newWindow.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(expectedDark);
     const upgrade = await newApp.evaluate(({ app }, priorBackups) => {
       const fs = process.getBuiltinModule('node:fs')!;
