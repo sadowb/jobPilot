@@ -1,3 +1,4 @@
+import { AnthropicKeyStore } from '../../platform/secrets/anthropic-key';
 import { z } from 'zod';
 import type { JobPilotDb } from '../../platform/db/database';
 import { SettingsRepository } from './settings.repository';
@@ -47,4 +48,8 @@ export function markProfileMigrated(database: JobPilotDb): void {
 
 export function applyConcurrency(database: JobPilotDb): number {
   return z.number().int().min(1).max(64).default(6).parse(new SettingsRepository(database).applyConcurrency());
+}
+
+export function claudeKeyService(database: JobPilotDb): AnthropicKeyStore {
+  return new AnthropicKeyStore(new SettingsRepository(database));
 }

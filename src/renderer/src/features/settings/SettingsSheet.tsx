@@ -4,6 +4,7 @@ import { Button, cn, Segmented, type SegmentedOption } from '../../components/ui
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
 import { IT, S, V17N, V17X, shellButton } from '../shared-ui';
+import { ClaudeKeyField } from './ClaudeKeyField';
 import { CrewSlider } from './CrewSlider';
 import { DEFAULT_SETTINGS, SITES, SITE_LOGINS, SUBMIT_MODES } from './data';
 import { LimitField } from './LimitField';
@@ -97,6 +98,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-7">
+        <ClaudeKeyField />
         <Section
           title="Autopilot"
           desc="Crew picks up queued jobs on its own. Off means nothing starts without you."

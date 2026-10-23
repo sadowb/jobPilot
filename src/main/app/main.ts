@@ -13,8 +13,8 @@ import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
 import { initLogService, loggerFor } from '../modules/observability/log.service';
-import { recoveryHandlers, settingsHandlers } from '../modules/settings/settings.controller';
-import { broadcastThemeChanges, loadTheme } from '../modules/settings/settings.service';
+import { claudeKeyHandlers, recoveryHandlers, settingsHandlers } from '../modules/settings/settings.controller';
+import { broadcastThemeChanges, claudeKeyService, loadTheme } from '../modules/settings/settings.service';
 import { DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
@@ -111,6 +111,7 @@ if (!app.requestSingleInstanceLock()) {
       [
         ...runsHandlers(runsService),
         ...settingsHandlers,
+        ...claudeKeyHandlers(claudeKeyService(db)),
         ...documentsHandlers,
         ...observabilityHandlers,
         ...postingsHandlers,
