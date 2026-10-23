@@ -10,6 +10,14 @@ assert.equal(process.env.POISON, undefined);
 assert.equal(process.env.CLAUDE_CODE_OAUTH_TOKEN, undefined);
 assert.equal(process.env.ANTHROPIC_API_KEY, 'fixture-key');
 const send = (value) => process.stdout.write(JSON.stringify(value) + '\n');
+const argument = (flag) => {
+  const inline = process.argv.find((value) => value.startsWith(flag + '='));
+  return inline ? inline.slice(flag.length + 1) : process.argv[process.argv.indexOf(flag) + 1];
+};
+process.on('uncaughtException', (error) => {
+  send({ type: 'assistant', message: { content: [{ type: 'text', text: 'Fixture failure: ' + error.message }] } });
+  process.exit(1);
+});
 for await (const line of createInterface({ input: process.stdin })) {
   const request = JSON.parse(line);
   if (request.type === 'control_request') {
@@ -17,13 +25,12 @@ for await (const line of createInterface({ input: process.stdin })) {
   } else if (request.type === 'user') {
     send({ type: 'system', subtype: 'init', session_id: 'fixture-session' });
     const prompt = JSON.stringify(request.message);
-    assert.equal(process.argv[process.argv.indexOf('--model') + 1], 'fixture-model');
-    assert(process.argv.includes('--json-schema'));
+    assert.equal(argument('--model'), 'fixture-model');
+    assert(argument('--json-schema'));
     assert(process.argv.includes('--strict-mcp-config'));
-    if (prompt.includes('Fill again'))
-      assert.equal(process.argv[process.argv.indexOf('--resume') + 1], 'fixture-session');
+    if (prompt.includes('Fill again')) assert.equal(argument('--resume'), 'fixture-session');
     if (prompt.includes('wait')) continue;
-    const config = JSON.parse(process.argv[process.argv.indexOf('--mcp-config') + 1]);
+    const config = JSON.parse(argument('--mcp-config'));
     const server = config.mcpServers.form;
     const client = new Client({ name: 'fixture', version: '1.0.0' });
     try {

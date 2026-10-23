@@ -38,6 +38,7 @@ try {
   const run = provider.run(spec);
   const events: RunEvent[] = [];
   for await (const event of run.events) events.push(event);
+  assert(!events.some((event) => event.type === 'error'), JSON.stringify(events));
   assert.equal((await run.result).status, 'filled');
   for (const type of ['session', 'message', 'tool_call', 'tool_result', 'cost'])
     assert(events.some((event) => event.type === type));
