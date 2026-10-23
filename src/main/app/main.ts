@@ -47,7 +47,7 @@ if (!app.requestSingleInstanceLock()) {
       logger.fatal({ err: error }, 'Encrypted database could not be opened');
       await dialog.showMessageBox({
         type: 'error',
-        title: 'JobPilot database error (CI byte probe)',
+        title: 'JobPilot database error',
         message: 'JobPilot could not safely open its encrypted database. No database files were replaced.',
         detail: error instanceof Error ? error.message : String(error),
       });
