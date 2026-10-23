@@ -25,11 +25,6 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
     await expect
       .poll(() => oldWindow.evaluate(() => document.documentElement.classList.contains('dark')))
       .toBe(expectedDark);
-    const backupDirectory = join(userData, 'backups');
-    const preMigrationBackups = existsSync(backupDirectory)
-      ? readdirSync(backupDirectory).filter((file) => file.endsWith('.db'))
-      : [];
-    expect(preMigrationBackups.length).toBeGreaterThan(0);
     const oldCloseTimer = setTimeout(() => oldApp?.process().kill('SIGKILL'), 5_000);
     try {
       await oldApp.close();
@@ -38,11 +33,17 @@ test('upgrades the same user profile from the base app', async ({}, testInfo) =>
     }
     oldApp = undefined;
 
+    // Base builds from before the encrypted DB existed have nothing to upgrade; check before asserting on backups.
     const dbFile = join(userData, 'jobpilot.db');
     if (!existsSync(dbFile)) {
       testInfo.annotations.push({ type: 'upgrade-skip', description: 'Base app did not create a database.' });
       test.skip(true, 'Base app has no database to upgrade.');
     }
+    const backupDirectory = join(userData, 'backups');
+    const preMigrationBackups = existsSync(backupDirectory)
+      ? readdirSync(backupDirectory).filter((file) => file.endsWith('.db'))
+      : [];
+    expect(preMigrationBackups.length).toBeGreaterThan(0);
     const dbBytesBefore = readFileSync(dbFile);
     newApp = await electron.launch({
       executablePath:
