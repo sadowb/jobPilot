@@ -120,8 +120,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
           return mock.dispatch(options, handler);
         }
       };
-      const html =
-        '<html><head><title>Custom role</title></head><body><label>Name<input name="name" required></label>';
+      const html = '<html><head><title>Custom role</title></head><body><label>Name<input name="name" required></label>';
       mock
         .get('https://custom.example')
         .intercept({ path: '/poison' })
