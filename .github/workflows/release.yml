@@ -39,6 +39,40 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Require release signing secrets
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MAC_CERT_P12_BASE64" ] || [ -z "$MAC_CERT_PASSWORD" ]; then
+            echo "Release signing secrets are missing. Configure MAC_CERT_P12_BASE64 and MAC_CERT_PASSWORD as described in docs/RELEASE.md." >&2
+            exit 1
+          fi
+      - name: Import release signing identity into temporary keychain
+        timeout-minutes: 2
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          certdir="$RUNNER_TEMP/jobpilot-release-cert"
+          keychain="$RUNNER_TEMP/jobpilot-release.keychain-db"
+          mkdir -m 700 "$certdir"
+          echo "$MAC_CERT_P12_BASE64" | base64 -D > "$certdir/release.p12"
+          keychain_password=$(openssl rand -hex 32)
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security default-keychain -d user -s "$keychain"
+          security import "$certdir/release.p12" -k "$keychain" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          openssl pkcs12 -in "$certdir/release.p12" -clcerts -nokeys -passin "pass:$MAC_CERT_PASSWORD" -out "$certdir/release.crt"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k "$keychain" "$certdir/release.crt"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+            -k "$keychain_password" "$keychain"
+          identity=$(security find-identity -v -p codesigning "$keychain" | awk '/^[[:space:]]*[0-9]+\)/ { print $2; exit }')
+          if [ -z "$identity" ]; then security find-identity -v -p codesigning "$keychain"; exit 1; fi
+          echo "JOBPILOT_SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
@@ -46,7 +80,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run smoke:native
-      - run: npx electron-builder --dir --mac --arm64
+      - name: Package and sign release app
+        run: |
+          npx electron-builder --dir --mac --arm64
+          node scripts/sign-app.mjs release/mac-arm64/JobPilot.app "$JOBPILOT_SIGN_IDENTITY"
       - name: Package previous commit for upgrade journey
         run: |
           BASE_SHA=$(git rev-parse HEAD^)
@@ -55,6 +92,7 @@ jobs:
           npm ci
           npm run build
           npx electron-builder --dir --mac --arm64
+          node "$GITHUB_WORKSPACE/scripts/sign-app.mjs" "$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app" "$JOBPILOT_SIGN_IDENTITY"
           echo "JOBPILOT_BASE_EXECUTABLE=$RUNNER_TEMP/jobpilot-base/release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot" >> "$GITHUB_ENV"
       - run: node scripts/run-e2e.mjs
       - name: Verify exact shipped bytes (fuses, signature, real boot)
@@ -83,3 +121,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${{ github.ref_name }}" --draft release/*.dmg SHA256SUMS --title "JobPilot ${{ github.ref_name }}" --notes "Draft release. Owner review and publish required."
+      - name: Delete release signing identity
+        if: always()
+        # The runner is ephemeral; trust cleanup must not block the job.
+        timeout-minutes: 1
+        continue-on-error: true
+        run: |
+          crt="$RUNNER_TEMP/jobpilot-release-cert/release.crt"
+          if [ -f "$crt" ]; then
+            sudo -n security remove-trusted-cert -d "$crt" || true
+          fi
+          security delete-keychain "$RUNNER_TEMP/jobpilot-release.keychain-db" 2>/dev/null || true
+          rm -rf "$RUNNER_TEMP/jobpilot-release-cert"
