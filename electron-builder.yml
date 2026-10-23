@@ -6,9 +6,12 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: drizzle
+    to: drizzle
 asar: true
 asarUnpack:
-  - '**/node_modules/better-sqlite3*/**'
+  - '**/node_modules/better-sqlite3/**'
   - '**/*.node'
 afterPack: scripts/after-pack.mjs
 mac:

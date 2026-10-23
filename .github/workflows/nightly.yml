@@ -1,0 +1,44 @@
+name: nightly ATS drift
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Probe current public job listings
+        id: probes
+        continue-on-error: true
+        run: node scripts/probe-live-boards.mjs
+      - name: Open or update one drift issue per ATS
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -c '.results[] | select(.status == "failed")' live-probe-results.json | while read -r item; do
+            ats=$(jq -r '.ats' <<< "$item")
+            title="ATS drift: $ats"
+            body_file="$RUNNER_TEMP/ats-drift-$ats.md"
+            jq -r '"Classification: " + .kind + "\n\nBoard URL: " + (.url // "not resolved") + "\n\nFinding: " + .message + "\n\nRun: " + env.GITHUB_SERVER_URL + "/" + env.GITHUB_REPOSITORY + "/actions/runs/" + env.GITHUB_RUN_ID' <<< "$item" > "$body_file"
+            number=$(gh issue list --state all --search "in:title $title" --json number,title --jq ".[] | select(.title == \"$title\") | .number" | head -n 1)
+            if [ -n "$number" ]; then
+              gh issue reopen "$number" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+              gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$body_file"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$body_file"
+            fi
+          done
+      - name: Fail when any ATS drifts
+        if: steps.probes.outcome == 'failure'
+        run: exit 1

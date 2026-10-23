@@ -4,4 +4,11 @@ export default defineConfig({
   testDir: 'e2e',
   workers: 1,
   reporter: 'list',
+  outputDir: 'test-results',
+  screenshot: 'only-on-failure',
+  trace: 'retain-on-failure',
+  projects: [
+    { name: 'dev', testMatch: 'launch.spec.ts' },
+    { name: 'packaged', testMatch: /(?:launch|upgrade)\.spec\.ts/ },
+  ],
 });

@@ -21,6 +21,8 @@
 - [ ] Schema change? Migration generated with `npm run db:generate`, entities and `shared/dto` updated together
 - [ ] Logs go through LogService (no `console.*`), secrets never logged
 - [ ] No unit tests added (see ADR 0011); behaviour covered by a Haiku E2E journey
+- [ ] Feature journey added or extended and run through the packaged app; bug fix includes the regression assertion
+- [ ] `npm run verify` passed locally
 
 ## Haiku E2E result
 
