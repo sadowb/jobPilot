@@ -24,6 +24,8 @@ export function initLogService(): void {
     {
       level: 'info',
       formatters: { log: (object) => redact(object) as Record<string, unknown> },
+      // Redaction already serializes errors; pino would reclassify the plain result as Object.
+      serializers: { err: (error: unknown) => error },
       base: { app: 'jobpilot' },
     },
     transport,
