@@ -9,13 +9,16 @@ import { observabilityHandlers } from '../modules/observability/observability.co
 import { initLogService, loggerFor } from '../modules/observability/log.service';
 import { recoveryHandlers, settingsHandlers } from '../modules/settings/settings.controller';
 import { broadcastThemeChanges, loadTheme } from '../modules/settings/settings.service';
-import { DatabaseUnlockError, openDatabase } from '../platform/db/database';
+import { DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
 import { registerAppScheme, serveRenderer } from './protocol';
 import { denyPermissionsByDefault, lockDown } from './security';
 import { createWindow } from './window';
+
+// Inspector-only journey access follows the exports below; shipped builds disable the inspector.
+export let databaseBackupTimer: NodeJS.Timeout | undefined;
 
 registerAppScheme();
 process.umask(0o077);
@@ -71,6 +74,10 @@ if (!app.requestSingleInstanceLock()) {
       app.quit();
       return;
     }
+
+    const backups = startDailyBackups(loggerFor('database'));
+    databaseBackupTimer = backups.timer;
+    app.once('before-quit', backups.stop);
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);

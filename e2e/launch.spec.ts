@@ -480,6 +480,132 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
 });
 
 // eslint-disable-next-line no-empty-pattern
+test('backs up a new UTC day without restarting and retries failed hourly checks', async ({}, testInfo) => {
+  test.setTimeout(90_000);
+  const userData = mkdtempSync(join(tmpdir(), 'jobpilot-daily-backup-'));
+  const packaged = testInfo.project.name === 'packaged';
+  let app: ElectronApplication | undefined;
+  try {
+    app = await electron.launch({
+      ...(packaged
+        ? {
+            executablePath:
+              process.env.JOBPILOT_PACKAGED_EXECUTABLE ?? 'release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot',
+          }
+        : {}),
+      args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
+      timeout: 60_000,
+    });
+    await expect((await app.firstWindow()).getByRole('navigation', { name: 'Main' })).toBeVisible();
+    const result = await app.evaluate(async ({ app }) => {
+      const fs = process.getBuiltinModule('node:fs')!;
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { databaseBackupTimer: timer } = nodeRequire(path.join(app.getAppPath(), 'out/main/index.js')) as {
+        databaseBackupTimer: NodeJS.Timeout & { _idleTimeout: number; _onTimeout: () => Promise<void> };
+      };
+      const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+      const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
+      const directory = path.join(app.getPath('userData'), 'backups');
+      const originalDate = Date;
+      const decrypt = safeStorage.decryptStringAsync;
+      let keyReads = 0;
+      safeStorage.decryptStringAsync = (...args) => {
+        keyReads++;
+        return decrypt.call(safeStorage, ...args);
+      };
+      const today = new Date().toISOString().slice(0, 10);
+      const original = path.join(directory, `jobpilot-${today}.db`);
+      const before = fs.statSync(original).mtimeMs;
+      try {
+        await timer._onTimeout();
+        const sameDaySkipped = keyReads === 0 && fs.statSync(original).mtimeMs === before;
+        const tomorrow = new Date();
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        // Only the inspector harness changes the clock; no test clock or IPC exists in shipped builds.
+        globalThis.Date = class extends originalDate {
+          constructor() {
+            super(tomorrow.getTime());
+          }
+        } as DateConstructor;
+        const target = path.join(directory, `jobpilot-${new Date().toISOString().slice(0, 10)}.db`);
+        fs.renameSync(directory, `${directory}-fixture`);
+        fs.writeFileSync(directory, 'backup failure fixture', { mode: 0o600 });
+        try {
+          await Promise.all([timer._onTimeout(), timer._onTimeout()]);
+        } finally {
+          fs.rmSync(directory);
+          fs.renameSync(`${directory}-fixture`, directory);
+        }
+        const failedWithoutBackup = !fs.existsSync(target);
+        const readsAfterFailure = keyReads;
+        await Promise.all([timer._onTimeout(), timer._onTimeout()]);
+        const retryReads = keyReads - readsAfterFailure;
+        const { result: encoded } = await decrypt.call(
+          safeStorage,
+          fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc')),
+        );
+        const key = Buffer.from(encoded, 'base64');
+        const backup = new Database(target, { readonly: true, fileMustExist: true });
+        let opensWithKey = false;
+        try {
+          backup.pragma("cipher='sqlcipher'");
+          backup.key(key);
+          backup.prepare('SELECT count(*) FROM sqlite_schema').get();
+          opensWithKey = true;
+        } finally {
+          backup.close();
+          key.fill(0);
+        }
+        const withoutKey = new Database(target, { readonly: true, fileMustExist: true });
+        let refusesWithoutKey = false;
+        try {
+          withoutKey.prepare('SELECT count(*) FROM sqlite_schema').get();
+        } catch {
+          refusesWithoutKey = true;
+        } finally {
+          withoutKey.close();
+        }
+        return {
+          hourly: timer._idleTimeout === 3_600_000,
+          unreferenced: !timer.hasRef(),
+          sameDaySkipped,
+          failedWithoutBackup,
+          failureReads: readsAfterFailure,
+          retryReads,
+          opensWithKey,
+          refusesWithoutKey,
+          encrypted: !fs.readFileSync(target).subarray(0, 16).equals(Buffer.from('SQLite format 3\0')),
+          mode: fs.statSync(target).mode & 0o777,
+        };
+      } finally {
+        globalThis.Date = originalDate;
+        safeStorage.decryptStringAsync = decrypt;
+      }
+    });
+    expect(result).toEqual({
+      hourly: true,
+      unreferenced: true,
+      sameDaySkipped: true,
+      failedWithoutBackup: true,
+      failureReads: 1,
+      retryReads: 1,
+      opensWithKey: true,
+      refusesWithoutKey: true,
+      encrypted: true,
+      mode: 0o600,
+    });
+    await expect((await app.firstWindow()).getByRole('navigation', { name: 'Main' })).toBeVisible();
+  } finally {
+    if (app) await app.close();
+    if (testInfo.status === testInfo.expectedStatus) rmSync(userData, { recursive: true, force: true });
+    else cpSync(userData, testInfo.outputPath('userData'), { recursive: true });
+  }
+});
+
+// eslint-disable-next-line no-empty-pattern
 test('profile edits and common answers persist in the database after relaunch', async ({}, testInfo) => {
   test.setTimeout(150_000);
   const userData = mkdtempSync(join(tmpdir(), 'jobpilot-profile-'));
