@@ -6,6 +6,7 @@ import {
   type ThemeSource,
   RendererErrorInputSchema,
   RecoveryKeySchema,
+  IpcValidationErrorSchema,
 } from '../shared/ipc';
 import {
   ClaudeKeyStatusSchema,
@@ -20,90 +21,96 @@ import {
   ThemeStateSchema,
 } from '../shared/dto';
 
+async function invoke(channel: string, ...args: unknown[]): Promise<unknown> {
+  const result: unknown = await ipcRenderer.invoke(channel, ...args);
+  if (IpcValidationErrorSchema.safeParse(result).success) {
+    throw new TypeError('Invalid input. Check your input and try again.');
+  }
+  return result;
+}
+
 const bridge: JobPilotBridge = {
   claudeKey: {
     async set(key) {
-      await ipcRenderer.invoke(Channels.setClaudeKey, key);
+      await invoke(Channels.setClaudeKey, key);
     },
     async status() {
-      return ClaudeKeyStatusSchema.parse(await ipcRenderer.invoke(Channels.getClaudeKeyStatus));
+      return ClaudeKeyStatusSchema.parse(await invoke(Channels.getClaudeKeyStatus));
     },
     async remove() {
-      await ipcRenderer.invoke(Channels.removeClaudeKey);
+      await invoke(Channels.removeClaudeKey);
     },
     async test() {
-      return ClaudeKeyTestSchema.parse(await ipcRenderer.invoke(Channels.testClaudeKey));
+      return ClaudeKeyTestSchema.parse(await invoke(Channels.testClaudeKey));
     },
   },
   runs: {
     async start(applicationId) {
-      return RunSummarySchema.parse(
-        await ipcRenderer.invoke(Channels.startRun, StartRunSchema.parse({ applicationId })),
-      );
+      return RunSummarySchema.parse(await invoke(Channels.startRun, StartRunSchema.parse({ applicationId })));
     },
     async cancel(runId) {
-      return RunSummarySchema.parse(await ipcRenderer.invoke(Channels.cancelRun, CancelRunSchema.parse({ runId })));
+      return RunSummarySchema.parse(await invoke(Channels.cancelRun, CancelRunSchema.parse({ runId })));
     },
     async list() {
-      return z.array(RunSummarySchema).parse(await ipcRenderer.invoke(Channels.listRuns));
+      return z.array(RunSummarySchema).parse(await invoke(Channels.listRuns));
     },
     async pause() {
-      return z.boolean().parse(await ipcRenderer.invoke(Channels.pauseRuns));
+      return z.boolean().parse(await invoke(Channels.pauseRuns));
     },
     async resume() {
-      return z.boolean().parse(await ipcRenderer.invoke(Channels.resumeRuns));
+      return z.boolean().parse(await invoke(Channels.resumeRuns));
     },
   },
   postings: {
     async ingest(url) {
-      return IngestResultSchema.parse(await ipcRenderer.invoke(Channels.ingestPosting, url));
+      return IngestResultSchema.parse(await invoke(Channels.ingestPosting, url));
     },
   },
   applications: {
     async list() {
-      return z.array(ApplicationListItemSchema).parse(await ipcRenderer.invoke(Channels.listApplications));
+      return z.array(ApplicationListItemSchema).parse(await invoke(Channels.listApplications));
     },
     async create(postingId) {
-      return ApplicationListItemSchema.parse(await ipcRenderer.invoke(Channels.createApplication, { postingId }));
+      return ApplicationListItemSchema.parse(await invoke(Channels.createApplication, { postingId }));
     },
   },
   platform: process.platform,
   profile: {
     async migrationDone() {
-      return z.boolean().parse(await ipcRenderer.invoke(Channels.profileMigrationDone));
+      return z.boolean().parse(await invoke(Channels.profileMigrationDone));
     },
     async get() {
-      return ProfileDataSchema.parse(await ipcRenderer.invoke(Channels.getProfile));
+      return ProfileDataSchema.parse(await invoke(Channels.getProfile));
     },
     async save(input) {
-      return ProfileDataSchema.parse(await ipcRenderer.invoke(Channels.saveProfile, ProfileSaveSchema.parse(input)));
+      return ProfileDataSchema.parse(await invoke(Channels.saveProfile, ProfileSaveSchema.parse(input)));
     },
     async migrate(input) {
-      return ProfileDataSchema.parse(await ipcRenderer.invoke(Channels.migrateProfile, ProfileDataSchema.parse(input)));
+      return ProfileDataSchema.parse(await invoke(Channels.migrateProfile, ProfileDataSchema.parse(input)));
     },
   },
   recovery: {
     async export() {
-      await ipcRenderer.invoke(Channels.exportRecoveryKey);
+      await invoke(Channels.exportRecoveryKey);
     },
     async import(key) {
-      return z.boolean().parse(await ipcRenderer.invoke(Channels.importRecoveryKey, RecoveryKeySchema.parse(key)));
+      return z.boolean().parse(await invoke(Channels.importRecoveryKey, RecoveryKeySchema.parse(key)));
     },
   },
   async reportRendererError(error) {
-    await ipcRenderer.invoke(Channels.rendererError, RendererErrorInputSchema.parse(error));
+    await invoke(Channels.rendererError, RendererErrorInputSchema.parse(error));
   },
   documents: {
     async save(name, bytes) {
-      return z.boolean().parse(await ipcRenderer.invoke(Channels.saveDocument, { name, bytes }));
+      return z.boolean().parse(await invoke(Channels.saveDocument, { name, bytes }));
     },
   },
   theme: {
     async get() {
-      return ThemeStateSchema.parse(await ipcRenderer.invoke(Channels.getTheme));
+      return ThemeStateSchema.parse(await invoke(Channels.getTheme));
     },
     async set(source: ThemeSource) {
-      return ThemeStateSchema.parse(await ipcRenderer.invoke(Channels.setTheme, source));
+      return ThemeStateSchema.parse(await invoke(Channels.setTheme, source));
     },
     onChange(listener) {
       const handler = (_event: Electron.IpcRendererEvent, state: unknown) => listener(ThemeStateSchema.parse(state));
