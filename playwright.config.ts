@@ -8,7 +8,7 @@ export default defineConfig({
   screenshot: 'only-on-failure',
   trace: 'retain-on-failure',
   projects: [
-    { name: 'dev', testMatch: 'launch.spec.ts' },
-    { name: 'packaged', testMatch: /(?:launch|upgrade)\.spec\.ts/ },
+    { name: 'dev', testMatch: /(?:launch|add-job)\.spec\.ts/ },
+    { name: 'packaged', testMatch: /(?:launch|upgrade|add-job)\.spec\.ts/ },
   ],
 });

@@ -148,6 +148,7 @@ export interface QueueState {
 }
 
 export type QueueAction =
+  | { type: 'loaded'; items: QueueItem[] }
   | { type: 'query'; query: string }
   | { type: 'filter'; filter: QueueFilter }
   | { type: 'toggle'; id: string }
@@ -235,6 +236,8 @@ function editableIds(s: QueueState, ids: string[]): Set<string> {
 
 export function queueReducer(s: QueueState, a: QueueAction): QueueState {
   switch (a.type) {
+    case 'loaded':
+      return { ...s, items: a.items, selected: [], cursor: null, removed: null };
     case 'query':
       return { ...s, query: a.query };
     case 'filter':

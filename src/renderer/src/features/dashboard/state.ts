@@ -24,6 +24,7 @@ export interface DashboardState {
 }
 
 export type DashboardAction =
+  | { type: 'loaded'; apps: Application[] }
   | { type: 'query'; query: string }
   | { type: 'filter'; filter: StatusFilter }
   | { type: 'move'; delta: 1 | -1 }
@@ -73,6 +74,8 @@ function reconcile(s: DashboardState): DashboardState {
 
 export function dashboardReducer(s: DashboardState, a: DashboardAction): DashboardState {
   switch (a.type) {
+    case 'loaded':
+      return reconcile({ ...s, apps: a.apps });
     case 'query':
       return reconcile({ ...s, query: a.query });
     case 'filter':
