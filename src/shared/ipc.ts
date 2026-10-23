@@ -5,6 +5,8 @@ import { z } from 'zod';
 export type { ThemeSource, ThemeState };
 
 export const Channels = {
+  exportRecoveryKey: 'recovery:export',
+  importRecoveryKey: 'recovery:import',
   getTheme: 'theme:get',
   saveDocument: 'documents:save',
   setTheme: 'theme:set',
@@ -18,7 +20,13 @@ export const RendererErrorInputSchema = z.object({
   stack: z.string().max(12000).optional(),
 });
 
+export const RecoveryKeySchema = z.string().regex(/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/);
+
 export interface JobPilotBridge {
+  recovery: {
+    export(): Promise<void>;
+    import(key: string): Promise<boolean>;
+  };
   platform: string;
   reportRendererError(error: z.input<typeof RendererErrorInputSchema>): Promise<void>;
   documents: { save(name: string, bytes: Uint8Array): Promise<boolean> };

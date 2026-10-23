@@ -11,6 +11,7 @@ import { Inbox } from '../pages/Inbox';
 import { ManualControl } from '../pages/ManualControl';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { RecoveryPage } from '../pages/RecoveryPage';
 import { SettingsPage } from '../pages/SettingsPage';
 
 function Shell() {
@@ -28,6 +29,7 @@ function Shell() {
 
 // Hash router: the packaged app is a single document, so history routing is not an option.
 const router = createHashRouter([
+  { path: '/recovery', element: <RecoveryPage /> },
   // Standalone: the extension popup preview has no app shell.
   { path: '/extension', element: <Extension /> },
   {

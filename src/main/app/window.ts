@@ -6,7 +6,7 @@ import { lockDown } from './security';
 
 const GROUND = { light: '#F8F8F8', dark: '#141414' } as const; // --ground, avoids a white flash on dark
 
-export function createWindow(): BrowserWindow {
+export function createWindow(route = '/'): BrowserWindow {
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -30,7 +30,7 @@ export function createWindow(): BrowserWindow {
   window.once('ready-to-show', () => window.show());
   lockDown(window.webContents);
 
-  if (rendererDevUrl) void window.loadURL(rendererDevUrl);
-  else void window.loadURL(`${APP_ORIGIN}/index.html`);
+  if (rendererDevUrl) void window.loadURL(`${rendererDevUrl}#${route}`);
+  else void window.loadURL(`${APP_ORIGIN}/index.html#${route}`);
   return window;
 }

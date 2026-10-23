@@ -2,6 +2,7 @@ import { app } from 'electron';
 import pino, { type Logger } from 'pino';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { redact } from './redact';
 
 let root: Logger | undefined;
 
@@ -22,10 +23,9 @@ export function initLogService(): void {
   root = pino(
     {
       level: 'info',
-      redact: {
-        paths: [...['password', 'token', 'cookie', 'secret', 'code'].flatMap((key) => [key, `*.${key}`, `**.${key}`])],
-        censor: '[REDACTED]',
-      },
+      formatters: { log: (object) => redact(object) as Record<string, unknown> },
+      // Redaction already serializes errors; pino would reclassify the plain result as Object.
+      serializers: { err: (error: unknown) => error },
       base: { app: 'jobpilot' },
     },
     transport,

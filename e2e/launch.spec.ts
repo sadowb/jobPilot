@@ -1,11 +1,11 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 // eslint-disable-next-line no-empty-pattern
 test('launches JobPilot and verifies encrypted storage, migrations, backups, and clean logs', async ({}, testInfo) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   const userData = mkdtempSync(join(tmpdir(), 'jobpilot-e2e-'));
   const rendererErrors: string[] = [];
   const mainStderr: string[] = [];
@@ -63,6 +63,188 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       await expect(window.locator('#root')).not.toBeEmpty();
     }
 
+    const redaction = await app.evaluate(async ({ app }) => {
+      const fs = process.getBuiltinModule('node:fs')!;
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+      const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
+      const { loggerFor, RunTraceService } = nodeRequire(
+        path.join(app.getAppPath(), 'out/main/index.js'),
+      ) as typeof import('../src/main/app/main');
+      const key = Buffer.from(
+        (await safeStorage.decryptStringAsync(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc'))))
+          .result,
+        'base64',
+      );
+      const db = new Database(path.join(app.getPath('userData'), 'jobpilot.db'));
+      db.pragma("cipher='sqlcipher'");
+      db.key(key);
+      db.pragma('foreign_keys = ON');
+      const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+      const now = Date.now();
+      db.prepare('INSERT INTO company (id, name, name_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(
+        id,
+        'Redaction fixture',
+        'redaction-fixture',
+        now,
+        now,
+      );
+      db.prepare(
+        'INSERT INTO job_posting (id, company_id, url, canonical_url, ats, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ).run(id, id, 'https://example.com/redaction', 'https://example.com/redaction', 'custom', 'Fixture', now, now);
+      db.prepare(
+        'INSERT INTO application (id, posting_id, queue_rank, last_activity_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(id, id, 1, now, now, now);
+      db.prepare(
+        'INSERT INTO run (id, application_id, agent, browser, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(id, id, 'claude', 'neo', now, now);
+      const names = [
+        'password',
+        'passwd',
+        'passphrase',
+        'access_token',
+        'refresh_token',
+        'private_key',
+        'session_id',
+        'secret',
+        'token',
+        'cookie',
+        'authorization',
+        'key',
+        'hexkey',
+        'apiKey',
+        'api_key',
+        'session',
+        'BW_SESSION',
+        'otp',
+        'totp',
+        'code',
+        'dbPassword',
+        'clientSecret',
+        'x-api-key',
+        'set-cookie',
+        'sessionToken',
+        'githubToken',
+        'signingPrivateKey',
+        'databaseHexKey',
+      ];
+      const values = names.map((name) => `redaction-fixture-${name}-private`);
+      const metadata = {
+        canonical_key: 'work_authorization',
+        field_key: 'q_123',
+        sqliteCode: 'SQLITE_NOTADB',
+        keyboard: 'QWERTY',
+        zip_code: '12345',
+        status_code: 'failed',
+        sqlite_status: 'busy',
+        error_class: 'DatabaseError',
+      };
+      const payload = {
+        ...metadata,
+        a: {
+          b: {
+            c: Object.fromEntries(names.map((name, index) => [name, values[index]])),
+            list: [{ password: values[0] }],
+            visible: 'kept',
+            diagnostic:
+              'file:jobpilot.db?cipher=sqlcipher&hexkey=deadbeef key=key-private password=password-private token=token-private Bearer bearer-private',
+          },
+        },
+      };
+      const before = JSON.stringify(payload);
+      const logger = loggerFor('redaction-e2e');
+      logger.info(payload, 'Nested redaction fixture');
+      logger.error(
+        {
+          ...payload,
+          err: Object.assign(new Error('open failed file:jobpilot.db?cipher=sqlcipher&hexkey=deadbeef'), {
+            code: 'SQLITE_NOTADB',
+            password: values[0],
+            extra: payload,
+          }),
+        },
+        'Error redaction fixture',
+      );
+      const cycle: Record<string, unknown> = { password: values[0] };
+      cycle.self = cycle;
+      logger.info({ cycle }, 'Cycle redaction fixture');
+      let deep: Record<string, unknown> = { password: values[0] };
+      for (let index = 0; index < 25; index++) deep = { child: deep };
+      logger.info({ deep }, 'Depth redaction fixture');
+      RunTraceService.append({ runId: id, type: 'message', payload });
+      const row = db.prepare('SELECT payload FROM run_event WHERE run_id = ?').get(id) as { payload: string };
+      const trace = fs.readFileSync(path.join(app.getPath('userData'), 'logs', 'runs', `${id}.jsonl`), 'utf8');
+      db.close();
+      await new Promise<void>((resolve, reject) => logger.flush((error) => (error ? reject(error) : resolve())));
+      const tracePayload = JSON.parse(row.payload);
+      return {
+        unmodified: JSON.stringify(payload) === before,
+        allRedacted:
+          values.every((value) => !row.payload.includes(value) && !trace.includes(value)) &&
+          !row.payload.includes('deadbeef') &&
+          !trace.includes('deadbeef') &&
+          !row.payload.includes('-private') &&
+          !trace.includes('-private'),
+        markers: Object.values(tracePayload.a.b.c).every((value) => value === '[REDACTED]'),
+        kept:
+          tracePayload.a.b.visible === 'kept' &&
+          tracePayload.a.b.diagnostic ===
+            'file:jobpilot.db?cipher=sqlcipher&hexkey=[REDACTED] key=[REDACTED] password=[REDACTED] token=[REDACTED] Bearer [REDACTED]' &&
+          Object.entries(metadata).every(([key, value]) => tracePayload[key] === value),
+        traceMatches: JSON.stringify(JSON.parse(trace).payload) === row.payload,
+      };
+    });
+    expect(redaction).toEqual({ unmodified: true, allRedacted: true, markers: true, kept: true, traceMatches: true });
+
+    // Native dialogs are intercepted in main: the exported key never crosses into the renderer or test trace.
+    await app.evaluate(({ app }) => {
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { dialog, clipboard } = nodeRequire('electron') as typeof import('electron');
+      const original = dialog.showMessageBox;
+      const dialogs: Electron.MessageBoxOptions[] = [];
+      const responses = [0, 1, 1];
+      dialog.showMessageBox = (async (...args: unknown[]) => {
+        dialogs.push(args.at(-1) as Electron.MessageBoxOptions);
+        return { response: responses.shift() ?? 0, checkboxChecked: false };
+      }) as typeof dialog.showMessageBox;
+      Object.assign(globalThis, {
+        recoveryDialogCheck: async () => {
+          const key = dialogs[2]?.detail;
+          const complete =
+            dialogs.length === 3 &&
+            typeof key === 'string' &&
+            /^[A-Za-z0-9+/]{43}=$/.test(key) &&
+            Buffer.from(key, 'base64').length === 32 &&
+            dialogs[2]?.message?.includes('main Bitwarden vault') &&
+            (await clipboard.readText()) === key;
+          if (complete) dialog.showMessageBox = original;
+          return Boolean(complete);
+        },
+      });
+    });
+    await window.evaluate(() => {
+      location.hash = '#/settings';
+    });
+    const exportButton = window.getByRole('button', { name: 'Export recovery key' });
+    await window.evaluate(() => window.jobpilot.recovery.export());
+    await exportButton.click();
+    await expect
+      .poll(() =>
+        app!.evaluate(() =>
+          (globalThis as typeof globalThis & { recoveryDialogCheck: () => Promise<boolean> }).recoveryDialogCheck(),
+        ),
+      )
+      .toBe(true);
+    await window.evaluate(() => {
+      location.hash = '#/';
+    });
+
     const state = await app.evaluate(({ app }) => {
       const fs = process.getBuiltinModule('node:fs')!;
       const path = process.getBuiltinModule('node:path')!;
@@ -117,20 +299,49 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         }
         backupOpensWithKey = true;
       }
-      const logs = readFiles(path.join(userData, 'logs')).filter((file) => file.endsWith('.log'));
+      const logs = readFiles(path.join(userData, 'logs')).filter(
+        (file) => file.endsWith('.log') || file.endsWith('.jsonl'),
+      );
       const logText = logs.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
       const fatalLogEntries = logText
         .split('\n')
         .filter(Boolean)
         .flatMap((line) => {
           try {
-            const entry = JSON.parse(line) as { level?: number };
+            const entry = JSON.parse(line) as { level?: number; msg?: string };
+            if (entry.msg === 'Error redaction fixture') return [];
             return typeof entry.level === 'number' && entry.level >= 50 ? [line] : [];
           } catch {
             return [];
           }
         });
+      const errorEntry = logText
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+        .find((entry) => entry.msg === 'Error redaction fixture');
       return {
+        errorPreserved: {
+          type: errorEntry?.err.type,
+          message: errorEntry?.err.message,
+          stack:
+            errorEntry?.err.stack?.startsWith(
+              'Error: open failed file:jobpilot.db?cipher=sqlcipher&hexkey=[REDACTED]\n',
+            ) && /\n\s+at /.test(errorEntry.err.stack),
+          code: errorEntry?.err.code,
+          password: errorEntry?.err.password,
+          extraPassword: errorEntry?.err.extra?.a.b.c.password,
+          canonical_key: errorEntry?.canonical_key,
+          field_key: errorEntry?.field_key,
+          sqliteCode: errorEntry?.sqliteCode,
+          nestedPassword: errorEntry?.a.b.c.password,
+        },
+        nestedLoggerRedacted:
+          !logText.includes('-private') &&
+          !logText.includes('deadbeef') &&
+          logText.includes('Nested redaction fixture') &&
+          logText.includes('[Circular]') &&
+          logText.includes('[Depth limit]'),
         encrypted: !fs.readFileSync(dbFile).subarray(0, 16).equals(Buffer.from('SQLite format 3\0')),
         mode: dbStats.mode & 0o777,
         appliedMigrations,
@@ -143,6 +354,19 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       };
     });
 
+    expect(state.errorPreserved).toEqual({
+      type: 'Error',
+      message: 'open failed file:jobpilot.db?cipher=sqlcipher&hexkey=[REDACTED]',
+      stack: true,
+      code: 'SQLITE_NOTADB',
+      password: '[REDACTED]',
+      extraPassword: '[REDACTED]',
+      canonical_key: 'work_authorization',
+      field_key: 'q_123',
+      sqliteCode: 'SQLITE_NOTADB',
+      nestedPassword: '[REDACTED]',
+    });
+    expect(state.nestedLoggerRedacted).toBe(true);
     expect(state.encrypted).toBe(true);
     expect(state.mode).toBe(0o600);
     expect(state.appliedMigrations).toBe(state.migrationCount);
@@ -157,6 +381,90 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       .split('\n')
       .filter((line) => !/XPC error for connection/.test(line));
     expect(appStderr.join('\n')).not.toMatch(/error/i);
+
+    const keyFile = join(userData, 'db-key.enc');
+    const fixtureKey = join(userData, 'fixture-key.enc');
+    cpSync(keyFile, fixtureKey);
+    for (const failure of ['missing', 'unreadable', 'wrong-key']) {
+      if (failure === 'wrong-key') {
+        await app.evaluate(async ({ app }) => {
+          const fs = process.getBuiltinModule('node:fs')!;
+          const path = process.getBuiltinModule('node:path')!;
+          const nodeRequire = process
+            .getBuiltinModule('node:module')!
+            .createRequire(path.join(app.getAppPath(), 'package.json'));
+          const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+          fs.writeFileSync(
+            path.join(app.getPath('userData'), 'db-key.enc'),
+            await safeStorage.encryptStringAsync(Buffer.alloc(32).toString('base64')),
+          );
+        });
+      }
+      await app.close();
+      app = undefined;
+      if (failure === 'missing') rmSync(keyFile);
+      if (failure === 'unreadable') writeFileSync(keyFile, 'invalid encrypted fixture', { mode: 0o600 });
+      const beforeRecovery = readFileSync(join(userData, 'jobpilot.db'));
+      app = await electron.launch({
+        ...(packaged ? { executablePath } : {}),
+        args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
+        timeout: 60_000,
+      });
+      const recoveryWindow = await app.firstWindow();
+      await expect(recoveryWindow.getByRole('dialog', { name: 'Recover database' })).toBeVisible();
+      await recoveryWindow.getByLabel('Recovery key', { exact: true }).fill(Buffer.alloc(32).toString('base64'));
+      await recoveryWindow.getByRole('button', { name: 'Unlock database' }).click();
+      await expect(recoveryWindow.getByRole('alert')).toContainText('could not unlock');
+      expect(readFileSync(join(userData, 'jobpilot.db')).equals(beforeRecovery)).toBe(true);
+      if (failure === 'missing') expect(existsSync(keyFile)).toBe(false);
+      await app.evaluate(async ({ app }) => {
+        const fs = process.getBuiltinModule('node:fs')!;
+        const path = process.getBuiltinModule('node:path')!;
+        const nodeRequire = process
+          .getBuiltinModule('node:module')!
+          .createRequire(path.join(app.getAppPath(), 'package.json'));
+        const { safeStorage, BrowserWindow } = nodeRequire('electron') as typeof import('electron');
+        const { result } = await safeStorage.decryptStringAsync(
+          fs.readFileSync(path.join(app.getPath('userData'), 'fixture-key.enc')),
+        );
+        const window = BrowserWindow.getAllWindows()[0]!;
+        await window.webContents.executeJavaScript(
+          `document.getElementById('recovery-key').value = ${JSON.stringify(result)}; undefined`,
+        );
+      });
+      const restoredWindowPromise = app.waitForEvent('window');
+      await recoveryWindow.getByRole('button', { name: 'Unlock database' }).click();
+      window = await restoredWindowPromise;
+      await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+      expect(
+        await window.evaluate(() => window.jobpilot.recovery.import('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=')),
+      ).toBe(false);
+      const recovered = await app.evaluate(async ({ app }) => {
+        const fs = process.getBuiltinModule('node:fs')!;
+        const path = process.getBuiltinModule('node:path')!;
+        const nodeRequire = process
+          .getBuiltinModule('node:module')!
+          .createRequire(path.join(app.getAppPath(), 'package.json'));
+        const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+        const directory = app.getPath('userData');
+        const { result: expected } = await safeStorage.decryptStringAsync(
+          fs.readFileSync(path.join(directory, 'fixture-key.enc')),
+        );
+        const { result: actual } = await safeStorage.decryptStringAsync(
+          fs.readFileSync(path.join(directory, 'db-key.enc')),
+        );
+        const readLogs = (directory: string): string =>
+          fs
+            .readdirSync(directory, { withFileTypes: true })
+            .map((entry) => {
+              const file = path.join(directory, entry.name);
+              return entry.isDirectory() ? readLogs(file) : fs.readFileSync(file, 'utf8');
+            })
+            .join('');
+        return { restored: actual === expected, private: !readLogs(path.join(directory, 'logs')).includes(expected) };
+      });
+      expect(recovered).toEqual({ restored: true, private: true });
+    }
   } finally {
     if (app) {
       const closeTimer = setTimeout(() => app?.process().kill('SIGKILL'), 5_000);

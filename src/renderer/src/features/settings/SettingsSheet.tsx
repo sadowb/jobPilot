@@ -52,6 +52,7 @@ function Section({
 /** The V17 Settings sheet: 584px, slides in from the right. State is local sample state (no persistence yet). */
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { state: theme, setSource, error: themeError } = useTheme();
+  const [recoveryError, setRecoveryError] = useState(false);
   const [autopilot, setAutopilot] = useState(DEFAULT_SETTINGS.autopilot);
   const [crew, setCrew] = useState(DEFAULT_SETTINGS.crew);
   const [submitMode, setSubmitMode] = useState(DEFAULT_SETTINGS.submitMode);
@@ -281,6 +282,20 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               </div>
             </div>
           ))}
+        </Section>
+        <Section
+          title="Database recovery"
+          desc="Keep a recovery key in your main Bitwarden vault in case this Mac loses Keychain access."
+        >
+          <Button
+            onClick={() => {
+              setRecoveryError(false);
+              void window.jobpilot?.recovery.export().catch(() => setRecoveryError(true));
+            }}
+          >
+            Export recovery key
+          </Button>
+          {recoveryError && <p role="alert">The recovery key could not be exported.</p>}
         </Section>
         <Section title="Theme" desc="Follows your Mac when set to System.">
           <Segmented label="Theme" options={THEMES} value={theme.source} onChange={setSource} className="w-[300px]" />
