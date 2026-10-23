@@ -65,7 +65,15 @@ jobs:
       - name: Run dev, packaged, and upgrade journeys
         run: node scripts/run-e2e.mjs
       - name: Verify exact shipped bytes (fuses, signature, real boot)
-        run: node scripts/verify-shipped.mjs
+        # Fresh default keychain = first install. The journeys' re-signed copy already owns the login-keychain item,
+        # and an ad-hoc signature differs per binary, so the shipped app would block on a Keychain prompt (ADR 0014).
+        run: |
+          security create-keychain -p ci "$RUNNER_TEMP/shipped.keychain"
+          security set-keychain-settings "$RUNNER_TEMP/shipped.keychain"
+          security unlock-keychain -p ci "$RUNNER_TEMP/shipped.keychain"
+          security list-keychains -d user -s "$RUNNER_TEMP/shipped.keychain"
+          security default-keychain -s "$RUNNER_TEMP/shipped.keychain"
+          node scripts/verify-shipped.mjs
       - name: Report macOS minutes
         if: always()
         env:
