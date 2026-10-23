@@ -46,6 +46,7 @@ export function UpNextView({
   onOpenInbox,
   onAddJobs,
   modalOpen,
+  addedIds = [],
 }: {
   state: QueueState;
   dispatch: Dispatch<QueueAction>;
@@ -55,6 +56,7 @@ export function UpNextView({
   onOpenInbox: () => void;
   onAddJobs: () => void;
   modalOpen: boolean;
+  addedIds?: string[];
 }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const dragId = useRef<string | null>(null);
@@ -207,6 +209,7 @@ export function UpNextView({
           )}
           {rows.map((item) => (
             <QueueRow
+              added={addedIds.includes(item.id)}
               key={item.id}
               item={item}
               position={queuePosition(state.items, item.id)}
