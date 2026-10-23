@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { IngestResult } from '../../../../../shared/dto';
 import { Button, Dialog, Input, Kbd, Status, Textarea } from '../../../components/ui';
 
@@ -17,6 +17,7 @@ export function AddJobsDialog({
   onAdded: () => Promise<void>;
   onClose: () => void;
 }) {
+  const inputId = useId();
   const [text, setText] = useState(initialText);
   const nextId = useRef(50);
   const [rows, setRows] = useState<Row[]>(() =>
@@ -125,9 +126,10 @@ export function AddJobsDialog({
           }
         }}
       >
-        <label className="flex flex-col gap-2 text-[13px]">
-          Job links
+        <div className="flex flex-col gap-2 text-[13px]">
+          <label htmlFor={inputId}>Job links</label>
           <Textarea
+            id={inputId}
             rows={4}
             value={text}
             disabled={busy}
@@ -142,7 +144,7 @@ export function AddJobsDialog({
               );
             }}
           />
-        </label>
+        </div>
         {candidates(text).length >= 50 && (
           <p role="status" className="mt-2 text-sm text-muted">
             50-link limit reached. Only the first 50 unique links are included.
