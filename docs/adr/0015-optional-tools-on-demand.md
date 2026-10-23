@@ -32,3 +32,25 @@ The shipped app keeps the `RunAsNode` fuse off (asserted by `verify-shipped`), s
 - **A run never installs anything.** A provider that is not ready returns `blocked` with reason `tool_not_installed` before the agent starts.
 - **Contract change (Phase 7 PR):** `BrowserProvider` gains `status()` and `install(onProgress)`; the same shape is reused by the memory and vault adapters.
 - Not chosen: bundling everything (size, attack surface, choices the owner did not make); using the owner's system Node or `npx` at run time (unpinned, may be missing, changes under us).
+
+## Claude Agent SDK runtime decision (#38)
+
+The check above is resolved for SDK **0.3.309**: its agent subprocess is a native
+Claude Code executable, not `cli.js`. No system Node or separately installed
+system CLI is required. The pinned Node tool runtime remains necessary for
+npm-based MCP servers, but Claude itself does not use it. `RunAsNode` stays off.
+
+When Claude is enabled, provision the release-pinned native executable from the
+matching `@anthropic-ai/claude-agent-sdk-darwin-arm64` (or darwin-x64) **0.3.309**
+package under `userData/tools/claude/`, with the same atomic, integrity-checked,
+observable installation rules as other tools. The SDK library is an application
+dependency; its optional binary packages are release inputs, not an excuse to
+launch a binary in `app.asar` or use an owner's system installation. The tools
+packaging phase must exclude unused platform binaries from the shipped app and
+supply the selected platform's pinned artifact to the installer. This PR adds the
+adapter and explicit executable dependency, not that installer. An unprovisioned
+adapter rejects `tool_not_installed` and starts no agent. API-key storage and the
+private config/workspace directories must be ready before enabling runs.
+
+See [ADR 0004](0004-agent-providers.md#claude-runtime-and-authentication-38) for
+authentication, environment isolation, and the exact upstream evidence.
