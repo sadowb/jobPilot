@@ -26,7 +26,7 @@ export class ProfileRepository {
       githubUrl: p?.github || null,
       portfolioUrl: p?.website || null,
       summary: p?.bio || null,
-      salaryMin: p?.salaryAmount ?? null,
+      salaryMin: p?.salaryAmount == null ? null : p.salaryAmount * (p.salaryPeriod === 'month' ? 12 : 1),
       salaryCurrency: p?.salaryCurrency || null,
       noticePeriodDays: p?.notice?.kind === 'period' ? p.notice.days : null,
       preferences: data,

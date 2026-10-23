@@ -519,6 +519,12 @@ test('profile edits and common answers persist in the database after relaunch', 
     await window.getByRole('button', { name: 'Save changes', exact: true }).click();
     await expect(window.getByRole('dialog')).toHaveCount(0);
     await window.evaluate(async () => {
+      const { personal } = await window.jobpilot!.profile.get();
+      if (!personal) throw new Error('Saved profile is missing');
+      await window.jobpilot!.profile.save({
+        section: 'personal',
+        value: { ...personal, salaryAmount: 5000, salaryPeriod: 'month', salaryCurrency: 'EUR' },
+      });
       await window.jobpilot!.profile.save({
         section: 'answers',
         value: [
@@ -544,6 +550,32 @@ test('profile edits and common answers persist in the database after relaunch', 
     await expect(window.getByLabel('Last name', { exact: true })).toHaveValue('Lovelace');
     const stored = await window.evaluate(() => window.jobpilot!.profile.get());
     expect(stored.personal?.firstName).toBe('Ada');
+    expect(stored.personal?.salaryAmount).toBe(5000);
+    expect(stored.personal?.salaryPeriod).toBe('month');
+    const salary = await instance.evaluate(async ({ app }) => {
+      const fs = process.getBuiltinModule('node:fs')!;
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const { safeStorage } = nodeRequire('electron') as typeof import('electron');
+      const Database = nodeRequire('better-sqlite3') as typeof import('better-sqlite3');
+      const key = Buffer.from(
+        (await safeStorage.decryptStringAsync(fs.readFileSync(path.join(app.getPath('userData'), 'db-key.enc'))))
+          .result,
+        'base64',
+      );
+      const db = new Database(path.join(app.getPath('userData'), 'jobpilot.db'), { readonly: true });
+      try {
+        db.pragma("cipher='sqlcipher'");
+        db.key(key);
+        return db.prepare('SELECT salary_min, salary_currency FROM profile').get();
+      } finally {
+        key.fill(0);
+        db.close();
+      }
+    });
+    expect(salary).toEqual({ salary_min: 60000, salary_currency: 'EUR' });
     expect(stored.answers?.[0]?.default).toBe('I build useful software.');
     expect(stored.answers?.[0]?.overrides.FR).toBe('Je crée des logiciels.');
   } finally {
