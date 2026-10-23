@@ -33,3 +33,4 @@ jobs:
       - run: npm run db:check
       - run: npm run build
       - run: npm run smoke:native
+      - run: npx playwright test # launches the built app (catches preload/IPC breakage)
