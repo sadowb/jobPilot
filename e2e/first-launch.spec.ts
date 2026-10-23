@@ -74,6 +74,10 @@ test('fresh profile opens onboarding and contains only real empty states', async
       if (route === '/settings') await expect(window.getByRole('dialog', { name: 'Settings' })).toBeVisible();
       else await expect(window.getByRole('heading', { name: title!, exact: true })).toBeVisible();
       await capture(name!);
+      if (route === '/settings') {
+        await window.getByRole('heading', { name: 'Site logins', exact: true }).scrollIntoViewIfNeeded();
+        await capture('empty-settings-logins');
+      }
     }
     // Profile presence is persisted by main; clearing browser storage cannot turn it into a fresh profile.
     await window.evaluate(
