@@ -1,6 +1,6 @@
 # Release and code signing
 
-Decision record: [ADR 0014](adr/0014-stable-self-signed-code-signing.md). Today builds are ad-hoc signed (`mac.identity: null` in `electron-builder.yml`); the steps below move them to one stable self-signed certificate.
+Decision record: [ADR 0014](adr/0014-stable-self-signed-code-signing.md). Local builds without a configured identity remain ad-hoc. Pull request CI creates one throwaway identity per macOS job and signs both the PR and base apps with it; releases use the long-lived certificate described below.
 
 ## 1. Create the certificate (owner, once, on your Mac)
 
@@ -27,13 +27,12 @@ security find-identity -v -p codesigning   # must list "JobPilot Self-Signed"
 - GitHub: `base64 -i jp.p12 | gh secret set MAC_CERT_P12_BASE64 -R sadowb/jobPilot`, then `gh secret set MAC_CERT_PASSWORD -R sadowb/jobPilot` (paste the password at the prompt).
 - `rm -rf ~/jp-cert`
 
-## 3. Wire it into builds (implementation PR)
+## 3. Wire it into builds
 
-- `electron-builder.yml`: `mac.identity: "JobPilot Self-Signed"`, keep `hardenedRuntime` off and no notarization.
-- CI `app` job and `release.yml`: `CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}`, `CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}`. Pull requests from forks get no secrets: fall back to ad-hoc and skip the upgrade Keychain assertion there.
-- Verify after `npm run dist:dir`: `codesign -dr - release/mac-arm64/JobPilot.app` prints a DR with `certificate leaf = H"…"`, and it is identical across two builds.
-- Spike to confirm in that PR: electron-builder accepts a self-signed (non-Apple) identity. If it refuses, sign in the existing `afterPack` hook with `codesign --force --deep --sign "JobPilot Self-Signed"` instead.
-- Owner check, once: build twice, launch both on the same userData, and confirm there is no Keychain prompt on the second launch.
+- The macOS `app` job generates a fresh self-signed certificate with `extendedKeyUsage=codeSigning`, imports it into a `$RUNNER_TEMP` keychain, makes that keychain the only search and default keychain for the job, and adds a code-signing-only trust record for the certificate. It sets a non-interactive codesign partition list, signs the packaged PR app and PR-base app with that identity after electron-builder, verifies their designated requirements match and use a certificate leaf hash, then removes the trust record, keychain and key material even on failure. macOS needs the trust entry for `security find-identity` to recognize it as a valid signing identity. Fork PRs need no repository secrets.
+- `scripts/run-e2e.mjs` keeps the signed identity while toggling the inspector fuse and re-signs both apps after each toggle. Local runs without `JOBPILOT_SIGN_IDENTITY` keep ad-hoc signing.
+- `release.yml` requires `MAC_CERT_P12_BASE64` and `MAC_CERT_PASSWORD` and fails before packaging with a pointer to this document if either is absent. It imports that real release certificate into a temporary keychain, passes the secrets to electron-builder, and uses the same identity during the upgrade journey. Releases never use the CI throwaway identity. `CSC_FOR_PULL_REQUEST` is set only for the PR packaging job.
+- Verify after CI packaging: `codesign -dr - release/mac-arm64/JobPilot.app` prints a DR with `certificate leaf = H"…"`, and it is identical for the PR and base builds. `scripts/verify-shipped.mjs` checks the final app with `codesign --verify --deep --strict`.
 
 ## 4. Releasing
 
