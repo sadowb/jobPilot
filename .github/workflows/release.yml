@@ -123,6 +123,9 @@ jobs:
         run: gh release create "${{ github.ref_name }}" --draft release/*.dmg SHA256SUMS --title "JobPilot ${{ github.ref_name }}" --notes "Draft release. Owner review and publish required."
       - name: Delete release signing identity
         if: always()
+        # The runner is ephemeral; trust cleanup must not block the job.
+        timeout-minutes: 1
+        continue-on-error: true
         run: |
           crt="$RUNNER_TEMP/jobpilot-release-cert/release.crt"
           if [ -f "$crt" ]; then

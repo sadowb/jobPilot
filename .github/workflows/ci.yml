@@ -141,6 +141,9 @@ jobs:
           retention-days: 7
       - name: Delete per-job signing identity
         if: always()
+        # The runner is ephemeral; trust cleanup must not block the job.
+        timeout-minutes: 1
+        continue-on-error: true
         run: |
           crt="$RUNNER_TEMP/jobpilot-ci-cert/jobpilot.crt"
           if [ -f "$crt" ]; then
