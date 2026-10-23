@@ -35,6 +35,8 @@ e2e/                     Playwright `_electron` journeys
 - **No network listeners.** IPC only; MCP servers run over stdio.
 - **No unit tests** (ADR 0011). Verification = typecheck, lint, build, and Haiku Playwright journeys in `e2e/` against the built app.
 - **Feature and bug coverage**: every feature PR adds or extends an `e2e/` journey that drives the feature through the packaged app; bug fixes add the journey assertion that would have caught the bug. Run `npm run verify` before every PR.
+- **Gentle footprint** (owner rule; ADR in #70): JobPilot is a guest on the user's Mac. Write only inside `userData` (plus files the user explicitly exports). Never modify the user's installed tools or their config (`~/.claude`, settings, plugins, PATH, shell rc); detect tools with `--version` only. Add no background presence (login item, LaunchAgent, tray, global shortcut). Kill child processes and close browser tabs on cancel and quit. No telemetry.
+- **Verification before merge**: green CI proves it runs, not that it is right. Renderer changes ship light and dark screenshots as CI artifacts (see `e2e/AGENTS.md`) and are compared to the approved mockup. Agent and tester reports are claims until reproduced.
 - **Minimal code**: use a library or the platform before writing helpers; no abstractions without a second caller; comment only the non-obvious why. A shortcut with a known limit gets `// shortcut: <limit>, <when to upgrade>`.
 - **Stay in your lane**: touch only the folders your task names. Contract files (`*.entity.ts`, `shared/dto`, `platform/*/types.ts`) change only in a PR that says so in its title.
 
