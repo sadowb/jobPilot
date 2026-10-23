@@ -1,5 +1,5 @@
-import { clipboard, dialog, type BrowserWindow } from 'electron';
-import { getDatabaseKey } from '../../platform/secrets/db-key';
+import { dialog, type BrowserWindow } from 'electron';
+import { showRecoveryKey } from '../../platform/secrets/db-key';
 import { recoverDatabaseKey } from '../../platform/db/database';
 
 let finishRecovery: (() => void) | undefined;
@@ -31,44 +31,7 @@ export async function exportRecoveryKey(window: BrowserWindow | null): Promise<v
   if (!window || exporting || finishRecovery) return;
   exporting = true;
   try {
-    const confirmation = await dialog.showMessageBox(window, {
-      type: 'warning',
-      title: 'Export recovery key',
-      message: 'Show the key that unlocks your database and its backups?',
-      detail: 'Anyone with this key and your database can read it. Save it in your main Bitwarden vault.',
-      buttons: ['Cancel', 'Show recovery key'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (confirmation.response !== 1) return;
-    const { key } = await getDatabaseKey();
-    try {
-      const encoded = key.toString('base64');
-      const result = await dialog.showMessageBox(window, {
-        type: 'info',
-        title: 'Recovery key',
-        message: 'Save this recovery key in your main Bitwarden vault.',
-        detail: encoded,
-        buttons: ['Done', 'Copy key and close'],
-        defaultId: 0,
-        cancelId: 0,
-        noLink: true,
-      });
-      if (result.response === 1) {
-        await clipboard.writeText(encoded);
-        setTimeout(() => {
-          void clipboard
-            .readText()
-            .then(async (current) => {
-              if (current === encoded) await clipboard.clear();
-            })
-            .catch(() => undefined);
-        }, 60_000).unref();
-      }
-    } finally {
-      key.fill(0);
-    }
+    await showRecoveryKey(window);
   } catch {
     await dialog.showMessageBox(window, {
       type: 'error',

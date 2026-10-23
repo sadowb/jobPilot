@@ -1,4 +1,4 @@
-import { app, safeStorage } from 'electron';
+import { app, safeStorage, clipboard, dialog, type BrowserWindow } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -53,5 +53,46 @@ export async function storeDatabaseKey(key: Buffer): Promise<void> {
     chmodSync(file, 0o600);
   } finally {
     rmSync(temporary, { force: true });
+  }
+}
+
+export async function showRecoveryKey(window: BrowserWindow): Promise<void> {
+  const confirmation = await dialog.showMessageBox(window, {
+    type: 'warning',
+    title: 'Export recovery key',
+    message: 'Show the key that unlocks your database and its backups?',
+    detail: 'Anyone with this key and your database can read it. Save it in your main Bitwarden vault.',
+    buttons: ['Cancel', 'Show recovery key'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (confirmation.response !== 1) return;
+  const { key } = await getDatabaseKey();
+  try {
+    const encoded = key.toString('base64');
+    const result = await dialog.showMessageBox(window, {
+      type: 'info',
+      title: 'Recovery key',
+      message: 'Save this recovery key in your main Bitwarden vault.',
+      detail: encoded,
+      buttons: ['Done', 'Copy key and close'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    if (result.response === 1) {
+      await clipboard.writeText(encoded);
+      setTimeout(() => {
+        void clipboard
+          .readText()
+          .then(async (current) => {
+            if (current === encoded) await clipboard.clear();
+          })
+          .catch(() => undefined);
+      }, 60_000).unref();
+    }
+  } finally {
+    key.fill(0);
   }
 }

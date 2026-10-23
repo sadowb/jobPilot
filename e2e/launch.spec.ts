@@ -158,18 +158,26 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       const nodeRequire = process
         .getBuiltinModule('node:module')!
         .createRequire(path.join(app.getAppPath(), 'package.json'));
-      const { dialog } = nodeRequire('electron') as typeof import('electron');
+      const { dialog, clipboard } = nodeRequire('electron') as typeof import('electron');
       const original = dialog.showMessageBox;
       const dialogs: Electron.MessageBoxOptions[] = [];
-      const responses = [0, 1, 0];
+      const responses = [0, 1, 1];
       dialog.showMessageBox = (async (...args: unknown[]) => {
         dialogs.push(args.at(-1) as Electron.MessageBoxOptions);
         return { response: responses.shift() ?? 0, checkboxChecked: false };
       }) as typeof dialog.showMessageBox;
       Object.assign(globalThis, {
-        recoveryDialogCheck: () => {
-          if (dialogs.length === 3) dialog.showMessageBox = original;
-          return dialogs;
+        recoveryDialogCheck: async () => {
+          const key = dialogs[2]?.detail;
+          const complete =
+            dialogs.length === 3 &&
+            typeof key === 'string' &&
+            /^[A-Za-z0-9+/]{43}=$/.test(key) &&
+            Buffer.from(key, 'base64').length === 32 &&
+            dialogs[2]?.message?.includes('main Bitwarden vault') &&
+            (await clipboard.readText()) === key;
+          if (complete) dialog.showMessageBox = original;
+          return Boolean(complete);
         },
       });
     });
@@ -181,20 +189,9 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
     await exportButton.click();
     await expect
       .poll(() =>
-        app!.evaluate(() => {
-          const check = (globalThis as typeof globalThis & { recoveryDialogCheck: () => Electron.MessageBoxOptions[] })
-            .recoveryDialogCheck;
-          // Only restore after the async safeStorage read and final dialog have completed.
-          const dialogs = check();
-          const key = dialogs[2]?.detail;
-          return (
-            dialogs.length === 3 &&
-            typeof key === 'string' &&
-            /^[A-Za-z0-9+/]{43}=$/.test(key) &&
-            Buffer.from(key, 'base64').length === 32 &&
-            dialogs[2]?.message?.includes('main Bitwarden vault')
-          );
-        }),
+        app!.evaluate(() =>
+          (globalThis as typeof globalThis & { recoveryDialogCheck: () => Promise<boolean> }).recoveryDialogCheck(),
+        ),
       )
       .toBe(true);
     await window.evaluate(() => {
