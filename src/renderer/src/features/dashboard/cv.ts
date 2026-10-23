@@ -39,14 +39,14 @@ export interface SentCv {
 
 /** The user's CV as the V17 board draws it. Placeholder text; replaced by the parsed CV once Onboarding stores it. */
 export const SAMPLE_CV: CvDocument = {
-  name: 'Abdelhadi Marjane',
-  headline: 'Software engineer · Ifrane, Morocco · linkedin.com/in/abdelhadi-marjane',
+  name: 'Sara Benali',
+  headline: 'Software engineer · Rabat, Morocco · linkedin.com/in/sara-benali-example',
   sections: [
     {
       heading: 'Education',
       entries: [
         {
-          title: 'Al Akhawayn University, Ifrane',
+          title: 'Mohammed V University, Rabat',
           when: '2022 – 2026',
           lines: [
             {

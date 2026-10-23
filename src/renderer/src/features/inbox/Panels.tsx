@@ -258,7 +258,7 @@ function TabSnapshot({ driving }: { driving: boolean }) {
           <div className="font-serif text-[24px] leading-[1.1]">Software Engineer, New Grad</div>
           <div className="text-[12.5px] text-muted">Brex · New York, NY</div>
         </div>
-        <FilledField label="Full name" value="Abdelhadi Marjane" />
+        <FilledField label="Full name" value="Sara Benali" />
         <FilledField label="Email" value="a•••••98@gmail.com" />
         <div className="relative flex flex-col gap-[5px]">
           <span className={MONO}>Education *</span>

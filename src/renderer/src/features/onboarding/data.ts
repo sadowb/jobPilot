@@ -10,14 +10,14 @@ export interface CvField {
   delay: number;
 }
 
-export const CV_FILE = { name: 'Marjane_CV_2026.pdf', pages: 1, sizeKb: 184 } as const;
+export const CV_FILE = { name: 'Benali_CV_2026.pdf', pages: 1, sizeKb: 184 } as const;
 
 export const CV_FIELDS: readonly CvField[] = [
-  { label: 'Name', value: 'Abdelhadi Marjane', delay: 0.1 },
+  { label: 'Name', value: 'Sara Benali', delay: 0.1 },
   { label: 'Email', value: 'a•••••98@gmail.com', delay: 0.2 },
-  { label: 'Phone', value: '+212 6•• ••• •78', delay: 0.25 },
-  { label: 'Location', value: 'Ifrane, Morocco', delay: 0.3 },
-  { label: 'Education', value: 'BSc Computer Science', secondary: 'Al Akhawayn University · 2026', delay: 0.4 },
+  { label: 'Phone', value: '+212 6•• ••• •41', delay: 0.25 },
+  { label: 'Location', value: 'Rabat, Morocco', delay: 0.3 },
+  { label: 'Education', value: 'BSc Computer Science', secondary: 'Mohammed V University · 2026', delay: 0.4 },
   { label: 'Experience', value: '1 role · Teaching assistant, 2025–2026', delay: 0.5 },
   { label: 'Projects', value: '3 · JobPilot, Darija sentiment, Campus shuttle ETA', delay: 0.6 },
   {
@@ -100,7 +100,7 @@ export interface ChecklistItem {
 }
 
 export const SETUP_CHECKLIST: readonly ChecklistItem[] = [
-  { title: 'CV read and checked', detail: 'Marjane_CV_2026.pdf' },
+  { title: 'CV read and checked', detail: 'Benali_CV_2026.pdf' },
   {
     title: 'Facts saved · 3',
     detail: 'Authorization, salary floor, relocation',
