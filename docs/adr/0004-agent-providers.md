@@ -6,49 +6,73 @@
 - Rationale: The owner can choose coding agents while the app retains one run contract.
 - Consequence: Provider events are normalized, final output is parsed before state changes, and each provider receives only its run's environment.
 
-## Claude runtime and authentication (#38)
+## Claude runtime and authentication (#67, supersedes #38)
 
-Pin `@anthropic-ai/claude-agent-sdk` to **0.3.309**. This release's npm
-manifest ships platform-specific **native** Claude Code binaries as optional
-dependencies, rather than the older `cli.js` subprocess. Its native executable
-needs neither a separate system Claude CLI installation nor a Node executable on
-the owner's Mac. Electron runs the SDK library; the native process runs the agent.
-`RunAsNode` remains off. See [ADR 0015](0015-optional-tools-on-demand.md).
+Keep the SDK library pinned to **0.3.309**, but never ship, download, copy or
+launch its optional native CLI packages. JobPilot detects the owner's installed,
+unmodified `claude`, like a plugin. Discovery uses the login-shell PATH and
+`~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`; candidates run only
+`--version`, with a five-second timeout. A manual override must be absolute,
+executable and respond to the same check. Settings records the resolved absolute
+path and version after owner confirmation. Runs never search PATH.
 
-The provider requires an absolute installed executable path and private workspace
-and config directory. Provision these under `userData/tools/claude/` when the
-owner enables Claude. Never fall back to PATH, `npx`, Electron, or an SDK binary
-inside `app.asar`. Missing executable rejects with `tool_not_installed` before
-query startup. Tool installation/UI wiring belongs to the on-demand tools phase;
-this adapter never downloads or copies executables during a run.
+Settings owns the model (`haiku` by default), authentication choice, confirmation
+and runtime login state. `--version` does not prove authentication: the initial
+login state is explicitly **unverified**, not a false claim of readiness. A CLI
+`authentication_failed` event changes Settings to **not logged in** and directs
+the owner to “Open Terminal and run `claude` once to sign in”. Re-detect and
+confirmation allow retry after signing in. JobPilot never launches a login flow
+or reads login credentials itself. Missing tools and known authentication issues
+block run creation; authentication failure during a run needs owner intervention,
+rather than a generic failed run.
 
-API-key authentication is the owner decision. The main-process composition root
-must supply `readApiKey` from `platform/secrets` (Electron safeStorage); it is a
-required dependency, with no environment or OAuth fallback. No provider API accepts
-a key from the renderer or `RunSpec`. Existing secrets code only stores the DB
-key; Claude key storage/composition is a separate wiring requirement until that
-platform addition is authorized. The adapter itself never reads OS credentials.
+For this owner's personal build, using their own CLI login is the owner decision.
+Without an API key the provider sets neither `ANTHROPIC_API_KEY` nor
+`CLAUDE_CONFIG_DIR`: the unmodified CLI finds its own login. Packaged/distributed
+builds default to API-key authentication through #66, with a private config
+under `userData/agents/claude/<run-id>/config/`. A saved key is read only in main through
+`platform/secrets`; no key is accepted from a run or renderer. The provider's
+`readApiKey` dependency is optional, and an unavailable explicitly selected key
+fails closed instead of silently billing a subscription.
 
-Only `PATH`, `HOME`, `TMPDIR`, `LANG`, and `LC_ALL` are copied from `RunSpec.env`.
-The provider sets its private `CLAUDE_CONFIG_DIR` and injects the secrets accessor's
-`ANTHROPIC_API_KEY` into the child environment. All other variables (including
-OAuth, cloud-provider selectors, API base URL overrides, and Node injection flags)
-are dropped. The spawn callback reapplies this environment at the subprocess
-boundary. No `process.env` spread is used. SDK errors are reduced to fixed messages,
-and the API key is scrubbed from normalized events. Built-in tools are disabled;
-only the run's named MCP tools can be granted. User/project settings and ambient
-MCP configuration are disabled. The caller supplies the settings-selected model
-as `RunSpec.model`, and the service owns persistence/redaction of run content.
+This is a product boundary, not a blanket legal assurance. Anthropic distinguishes
+ordinary personal CLI use from third-party SDK products; distributed products
+must use the API-key default and comply with the applicable terms. JobPilot does
+not collect, store or intermediate subscription tokens. See the upstream
+[authentication and credential rules](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use).
 
-Session, text, tool-use/result, final usage, and failure messages map to the
-existing `RunEvent` contract. Cost includes cache input tokens and is rounded to
-integer microdollars; SDK totals may include earlier resumed-session usage, so
-consumers must treat cost events as snapshots rather than increments. Structured
-output is requested from the zod JSON Schema and parsed with both the supplied
-schema and `RunResultSchema` before resolving. The event iterable must be consumed
-to completion; cancellation, timeout, or early iterator close rejects `result`.
+Only `PATH`, `HOME`, `TMPDIR`, `LANG`, `LC_ALL`, `USER` and `LOGNAME` are copied
+from the run environment. The provider adds `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`
+plus fixed flags disabling nonessential traffic (telemetry, error reporting and
+auto-updates) and official marketplace auto-install; see the upstream
+[environment reference](https://code.claude.com/docs/en/env-vars). It adds, only in API-key mode, the key and private config directory. The spawn callback
+reapplies this exact environment. OAuth variables, endpoint overrides and injection
+flags are dropped. Errors use fixed messages; nonempty API keys are scrubbed from
+events and diagnostics.
 
-Sources: [upstream SDK repository](https://github.com/anthropics/claude-agent-sdk-typescript),
-[exact npm manifest](https://unpkg.com/@anthropic-ai/claude-agent-sdk@0.3.309/package.json),
-and the installed release's `sdk.d.ts` / `sdk.mjs` (`query`, `Options.env`, native
-executable detection, `spawnClaudeCodeProcess`). Checked 2026-10-23.
+Each run has a private workspace under `userData/agents/claude/<run-id>/`. Each run disables filesystem
+settings (`settingSources: []`), ambient MCP (`strictMcpConfig: true`), built-in
+tools (`tools: []`), and grants only named run MCP tools (plus structured output)
+through `canUseTool`. This excludes personal hooks, plugins and CLAUDE.md. Host
+managed policy and the CLI's own global login config remain upstream inputs:
+[SDK isolation limits](https://code.claude.com/docs/en/agent-sdk/claude-code-features#what-settingsources-does-not-control).
+We do not modify the owner's files to disable those inputs.
+
+`persistSession: false` passes `--no-session-persistence` on every run. No local
+session history is available for later resumption; future Inbox continuation must
+reconstruct context from JobPilot's own records. Abort, timeout, iterator close
+and quit kill the run process group, including stdio MCP children. Runs create no
+login items, tray, global shortcuts, listeners or telemetry.
+
+`scripts/probe-claude.mts` uses the fake CLI exclusively. It checks detection,
+keyless/keyed environments, isolation flags with fake personal hooks/MCP/settings,
+session persistence flags and process exit after cancel, timeout and stop/quit.
+It verifies the SDK transport contract, not proprietary CLI internals or live
+Keychain behavior. Packaged Settings journeys exercise persistence, model
+propagation, authentication errors and light/dark screenshots in CI.
+
+Final output is parsed with both the supplied schema and `RunResultSchema` before
+state changes. Events normalize session, messages, tools, usage and errors. Cost
+events are snapshots (SDK totals may include prior resumed usage), not increments.
+The event iterable must be consumed to completion; incomplete streams reject the
+result.

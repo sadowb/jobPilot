@@ -23,6 +23,22 @@ export class SettingsRepository {
     this.db.delete(settings).where(eq(settings.key, 'secrets.anthropic')).run();
   }
 
+  agentPreferences(): unknown {
+    return this.db.select().from(settings).where(eq(settings.key, 'agents.claude')).get()?.value;
+  }
+
+  storeAgentPreferences(value: unknown): void {
+    this.db
+      .insert(settings)
+      .values({ key: 'agents.claude', value })
+      .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: Date.now() } })
+      .run();
+  }
+
+  hasAnthropicKey(): boolean {
+    return this.anthropicKey() !== undefined;
+  }
+
   applyConcurrency(): unknown {
     return this.db.select().from(settings).where(eq(settings.key, 'runs.concurrency')).get()?.value;
   }

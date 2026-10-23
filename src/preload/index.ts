@@ -9,6 +9,9 @@ import {
   IpcValidationErrorSchema,
 } from '../shared/ipc';
 import {
+  AgentStateSchema,
+  SaveAgentSchema,
+  DetectAgentSchema,
   ClaudeKeyStatusSchema,
   ClaudeKeyTestSchema,
   RunSummarySchema,
@@ -30,6 +33,17 @@ async function invoke(channel: string, ...args: unknown[]): Promise<unknown> {
 }
 
 const bridge: JobPilotBridge = {
+  agent: {
+    async get() {
+      return AgentStateSchema.parse(await invoke(Channels.getAgent));
+    },
+    async detect(path) {
+      return AgentStateSchema.parse(await invoke(Channels.detectAgent, DetectAgentSchema.parse({ path })));
+    },
+    async save(input) {
+      return AgentStateSchema.parse(await invoke(Channels.saveAgent, SaveAgentSchema.parse(input)));
+    },
+  },
   claudeKey: {
     async set(key) {
       await invoke(Channels.setClaudeKey, key);

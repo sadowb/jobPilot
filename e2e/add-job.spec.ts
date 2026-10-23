@@ -330,10 +330,11 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       clipboardData.setData('text', 'https://apply.workable.com/j/3A8C3159E7');
       document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true }));
     });
-    await expect(window.getByLabel('Job URL', { exact: true })).toHaveValue('https://apply.workable.com/j/3A8C3159E7');
-    await window.getByRole('button', { name: 'Preview job', exact: true }).click();
-    await expect(window.getByRole('region', { name: 'Posting preview' })).toContainText('Social Media Manager');
-    await window.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(window.getByLabel('Job links', { exact: true })).toHaveValue(
+      'https://apply.workable.com/j/3A8C3159E7',
+    );
+    await expect(window.getByRole('list', { name: 'Job previews' })).toContainText('Social Media Manager');
+    await window.keyboard.press('Escape');
     await expect(window.getByRole('dialog')).toHaveCount(0);
 
     let workablePostingId: string | undefined;

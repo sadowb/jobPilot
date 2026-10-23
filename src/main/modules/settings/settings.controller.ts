@@ -1,6 +1,7 @@
+import type { AgentSettingsService } from './agent.service';
 import { z } from 'zod';
 import { Channels, RecoveryKeySchema } from '../../../shared/ipc';
-import { ClaudeApiKeySchema, ThemeSourceSchema } from '../../../shared/dto';
+import { ClaudeApiKeySchema, ThemeSourceSchema, DetectAgentSchema, SaveAgentSchema } from '../../../shared/dto';
 import { defineHandler } from '../../platform/ipc/registry';
 import { exportRecoveryKey, importRecoveryKey } from './recovery.service';
 import { claudeKeyService, setTheme, themeState } from './settings.service';
@@ -21,5 +22,13 @@ export function claudeKeyHandlers(service: ReturnType<typeof claudeKeyService>) 
     defineHandler(Channels.getClaudeKeyStatus, z.void(), () => service.status()),
     defineHandler(Channels.removeClaudeKey, z.void(), () => service.remove()),
     defineHandler(Channels.testClaudeKey, z.void(), () => service.test()),
+  ];
+}
+
+export function agentHandlers(service: AgentSettingsService) {
+  return [
+    defineHandler(Channels.getAgent, z.void(), () => service.state()),
+    defineHandler(Channels.detectAgent, DetectAgentSchema, ({ path }) => service.detect(path)),
+    defineHandler(Channels.saveAgent, SaveAgentSchema, (input) => service.save(input)),
   ];
 }
