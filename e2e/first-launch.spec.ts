@@ -32,9 +32,10 @@ test('fresh profile opens onboarding and contains only real empty states', async
       await expect(window.locator('body')).not.toContainText(
         /Mercury|Retool|Duolingo|Perpay|Clark|Ramp|Figma|Brex|Sara Benali/,
       );
-      for (const theme of ['light', 'dark']) {
-        await window.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
-        await window.screenshot({ path: testInfo.outputPath(`${name}-${theme}.png`) });
+      for (const theme of ['light', 'dark'] as const) {
+        await window.evaluate((theme) => window.jobpilot!.theme.set(theme), theme);
+        await expect(window.locator('html')).toHaveCSS('color-scheme', theme);
+        await window.screenshot({ path: testInfo.outputPath(`${name}-${theme}.png`), animations: 'disabled' });
       }
     };
     await capture('first-launch');
@@ -111,7 +112,7 @@ test('fresh profile opens onboarding and contains only real empty states', async
         now,
         now,
       );
-      for (const [i, status] of ['submitted', 'interviewing', 'queued'].entries()) {
+      for (const [i, status] of ['applied', 'interviewing', 'queued'].entries()) {
         const url = `https://example.invalid/jobs/${i}`;
         db.prepare(
           'INSERT INTO job_posting (id, company_id, url, canonical_url, ats, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
