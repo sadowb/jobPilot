@@ -37,7 +37,15 @@ describe('renderer stylesheet policy', () => {
   it('has no class selectors in the entry stylesheet outside Tailwind directives', () => {
     const source = readFileSync(join(renderer, 'src/styles/index.css'), 'utf8');
     const root = postcss.parse(source);
-    const allowedBase = new Set(['html, body, #root', 'body', 'button', 'a', ':focus-visible', '::selection', '*, *::before, *::after']);
+    const allowedBase = new Set([
+      'html, body, #root',
+      'body',
+      'button',
+      'a',
+      ':focus-visible',
+      '::selection',
+      '*, *::before, *::after',
+    ]);
     const selectors: string[] = [];
     const visit = (node: postcss.Container, inBase = false) => {
       node.nodes?.forEach((child) => {
