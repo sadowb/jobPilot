@@ -257,8 +257,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     await expect(window.getByRole('list', { name: 'Job previews' })).toContainText(recording.response.title);
     expect(await window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
     await window.getByRole('button', { name: 'Add 1 jobs', exact: true }).click();
-    await expect(window.getByRole('status').filter({ hasText: 'Added 1 ·' })).toBeVisible();
-    await window.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(window.getByRole('status').filter({ hasText: 'Added 1 jobs' })).toBeVisible();
     await expect(window.getByRole('dialog')).toHaveCount(0);
     await expect(window.getByRole('row').filter({ hasText: recording.response.title })).toHaveCount(1);
     const [item] = await window.evaluate(() => window.jobpilot!.applications.list());
@@ -387,7 +386,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
       const undici = nodeRequire('undici') as typeof import('undici');
       const mock = new undici.MockAgent();
       mock.disableNetConnect();
-      for (const id of [1, 2, 3, 4]) {
+      for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
         mock
           .get('https://boards-api.greenhouse.io')
           .intercept({ path: `/v1/boards/perpay/jobs/${id}?pay_transparency=true&questions=true` })
@@ -396,7 +395,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
             { ...fixture.response, id, title: `${fixture.response.title} ${id}` },
             { headers: { 'content-type': 'application/json' } },
           )
-          .delay(id === 1 ? 700 : 20)
+          .delay(id === 5 ? 12_000 : id === 1 ? 700 : 20)
           .persist();
       }
       mock
@@ -436,22 +435,76 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(window.getByLabel('Job links', { exact: true })).toHaveValue(paste);
     const rows = window.getByRole('list', { name: 'Job previews' }).getByRole('listitem');
     await expect(rows).toHaveCount(5);
-    await expect(rows.nth(0)).toContainText('reading');
-    await expect(rows.nth(1)).toContainText('ready');
-    await expect(rows.nth(0)).toContainText('ready');
-    await expect(rows.nth(2)).toContainText('ready');
-    await expect(rows.nth(3)).toContainText('already in your list');
-    await expect(rows.nth(4)).toContainText('unsupported');
+    await expect(rows.nth(0)).toContainText('Reading');
+    await expect(rows.nth(1)).toContainText('Ready');
+    await expect(rows.nth(0)).toContainText('Ready');
+    await expect(rows.nth(2)).toContainText('Ready');
+    await expect(rows.nth(3)).toContainText('Already in your list');
+    await expect(rows.nth(4)).toContainText('Unsupported');
     await expect(rows.nth(4)).toContainText('No job description or application form');
     await expect(window.getByRole('button', { name: 'Add 3 jobs', exact: true })).toBeEnabled();
+    await window.setViewportSize({ width: 1280, height: 800 });
+    const mixed = [
+      ...urls,
+      'https://example.com/about',
+      'http://example.com/job',
+      ...[5, 6, 7, 8, 9, 10].map((id) => `https://boards.greenhouse.io/perpay/jobs/${id}`),
+    ].join('\n');
+    await window.getByLabel('Job links', { exact: true }).fill(mixed);
+    await expect(rows).toHaveCount(12);
+    await expect(rows.nth(11)).toContainText('Ready');
+    await expect(rows.nth(6)).toContainText('Reading');
+    await expect(rows.nth(5)).toContainText('Failed');
+    await expect(rows.nth(3)).toContainText('Already in your list');
+    await expect(rows.nth(4)).toContainText('Unsupported');
+    const list = window.getByRole('list', { name: 'Job previews' });
+    const pasteBox = window.getByLabel('Job links', { exact: true });
+    const pasteBounds = await pasteBox.boundingBox();
+    const addBounds = await window.getByRole('button', { name: /^Add \d+ jobs$/ }).boundingBox();
+    const geometry = await list.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.children].map((row) => {
+        const rect = row.getBoundingClientRect();
+        return { height: rect.height, visible: rect.top >= bounds.top && rect.bottom <= bounds.bottom };
+      });
+    });
+    expect(geometry.filter((row) => row.visible).length).toBeGreaterThanOrEqual(7);
+    expect(new Set(geometry.map((row) => row.height)).size).toBe(1);
     await window.screenshot({ path: testInfo.outputPath('bulk-after-light.png') });
     await window.evaluate(() => document.documentElement.classList.add('dark'));
     await window.screenshot({ path: testInfo.outputPath('bulk-after-dark.png') });
-    await window.getByLabel('Job links', { exact: true }).press('Meta+Enter');
-    await expect(
-      window.getByRole('status').filter({ hasText: 'Added 3 · 1 already in your list · 1 unsupported' }),
-    ).toBeVisible();
-    await window.getByRole('status').filter({ hasText: 'Added 3 ·' }).scrollIntoViewIfNeeded();
+    await window.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await rows.nth(6).evaluate((row) => getComputedStyle(row).animationName)).toBe('none');
+    expect(
+      await rows
+        .nth(6)
+        .locator('.animate-jp-spin')
+        .evaluate((spinner) => getComputedStyle(spinner).animationName),
+    ).toBe('none');
+    await window.screenshot({ path: testInfo.outputPath('bulk-after-reduced-motion.png') });
+    await rows.nth(0).focus();
+    await rows.nth(0).press('ArrowDown');
+    await expect(rows.nth(1)).toBeFocused();
+    await rows.nth(1).press('ArrowUp');
+    await expect(rows.nth(0)).toBeFocused();
+    await list.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    expect(await pasteBox.boundingBox()).toEqual(pasteBounds);
+    expect(await window.getByRole('button', { name: /^Add \d+ jobs$/ }).boundingBox()).toEqual(addBounds);
+    await rows.nth(11).focus();
+    await rows.nth(11).press('Backspace');
+    await expect(rows).toHaveCount(11);
+    await expect(rows.nth(10)).toBeFocused();
+    await pasteBox.fill(paste);
+    await expect(rows).toHaveCount(5);
+    await expect(window.getByRole('button', { name: 'Add 3 jobs', exact: true })).toBeEnabled();
+    await pasteBox.press('Meta+Enter');
+    await expect(window.getByRole('dialog')).toHaveCount(0);
+    await expect(window.getByRole('status').filter({ hasText: 'Added 3 jobs' })).toBeVisible();
+    await expect(window.getByRole('row').filter({ hasText: `${recording.response.title} 1` })).toHaveClass(
+      /bg-work-tint/,
+    );
     await window.screenshot({ path: testInfo.outputPath('bulk-added.png') });
     const newApplications = () =>
       window.evaluate(
@@ -459,16 +512,22 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
         existing.id,
       );
     await expect.poll(newApplications).toHaveLength(3);
-    // Failed rows can be edited, retried, or removed without discarding the successful additions.
-    await window.getByLabel('Job links', { exact: true }).fill('http://example.com/job');
-    await expect(rows.nth(0)).toContainText('failed');
-    await window.getByLabel('Edit link 1', { exact: true }).fill('https://example.com/retry');
+    // Reopen to exercise inline recovery without discarding the saved jobs.
+    await window.evaluate(() => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text', 'http://example.com/job');
+      document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true }));
+    });
+    await expect(rows.nth(0)).toContainText('Failed');
+    await expect(rows.nth(0).getByRole('textbox')).toHaveCount(0);
+    await rows.nth(0).getByRole('button', { name: 'Edit link 1', exact: true }).click();
+    await window.getByRole('textbox', { name: 'Edit link 1', exact: true }).fill('https://example.com/retry');
     await window.getByLabel('Job links', { exact: true }).focus();
     await expect(rows.nth(0)).toContainText('Could not read this posting');
     await rows.nth(0).getByRole('button', { name: 'Retry', exact: true }).click();
-    await expect(rows.nth(0)).toContainText('ready');
+    await expect(rows.nth(0)).toContainText('Ready');
     await expect(rows.nth(0)).toContainText('Retry role');
-    await window.getByRole('button', { name: 'Remove link 1', exact: true }).click();
+    await window.getByRole('button', { name: 'Remove link', exact: true }).click();
     await expect(rows).toHaveCount(0);
     await window
       .getByLabel('Job links', { exact: true })

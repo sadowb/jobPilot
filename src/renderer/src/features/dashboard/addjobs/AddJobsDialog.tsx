@@ -1,6 +1,12 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import type { IngestResult } from '../../../../../shared/dto';
-import { Button, Dialog, Input, Kbd, Status, Textarea } from '../../../components/ui';
+import { Dialog, Eyebrow, Field, Input, Textarea, Tile, cn } from '../../../components/ui';
+import { controlFocus } from '../../../components/ui/controlStyles';
+import { V17AgentBot, agentLook } from '../../../components/V17AgentBot';
+import { V17Icon } from '../../../components/V17Icon';
+import { V17Kbd } from '../../../components/V17Kbd';
+import { V17StatusChip } from '../../../components/V17StatusChip';
+import { AppButton } from '../components/AppButton';
 
 function candidates(text: string) {
   return [...new Set((text.match(/https?:\/\/[^\s,<>"'“”]+/gi) ?? []).map((url) => url.replace(/[.!?;:)}\]]+$/, '')))];
@@ -14,7 +20,7 @@ export function AddJobsDialog({
   onClose,
 }: {
   initialText: string;
-  onAdded: () => Promise<void>;
+  onAdded: (ids: string[], complete: boolean) => Promise<void>;
   onClose: () => void;
 }) {
   const inputId = useId();
@@ -29,7 +35,8 @@ export function AddJobsDialog({
   const adding = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [added, setAdded] = useState(0);
+  const [editing, setEditing] = useState<number | null>(null);
+  const list = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
     for (const row of rows) {
@@ -55,7 +62,27 @@ export function AddJobsDialog({
 
   const ready = rows.filter((row) => row.result?.ok && !row.result.alreadyTracked && !row.added);
   const reading = rows.some((row) => !row.result);
-  const summary = `Added ${added} · ${rows.filter((row) => row.result?.ok && row.result.alreadyTracked).length} already in your list · ${rows.filter((row) => row.result && !row.result.ok && row.result.code === 'UNSUPPORTED_ATS').length} unsupported`;
+  const tracked = rows.filter((row) => row.result?.ok && row.result.alreadyTracked).length;
+  const unsupported = rows.filter(
+    (row) => row.result && !row.result.ok && row.result.code === 'UNSUPPORTED_ATS',
+  ).length;
+  const failed = rows.filter(
+    (row) => row.addError || (row.result && !row.result.ok && row.result.code !== 'UNSUPPORTED_ATS'),
+  ).length;
+  const summary = `${ready.length} ready · ${tracked} already in your list · ${unsupported} unsupported${failed ? ` · ${failed} failed` : ''}`;
+
+  const remove = (index: number) => {
+    if (busy) return;
+    setRows((current) => current.filter((_, i) => i !== index));
+    requestAnimationFrame(() => {
+      const remaining = list.current?.querySelectorAll<HTMLElement>(':scope > li');
+      remaining?.[Math.min(index, remaining.length - 1)]?.focus();
+    });
+  };
+  const retry = (row: Row, url = row.url) => {
+    setEditing(null);
+    setRows((current) => current.map((item) => (item.id === row.id ? { id: nextId.current++, url } : item)));
+  };
 
   const submit = async () => {
     if (adding.current || reading || !ready.length) return;
@@ -64,18 +91,21 @@ export function AddJobsDialog({
     setError(null);
     try {
       const postingIds = new Set<string>();
+      const addedIds: string[] = [];
+      let complete = true;
       for (const row of ready) {
         if (!row.result?.ok) continue;
         try {
           if (!postingIds.has(row.result.posting.postingId)) {
-            await window.jobpilot!.applications.create(row.result.posting.postingId);
+            const application = await window.jobpilot!.applications.create(row.result.posting.postingId);
+            addedIds.push(application.id);
             postingIds.add(row.result.posting.postingId);
-            setAdded((count) => count + 1);
           }
           setRows((current) =>
             current.map((item) => (item.id === row.id ? { ...item, added: true, addError: undefined } : item)),
           );
         } catch {
+          complete = false;
           setRows((current) =>
             current.map((item) =>
               item.id === row.id ? { ...item, addError: 'Could not add this job. Please try again.' } : item,
@@ -83,7 +113,7 @@ export function AddJobsDialog({
           );
         }
       }
-      await onAdded();
+      if (addedIds.length) await onAdded(addedIds, complete);
     } catch {
       setError('Jobs were saved, but the dashboard could not refresh. Close and reload to see them.');
     } finally {
@@ -98,27 +128,36 @@ export function AddJobsDialog({
       onClose={() => {
         if (!adding.current) onClose();
       }}
-      title="Paste job links"
-      eyebrow="Add jobs"
-      description="Paste links or an entire email. We’ll read up to 50 jobs, then add the ready ones to Up next."
+      title="Add jobs"
+      eyebrow="Paste job links"
+      className="w-[min(840px,calc(100vw-32px))] [&_header]:py-3 [&_footer]:shrink-0 [&_footer]:py-3"
+      bodyClassName="flex min-h-0 flex-col overflow-hidden py-4"
       note={
-        <>
-          <Kbd>⌘↵</Kbd> to add
-        </>
+        <span className="flex flex-col gap-1 tabular-nums">
+          <span aria-busy={reading}>
+            {reading ? `Reading ${rows.filter((row) => !row.result).length} links…` : summary}
+          </span>
+          <span className="flex items-center gap-1 text-muted">
+            <V17Kbd>↑↓</V17Kbd> move <V17Kbd>⌫</V17Kbd> remove <V17Kbd>Esc</V17Kbd> close
+          </span>
+        </span>
       }
       onSubmit={() => void submit()}
       actions={
-        <>
-          <Button variant="ghost" size="sm" disabled={busy} onClick={onClose}>
-            {added ? 'Done' : 'Cancel'}
-          </Button>
-          <Button variant="primary" size="sm" type="submit" disabled={busy || reading || !ready.length}>
-            {busy ? 'Adding…' : `Add ${ready.length} jobs`}
-          </Button>
-        </>
+        <AppButton
+          variant="primary"
+          size="sm"
+          type="submit"
+          aria-label={`Add ${ready.length} jobs`}
+          className={cn('min-w-40 tabular-nums', controlFocus)}
+          disabled={busy || reading || !ready.length}
+        >
+          {busy ? 'Adding…' : `Add ${ready.length} jobs`} <V17Kbd>⌘↵</V17Kbd>
+        </AppButton>
       }
     >
       <div
+        className="flex min-h-0 flex-col gap-3"
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
             event.preventDefault();
@@ -126,136 +165,228 @@ export function AddJobsDialog({
           }
         }}
       >
-        <div className="flex flex-col gap-2 text-[13px]">
-          <label htmlFor={inputId}>Job links</label>
-          <Textarea
-            id={inputId}
-            rows={4}
-            value={text}
-            disabled={busy}
-            placeholder={'https://…\nhttps://…'}
-            onChange={(event) => {
-              const value = event.target.value;
-              setText(value);
-              setRows((current) =>
-                candidates(value)
-                  .slice(0, 50)
-                  .map((url) => current.find((row) => row.url === url) ?? { id: nextId.current++, url }),
-              );
-            }}
-          />
+        <div className="shrink-0">
+          <Field
+            className="[&>label]:sr-only [&>span]:mb-0"
+            label="Job links"
+            hint={`Paste a list, a spreadsheet column, or an email · ${rows.length} links found`}
+          >
+            <Textarea
+              id={inputId}
+              rows={3}
+              className="max-h-40 min-h-24 resize-none field-sizing-content font-mono [@media(height<=850px)]:max-h-24"
+              value={text}
+              disabled={busy}
+              placeholder="Paste job links — one or fifty"
+              onChange={(event) => {
+                const value = event.target.value;
+                setText(value);
+                setRows((current) =>
+                  candidates(value)
+                    .slice(0, 50)
+                    .map((url) => current.find((row) => row.url === url) ?? { id: nextId.current++, url }),
+                );
+              }}
+            />
+          </Field>
+          <Eyebrow>{rows.length} links found</Eyebrow>
+          {!text.trim() && (
+            <p className="mt-2 text-xs text-muted">
+              Paste job links — one or fifty <V17Kbd>⌘V</V17Kbd>
+            </p>
+          )}
+          {candidates(text).length >= 50 && (
+            <p role="status" className="mt-2 text-xs text-muted">
+              50-link limit reached. Only the first 50 unique links are included.
+            </p>
+          )}
+          {text.trim() && !rows.length && (
+            <p role="status" className="mt-2 text-xs text-muted">
+              Paste links starting with http:// or https://.
+            </p>
+          )}
         </div>
-        {candidates(text).length >= 50 && (
-          <p role="status" className="mt-2 text-sm text-muted">
-            50-link limit reached. Only the first 50 unique links are included.
-          </p>
-        )}
-        {text.trim() && !rows.length && (
-          <p role="status" className="mt-2 text-sm text-muted">
-            Paste links starting with http:// or https://.
-          </p>
-        )}
-        <ol aria-label="Job previews" aria-live="polite" className="mt-4 space-y-3">
-          {rows.map((row, index) => {
-            const result = row.result;
-            const status = row.added
-              ? 'added'
-              : !result
-                ? 'reading'
-                : result.ok
-                  ? result.alreadyTracked
-                    ? 'already in your list'
-                    : 'ready'
-                  : result.code === 'UNSUPPORTED_ATS'
-                    ? 'unsupported'
-                    : 'failed';
-            return (
-              <li key={row.id} className="rounded-2xl border border-line bg-panel p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs text-muted">Link {index + 1}</span>
-                  <Status
-                    kind={
-                      status === 'failed'
-                        ? 'bad'
-                        : status === 'reading'
-                          ? 'work'
-                          : status === 'ready' || status === 'added'
-                            ? 'done'
-                            : 'idle'
+        {!!rows.length && (
+          <ol
+            ref={list}
+            aria-label="Job previews"
+            className="min-h-0 max-h-[min(52vh,480px)] overflow-hidden overflow-y-auto rounded-3xl border border-line bg-bg"
+          >
+            {rows.map((row, index) => {
+              const result = row.result;
+              const posting = result?.ok ? result.posting : null;
+              const unsupported = result && !result.ok && result.code === 'UNSUPPORTED_ATS';
+              const failed = !!row.addError || (result && !result.ok && !unsupported);
+              const neutral = row.added || (result?.ok && result.alreadyTracked);
+              const status = row.added
+                ? 'Added'
+                : !result
+                  ? 'Reading'
+                  : neutral
+                    ? 'Already in your list'
+                    : unsupported
+                      ? 'Unsupported'
+                      : failed
+                        ? 'Failed'
+                        : 'Ready';
+              const reason = row.addError ?? (result && !result.ok ? result.message : '');
+              return (
+                <li
+                  key={row.id}
+                  tabIndex={0}
+                  title={row.url}
+                  style={{ '--d': `${Math.min(index * 10, 120)}ms` } as CSSProperties}
+                  className={cn(
+                    'group grid h-12 min-h-[46px] shrink-0 grid-cols-[28px_minmax(0,1fr)_auto_28px] items-center gap-3 border-t border-line px-5 first:border-t-0 hover:bg-panel',
+                    'animate-jp-aj-in [animation-delay:var(--d)] [animation-duration:150ms] motion-reduce:animate-none',
+                    controlFocus,
+                    (neutral || unsupported) && 'opacity-50',
+                  )}
+                  onKeyDown={(event) => {
+                    if (event.target instanceof HTMLInputElement) return;
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      const next = Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+                      list.current?.querySelectorAll<HTMLElement>(':scope > li')[next]?.focus();
+                    } else if (event.key === 'Backspace') {
+                      event.preventDefault();
+                      remove(index);
                     }
-                  >
-                    {status}
-                  </Status>
-                </div>
-                <p className="mt-2 truncate text-xs text-muted" title={row.url}>
-                  {row.url}
-                </p>
-                {result?.ok && (
-                  <div className="mt-2">
-                    <div className="text-sm font-semibold">{result.posting.company}</div>
-                    <h3 className="mt-1 text-lg">{result.posting.title}</h3>
-                    <p className="text-sm text-muted">
-                      {[result.posting.location, result.posting.ats].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                )}
-                {result && !result.ok && (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-sm text-muted">{result.message}</p>
-                    <Input
-                      aria-label={`Edit link ${index + 1}`}
-                      defaultValue={row.url}
-                      disabled={busy}
-                      onBlur={(event) => {
-                        const url = event.target.value.trim();
-                        if (url !== row.url)
-                          setRows((current) =>
-                            current.map((item) => (item.id === row.id ? { id: nextId.current++, url } : item)),
-                          );
-                      }}
-                    />
-                  </div>
-                )}
-                {row.addError && (
-                  <p role="alert" className="mt-2 text-sm text-bad">
-                    {row.addError}
-                  </p>
-                )}
-                {!row.added && (
-                  <div className="mt-2 flex gap-2">
-                    {status === 'failed' && (
-                      <Button
-                        size="sm"
+                  }}
+                >
+                  {posting ? (
+                    <V17AgentBot name={posting.company} look={agentLook(posting.company)} state="idle" size={28} />
+                  ) : (
+                    <Tile size="sm" className="size-7 text-xs">
+                      ?
+                    </Tile>
+                  )}
+                  <div className="min-w-0">
+                    {editing === row.id ? (
+                      <Input
+                        autoFocus
+                        aria-label={`Edit link ${index + 1}`}
+                        defaultValue={row.url}
                         disabled={busy}
-                        onClick={() =>
-                          setRows((current) =>
-                            current.map((item) => (item.id === row.id ? { id: nextId.current++, url: row.url } : item)),
-                          )
-                        }
-                      >
-                        Retry
-                      </Button>
+                        className="min-h-0 py-1 font-mono text-xs"
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            event.currentTarget.blur();
+                          }
+                          if (event.key === 'Escape') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setEditing(null);
+                          }
+                        }}
+                        onBlur={(event) => {
+                          const url = event.target.value.trim();
+                          setEditing(null);
+                          if (url && url !== row.url) retry(row, url);
+                        }}
+                      />
+                    ) : (
+                      <>
+                        {!result ? (
+                          <div aria-hidden="true" className="space-y-1.5 motion-reduce:[&_*]:animate-none">
+                            <div className="h-3 w-3/4 origin-left animate-jp-aj-read rounded bg-line [animation-duration:1.4s] [animation-iteration-count:infinite]" />
+                            <div className="h-2 w-1/2 animate-pulse rounded bg-line" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="truncate text-[14px] leading-tight font-semibold">
+                              {posting
+                                ? `${posting.company} — ${posting.title}`
+                                : unsupported
+                                  ? 'Unsupported job site'
+                                  : 'Could not read job'}
+                            </div>
+                            <div
+                              title={reason || undefined}
+                              className={cn('truncate text-[12.5px] leading-[1.35] text-muted', !!reason && 'text-bad')}
+                            >
+                              {reason ||
+                                (posting &&
+                                  [posting.ats, posting.location, posting.salary].filter(Boolean).join(' · '))}
+                            </div>
+                          </>
+                        )}
+                      </>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      aria-label={`Remove link ${index + 1}`}
-                      onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}
-                    >
-                      Remove
-                    </Button>
                   </div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        <p role="status" aria-live="polite" className="mt-4 text-sm text-muted">
-          {summary}
-        </p>
+                  <div className="flex items-center gap-1.5">
+                    {failed && (
+                      <>
+                        <AppButton
+                          size="sm"
+                          variant="ghost"
+                          disabled={busy}
+                          className={cn('px-2', controlFocus)}
+                          onClick={() => retry(row)}
+                        >
+                          <V17Icon name="reload" />
+                          Retry
+                        </AppButton>
+                        <AppButton
+                          size="sm"
+                          variant="ghost"
+                          disabled={busy}
+                          className={cn('px-2', controlFocus)}
+                          aria-label={`Edit link ${index + 1}`}
+                          onClick={() => setEditing(row.id)}
+                        >
+                          Edit
+                        </AppButton>
+                      </>
+                    )}
+                    <V17StatusChip
+                      className={cn(
+                        'font-mono',
+                        !result
+                          ? 'bg-brand-tint text-brand-text'
+                          : neutral
+                            ? 'bg-line text-ink-2'
+                            : failed || unsupported
+                              ? 'bg-bad-tint text-bad'
+                              : 'bg-work-tint text-work',
+                      )}
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        {!result && (
+                          <span className="size-3 animate-jp-spin rounded-full border-2 border-transparent border-t-brand motion-reduce:animate-none" />
+                        )}
+                        {(failed || unsupported) && <span aria-hidden="true">▲</span>}
+                        {status}
+                      </span>
+                    </V17StatusChip>
+                  </div>
+                  <AppButton
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Remove link"
+                    disabled={busy || row.added}
+                    className={cn(
+                      'size-7 min-w-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100',
+                      controlFocus,
+                    )}
+                    onClick={() => remove(index)}
+                  >
+                    <V17Icon name="close" />
+                  </AppButton>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        {rows.some((row) => row.result && !row.result.ok && row.result.code === 'UNSUPPORTED_ATS') && (
+          <p className="shrink-0 text-xs text-muted">
+            Supported: Greenhouse, Lever, Ashby, Workable, SmartRecruiters, BambooHR, and pages with a job description
+            or application form.
+          </p>
+        )}
         {error && (
-          <p role="alert" className="mt-3 text-bad">
+          <p role="alert" className="text-xs text-bad">
             {error}
           </p>
         )}
