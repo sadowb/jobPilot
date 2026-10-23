@@ -59,7 +59,7 @@ export const IngestUrlSchema = z
 export const PostingPreviewSchema = PostingFormSchema.extend({ postingId: z.ulid() });
 export type PostingPreview = z.infer<typeof PostingPreviewSchema>;
 export const IngestResultSchema = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true), posting: PostingPreviewSchema }),
+  z.object({ ok: z.literal(true), posting: PostingPreviewSchema, alreadyTracked: z.boolean() }),
   z.object({ ok: z.literal(false), code: z.enum(['UNSUPPORTED_ATS', 'FETCH_FAILED']), message: z.string() }),
 ]);
 export type IngestResult = z.infer<typeof IngestResultSchema>;

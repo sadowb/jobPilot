@@ -58,7 +58,6 @@ export function Dashboard() {
 
   const onAdded = async () => {
     await reload();
-    setAddJobs(null);
     navigate('/?tab=up-next');
   };
 

@@ -12,6 +12,10 @@ export class ApplicationsService {
     return this.repository.list();
   }
 
+  hasPosting(postingId: string): boolean {
+    return this.repository.hasPosting(postingId);
+  }
+
   create(postingId: string) {
     return this.repository.create(postingId, (applicationId) =>
       AuditService.record({

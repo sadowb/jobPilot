@@ -253,11 +253,12 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       clipboardData.setData('text', url);
       document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true }));
     }, jobUrl);
-    await expect(window.getByLabel('Job URL', { exact: true })).toHaveValue(jobUrl);
-    await window.getByRole('button', { name: 'Preview job', exact: true }).click();
-    await expect(window.getByRole('region', { name: 'Posting preview' })).toContainText(recording.response.title);
+    await expect(window.getByLabel('Job links', { exact: true })).toHaveValue(jobUrl);
+    await expect(window.getByRole('list', { name: 'Job previews' })).toContainText(recording.response.title);
     expect(await window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
-    await window.getByRole('button', { name: 'Add to Up next', exact: true }).click();
+    await window.getByRole('button', { name: 'Add 1 jobs', exact: true }).click();
+    await expect(window.getByRole('status').filter({ hasText: 'Added 1 ·' })).toBeVisible();
+    await window.getByRole('button', { name: 'Done', exact: true }).click();
     await expect(window.getByRole('dialog')).toHaveCount(0);
     await expect(window.getByRole('row').filter({ hasText: recording.response.title })).toHaveCount(1);
     const [item] = await window.evaluate(() => window.jobpilot!.applications.list());
@@ -273,7 +274,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       jobUrl.replace('job-boards.eu.greenhouse.io', 'job-boards.greenhouse.io'),
     ]) {
       const result = await window.evaluate((url) => window.jobpilot!.postings.ingest(url), url);
-      expect(result.ok).toBe(true);
+      expect(result).toMatchObject({ ok: true, alreadyTracked: true });
       if (!result.ok) throw new Error(result.message);
       expect(result.posting.postingId).toBe(item!.postingId);
       const ids = await window.evaluate(
@@ -324,6 +325,158 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     });
     await expect(restarted.getByRole('row').filter({ hasText: recording.response.title })).toHaveCount(1);
     expect(await restarted.evaluate(() => window.jobpilot!.applications.list())).toEqual(persisted);
+  } finally {
+    await app?.close();
+    rmSync(userData, { recursive: true, force: true });
+  }
+});
+
+// eslint-disable-next-line no-empty-pattern
+test('bulk paste streams five previews, adds three new jobs, and retains them after restart', async ({}, testInfo) => {
+  test.setTimeout(120_000);
+  const userData = mkdtempSync(join(tmpdir(), 'jobpilot-bulk-'));
+  const packaged = testInfo.project.name === 'packaged';
+  const options = {
+    ...(packaged
+      ? {
+          executablePath:
+            process.env.JOBPILOT_PACKAGED_EXECUTABLE ?? 'release/mac-arm64/JobPilot.app/Contents/MacOS/JobPilot',
+        }
+      : {}),
+    args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
+    timeout: 60_000,
+  };
+  const urls = [1, 2, 3, 4].map((id) => `https://boards.greenhouse.io/perpay/jobs/${id}`);
+  const paste = `Hi! Try these roles:\n${urls[0]},${urls[1]}.\nAlso <${urls[2]}> and (${urls[3]}).\nhttps://example.com/about.\nRepeated: ${urls[0]}`;
+  let app: ElectronApplication | undefined;
+  try {
+    // Capture the actual PR base UI on CI, without changing or rebuilding it locally.
+    if (packaged && process.env.JOBPILOT_BASE_EXECUTABLE) {
+      const baseData = mkdtempSync(join(tmpdir(), 'jobpilot-bulk-before-'));
+      let base: ElectronApplication | undefined;
+      try {
+        base = await electron.launch({
+          executablePath: process.env.JOBPILOT_BASE_EXECUTABLE,
+          args: [`--user-data-dir=${baseData}`],
+          timeout: 60_000,
+        });
+        const window = await base.firstWindow();
+        await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+        await window.evaluate((text) => {
+          const clipboardData = new DataTransfer();
+          clipboardData.setData('text', text);
+          document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true }));
+        }, paste);
+        await expect(window.getByRole('dialog')).toBeVisible();
+        await window.screenshot({ path: testInfo.outputPath('bulk-before.png') });
+      } finally {
+        await base?.close();
+        rmSync(baseData, { recursive: true, force: true });
+      }
+    }
+    app = await electron.launch(options);
+    let window = await app.firstWindow();
+    await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await app.evaluate(({ app }, fixture) => {
+      const path = process.getBuiltinModule('node:path')!;
+      const nodeRequire = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const dns = nodeRequire('node:dns/promises') as typeof import('node:dns/promises');
+      dns.lookup = (async () => [{ address: '93.184.216.34', family: 4 }]) as typeof dns.lookup;
+      const undici = nodeRequire('undici') as typeof import('undici');
+      const mock = new undici.MockAgent();
+      mock.disableNetConnect();
+      for (const id of [1, 2, 3, 4]) {
+        mock
+          .get('https://boards-api.greenhouse.io')
+          .intercept({ path: `/v1/boards/perpay/jobs/${id}?pay_transparency=true&questions=true` })
+          .reply(
+            200,
+            { ...fixture.response, id, title: `${fixture.response.title} ${id}` },
+            { headers: { 'content-type': 'application/json' } },
+          )
+          .delay(id === 1 ? 700 : 20)
+          .persist();
+      }
+      mock
+        .get('https://example.com')
+        .intercept({ path: '/about' })
+        .reply(200, '<html><title>About us</title></html>')
+        .persist();
+      mock.get('https://example.com').intercept({ path: '/retry' }).reply(503, 'Temporary failure');
+      mock
+        .get('https://example.com')
+        .intercept({ path: '/retry' })
+        .reply(200, '<html><title>Retry role</title><label>Name<input name="name" required></label></html>')
+        .persist();
+      undici.Agent = class extends undici.Agent {
+        override dispatch(
+          options: import('undici').Agent.DispatchOptions,
+          handler: import('undici').Dispatcher.DispatchHandler,
+        ) {
+          return mock.dispatch(options, handler);
+        }
+      };
+    }, recording);
+    const existing = await window.evaluate(async (url) => {
+      const result = await window.jobpilot!.postings.ingest(url);
+      if (!result.ok) throw new Error(result.message);
+      return window.jobpilot!.applications.create(result.posting.postingId);
+    }, urls[3]!);
+    await window.evaluate((text) => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text', text);
+      document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true }));
+    }, paste);
+    await expect(window.getByLabel('Job links', { exact: true })).toHaveValue(paste);
+    const rows = window.getByRole('list', { name: 'Job previews' }).getByRole('listitem');
+    await expect(rows).toHaveCount(5);
+    await expect(rows.nth(0)).toContainText('reading');
+    await expect(rows.nth(1)).toContainText('ready');
+    await expect(rows.nth(0)).toContainText('ready');
+    await expect(rows.nth(2)).toContainText('ready');
+    await expect(rows.nth(3)).toContainText('already in your list');
+    await expect(rows.nth(4)).toContainText('unsupported');
+    await expect(rows.nth(4)).toContainText('No job description or application form');
+    await expect(window.getByRole('button', { name: 'Add 3 jobs', exact: true })).toBeEnabled();
+    await window.screenshot({ path: testInfo.outputPath('bulk-after-light.png') });
+    await window.evaluate(() => document.documentElement.classList.add('dark'));
+    await window.screenshot({ path: testInfo.outputPath('bulk-after-dark.png') });
+    await window.getByLabel('Job links', { exact: true }).press('Meta+Enter');
+    await expect(
+      window.getByRole('status').filter({ hasText: 'Added 3 · 1 already in your list · 1 unsupported' }),
+    ).toBeVisible();
+    await window.screenshot({ path: testInfo.outputPath('bulk-added.png') });
+    const newApplications = () =>
+      window.evaluate(
+        async (existingId) => (await window.jobpilot!.applications.list()).filter((item) => item.id !== existingId),
+        existing.id,
+      );
+    await expect.poll(newApplications).toHaveLength(3);
+    // Failed rows can be edited, retried, or removed without discarding the successful additions.
+    await window.getByLabel('Job links', { exact: true }).fill('http://example.com/job');
+    await expect(rows.nth(0)).toContainText('failed');
+    await window.getByLabel('Edit link 1', { exact: true }).fill('https://example.com/retry');
+    await window.getByLabel('Job links', { exact: true }).focus();
+    await expect(rows.nth(0)).toContainText('Could not read this posting');
+    await rows.nth(0).getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(rows.nth(0)).toContainText('ready');
+    await expect(rows.nth(0)).toContainText('Retry role');
+    await window.getByRole('button', { name: 'Remove link 1', exact: true }).click();
+    await expect(rows).toHaveCount(0);
+    await window
+      .getByLabel('Job links', { exact: true })
+      .fill(Array.from({ length: 51 }, (_, index) => `${urls[0]}?paste=${index}`).join('\n'));
+    await expect(rows).toHaveCount(50);
+    await expect(window.getByRole('status').filter({ hasText: '50-link limit reached' })).toBeVisible();
+    await window.getByLabel('Job links', { exact: true }).fill('');
+    const persisted = await newApplications();
+    await app.close();
+    app = await electron.launch(options);
+    window = await app.firstWindow();
+    await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    expect(await newApplications()).toEqual(persisted);
   } finally {
     await app?.close();
     rmSync(userData, { recursive: true, force: true });

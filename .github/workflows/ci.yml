@@ -179,6 +179,14 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Upload bulk add screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bulk-add-screenshots
+          path: test-results/**/bulk-*.png
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Delete per-job signing identity
         if: always()
         # Trust records disappear with the ephemeral runner.
