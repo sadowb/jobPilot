@@ -8,7 +8,7 @@ export default defineConfig({
   screenshot: 'only-on-failure',
   trace: 'retain-on-failure',
   projects: [
-    { name: 'dev', testMatch: /(?:launch|add-job|runs|secrets)\.spec\.ts/ },
-    { name: 'packaged', testMatch: /(?:launch|upgrade|add-job|runs|secrets)\.spec\.ts/ },
+    { name: 'dev', testMatch: /(?:launch|add-job|runs|secrets|agents)\.spec\.ts/ },
+    { name: 'packaged', testMatch: /(?:launch|upgrade|add-job|runs|secrets|agents)\.spec\.ts/ },
   ],
 });

@@ -1,6 +1,8 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { url as inspectorUrl } from 'node:inspector';
 import { db } from '../platform/db/database';
+import { AgentSettingsService } from '../modules/settings/agent.service';
+import { NeoBrowserProvider } from '../platform/browsers/neo';
 import { FakeAgentProvider } from '../platform/agents/fake';
 import { FakeBrowserProvider } from '../platform/browsers/fake';
 import { RunsService } from '../modules/runs/runs.service';
@@ -13,7 +15,12 @@ import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
 import { initLogService, loggerFor } from '../modules/observability/log.service';
-import { claudeKeyHandlers, recoveryHandlers, settingsHandlers } from '../modules/settings/settings.controller';
+import {
+  agentHandlers,
+  claudeKeyHandlers,
+  recoveryHandlers,
+  settingsHandlers,
+} from '../modules/settings/settings.controller';
 import { broadcastThemeChanges, claudeKeyService, loadTheme } from '../modules/settings/settings.service';
 import { DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
@@ -27,6 +34,7 @@ import { createWindow } from './window';
 export let databaseBackupTimer: NodeJS.Timeout | undefined;
 
 let runsService: RunsService;
+export let agentSettings: AgentSettingsService;
 export let fakeAgent: FakeAgentProvider | undefined;
 export let fakeBrowser: FakeBrowserProvider | undefined;
 
@@ -94,13 +102,20 @@ if (!app.requestSingleInstanceLock()) {
       fakeAgent = new FakeAgentProvider();
       fakeBrowser = new FakeBrowserProvider();
     }
-    runsService = new RunsService(db, app.getPath('userData'), fakeAgent, fakeBrowser);
+    agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);
+    runsService = new RunsService(
+      db,
+      app.getPath('userData'),
+      fakeAgent ?? agentSettings,
+      fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser')),
+    );
     await runsService.initialize();
     let stoppingRuns = false;
     app.on('before-quit', (event) => {
       if (stoppingRuns) return;
       event.preventDefault();
       stoppingRuns = true;
+      agentSettings.stop();
       void runsService.stop().finally(() => app.quit());
     });
 
@@ -111,6 +126,7 @@ if (!app.requestSingleInstanceLock()) {
       [
         ...runsHandlers(runsService),
         ...settingsHandlers,
+        ...agentHandlers(agentSettings),
         ...claudeKeyHandlers(claudeKeyService(db)),
         ...documentsHandlers,
         ...observabilityHandlers,
@@ -140,3 +156,5 @@ if (!app.requestSingleInstanceLock()) {
 export { loggerFor } from '../modules/observability/log.service';
 export { RunTraceService } from '../modules/observability/observability.service';
 export { db } from '../platform/db/database';
+
+export { RunResultSchema } from '../platform/agents/types';

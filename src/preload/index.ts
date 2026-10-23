@@ -8,6 +8,9 @@ import {
   RecoveryKeySchema,
 } from '../shared/ipc';
 import {
+  AgentStateSchema,
+  SaveAgentSchema,
+  DetectAgentSchema,
   ClaudeKeyStatusSchema,
   ClaudeKeyTestSchema,
   RunSummarySchema,
@@ -21,6 +24,17 @@ import {
 } from '../shared/dto';
 
 const bridge: JobPilotBridge = {
+  agent: {
+    async get() {
+      return AgentStateSchema.parse(await ipcRenderer.invoke(Channels.getAgent));
+    },
+    async detect(path) {
+      return AgentStateSchema.parse(await ipcRenderer.invoke(Channels.detectAgent, DetectAgentSchema.parse({ path })));
+    },
+    async save(input) {
+      return AgentStateSchema.parse(await ipcRenderer.invoke(Channels.saveAgent, SaveAgentSchema.parse(input)));
+    },
+  },
   claudeKey: {
     async set(key) {
       await ipcRenderer.invoke(Channels.setClaudeKey, key);

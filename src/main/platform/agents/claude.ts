@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { isAbsolute } from 'node:path';
@@ -15,7 +15,7 @@ import {
   type RunSpec,
 } from './types';
 
-const environmentKeys = ['PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL'] as const;
+const environmentKeys = ['PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'USER', 'LOGNAME'] as const;
 const contentSchema = z.union([
   z.string(),
   z.array(
@@ -45,11 +45,11 @@ const contentSchema = z.union([
 export interface ClaudeProviderOptions {
   /** Installed native executable, never Electron or a command found on PATH. */
   executablePath: string;
-  /** Private agent workspace and config home, provisioned by the tool installer. */
+  /** Private agent workspace and config home, under userData/agents/claude. */
   cwd: string;
   configDirectory: string;
   /** Main-process platform/secrets accessor; never sourced from RunSpec or the renderer. */
-  readApiKey: () => Promise<string>;
+  readApiKey?: () => Promise<string | undefined>;
   /** LogService child and redactor supplied by the main-process composition root. */
   logger: Pick<Logger, 'debug'>;
   redact: (value: unknown) => unknown;
@@ -57,6 +57,12 @@ export interface ClaudeProviderOptions {
 
 export class ClaudeProvider implements AgentProvider {
   readonly id = 'claude' as const;
+
+  private readonly controllers = new Set<AbortController>();
+
+  stop(): void {
+    for (const controller of this.controllers) controller.abort();
+  }
 
   constructor(private readonly options: ClaudeProviderOptions) {
     for (const path of [options.executablePath, options.cwd, options.configDirectory]) {
@@ -74,8 +80,21 @@ export class ClaudeProvider implements AgentProvider {
     // The stream owns failures; attach a handler before callers start consuming it.
     void promise.catch(() => undefined);
     const options = this.options;
+    const controllers = this.controllers;
     async function* events(): AsyncGenerator<RunEvent> {
       const controller = new AbortController();
+      controllers.add(controller);
+      let child: ChildProcess | undefined;
+      const kill = (): void => {
+        if (!child?.pid) return;
+        try {
+          if (process.platform === 'win32') child.kill('SIGKILL');
+          else process.kill(-child.pid, 'SIGKILL');
+        } catch {
+          /* Already exited. */
+        }
+      };
+      controller.signal.addEventListener('abort', kill, { once: true });
       let stream: ReturnType<typeof query> | undefined;
       let finished = false;
       let apiKey = '';
@@ -99,7 +118,9 @@ export class ClaudeProvider implements AgentProvider {
       spec.signal.addEventListener('abort', abort, { once: true });
       const safeEvent = (event: RunEvent): RunEvent =>
         RunEventSchema.parse(
-          JSON.parse(JSON.stringify(event).replaceAll(JSON.stringify(apiKey).slice(1, -1), '[REDACTED]')),
+          apiKey
+            ? JSON.parse(JSON.stringify(event).replaceAll(JSON.stringify(apiKey).slice(1, -1), '[REDACTED]'))
+            : event,
         );
       try {
         if (!Number.isSafeInteger(spec.timeoutMs) || spec.timeoutMs <= 0 || spec.timeoutMs > 2_147_483_647)
@@ -112,19 +133,19 @@ export class ClaudeProvider implements AgentProvider {
           failure = 'tool_not_installed';
           throw new Error(failure);
         }
-        apiKey = z
-          .string()
-          .trim()
-          .min(1)
-          .parse(await Promise.race([options.readApiKey(), cancelled]));
+        const key = await Promise.race([options.readApiKey?.(), cancelled]);
+        apiKey = key === undefined ? '' : z.string().trim().min(1).parse(key);
         controller.signal.throwIfAborted();
         const env: Record<string, string> = {};
         for (const key of environmentKeys) {
           const value = spec.env?.[key];
           if (value !== undefined) env[key] = z.string().parse(value);
         }
-        env.CLAUDE_CONFIG_DIR = options.configDirectory;
-        env.ANTHROPIC_API_KEY = apiKey;
+        env.CLAUDE_CODE_DISABLE_AUTO_MEMORY = '1';
+        if (apiKey) {
+          env.CLAUDE_CONFIG_DIR = options.configDirectory;
+          env.ANTHROPIC_API_KEY = apiKey;
+        }
         stream = query({
           prompt: spec.prompt,
           options: {
@@ -132,7 +153,8 @@ export class ClaudeProvider implements AgentProvider {
             cwd: options.cwd,
             env,
             abortController: controller,
-            model: spec.model,
+            model: spec.model ?? 'haiku',
+            persistSession: false,
             resume: spec.resumeId,
             mcpServers: spec.mcpServers,
             strictMcpConfig: true,
@@ -146,30 +168,34 @@ export class ClaudeProvider implements AgentProvider {
             outputFormat: { type: 'json_schema', schema: z.toJSONSchema(spec.outputSchema, { io: 'input' }) },
             // Reapply our environment at the actual spawn boundary, even if SDK defaults change.
             spawnClaudeCodeProcess: ({ args, signal }) => {
-              const child = spawn(options.executablePath, args, {
+              const processChild = spawn(options.executablePath, args, {
                 cwd: options.cwd,
                 env,
                 signal,
                 stdio: ['pipe', 'pipe', 'pipe'],
+                detached: process.platform !== 'win32',
               });
+              child = processChild;
               const key = apiKey;
               // Keep enough lookahead to scrub a key that crosses the diagnostic byte limit.
               const limit = 200 + Buffer.byteLength(key);
               let stderr = Buffer.alloc(0);
               let spawnFailed = false;
-              child.stderr.on('data', (chunk: Buffer) => {
+              processChild.stderr.on('data', (chunk: Buffer) => {
                 stderr = Buffer.concat([stderr, chunk.subarray(0, Math.max(0, limit - stderr.length))]);
               });
-              child.once('error', () => {
+              processChild.once('error', () => {
                 spawnFailed = true;
               });
-              child.once('close', (code) => {
+              processChild.once('close', (code) => {
                 if (code === 0 && !spawnFailed) return;
                 let diagnostic = new StringDecoder('utf8').write(stderr.subarray(0, 200));
                 const keyStart = stderr.toString('utf8').lastIndexOf(key, diagnostic.length);
-                if (keyStart >= 0 && keyStart + key.length > diagnostic.length)
+                if (key && keyStart >= 0 && keyStart + key.length > diagnostic.length)
                   diagnostic = diagnostic.slice(0, keyStart) + '[REDACTED]';
-                diagnostic = z.string().parse(options.redact(diagnostic.replaceAll(key, '[REDACTED]')));
+                diagnostic = z
+                  .string()
+                  .parse(options.redact(key ? diagnostic.replaceAll(key, '[REDACTED]') : diagnostic));
                 options.logger.debug({
                   run_id: spec.runId,
                   agent: 'claude',
@@ -178,7 +204,7 @@ export class ClaudeProvider implements AgentProvider {
                   stderr: new StringDecoder('utf8').write(Buffer.from(diagnostic).subarray(0, 200)),
                 });
               });
-              return child;
+              return processChild;
             },
           },
         });
@@ -188,7 +214,10 @@ export class ClaudeProvider implements AgentProvider {
           if (message.type === 'system' && message.subtype === 'init') {
             yield safeEvent({ type: 'session', sessionId: message.session_id });
           } else if (message.type === 'assistant' || message.type === 'user') {
-            if (message.type === 'assistant' && message.error) throw new Error('Claude API error.');
+            if (message.type === 'assistant' && message.error) {
+              if (message.error === 'authentication_failed') failure = 'not_logged_in';
+              throw new Error('Claude API error.');
+            }
             const content = contentSchema.parse(message.message.content);
             if (typeof content === 'string') {
               yield safeEvent({ type: 'message', role: message.type, text: content });
@@ -221,7 +250,7 @@ export class ClaudeProvider implements AgentProvider {
             if (message.subtype !== 'success' || message.is_error) throw new Error('Claude result error.');
             failure = 'Claude returned an invalid structured result.';
             output = RunResultSchema.parse(spec.outputSchema.parse(message.structured_output));
-            if (JSON.stringify(output).includes(JSON.stringify(apiKey).slice(1, -1))) {
+            if (apiKey && JSON.stringify(output).includes(JSON.stringify(apiKey).slice(1, -1))) {
               throw new Error('Claude returned credential material.');
             }
           }
@@ -234,6 +263,8 @@ export class ClaudeProvider implements AgentProvider {
         rejectResult(new Error(failure));
         yield { type: 'error', message: failure };
       } finally {
+        kill();
+        controllers.delete(controller);
         clearTimeout(timer);
         spec.signal.removeEventListener('abort', abort);
         stream?.close();

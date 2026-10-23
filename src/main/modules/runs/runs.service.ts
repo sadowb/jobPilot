@@ -50,6 +50,7 @@ export class RunsService {
       return RunSummarySchema.parse(existing);
     }
     if (!this.agent || !this.browser) throw new Error('No application provider is configured.');
+    await this.agent.prepare?.();
     const application = new ApplicationsService(this.db).list().find((row) => row.id === applicationId);
     if (!application) throw new Error('Application is unavailable.');
     const agent = this.agent.id;
@@ -92,8 +93,14 @@ export class RunsService {
   resume() {
     return this.worker.resume();
   }
-  stop() {
-    return this.worker.stop();
+  async stop(): Promise<void> {
+    await this.worker.stop();
+    await Promise.allSettled(
+      this.repository
+        .list()
+        .filter((row) => row.tabId)
+        .map((row) => this.browser?.closeTab(row.id)),
+    );
   }
 
   private transition(runId: string, status: RunStatus, details: { error?: string; result?: RunResult } = {}) {
@@ -173,11 +180,16 @@ export class RunsService {
         result,
         ...(result.status === 'submitted' ? { error: 'Submission is not authorized' } : {}),
       });
-    } catch {
+    } catch (error) {
       const current = this.repository.get(runId);
       if (current.status === 'running' || current.status === 'queued') {
-        this.transition(runId, 'failed', {
-          error: signal.aborted ? 'Run aborted' : 'Provider failed or returned an invalid result',
+        const setup = error instanceof Error && ['not_logged_in', 'tool_not_installed'].includes(error.message);
+        this.transition(runId, setup && current.status === 'running' ? 'needs_you' : 'failed', {
+          error: setup
+            ? 'Open Settings → Agent to configure Claude.'
+            : signal.aborted
+              ? 'Run aborted'
+              : 'Provider failed or returned an invalid result',
         });
       }
     } finally {

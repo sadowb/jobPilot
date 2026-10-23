@@ -68,5 +68,6 @@ export interface AgentRun {
 
 export interface AgentProvider {
   readonly id: AgentId;
+  prepare?(): Promise<void>;
   run(spec: RunSpec): AgentRun;
 }
