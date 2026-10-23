@@ -4,7 +4,7 @@ const sensitiveKey =
   /^(password|passwd|passphrase|secret|token|access_?token|refresh_?token|cookie|authorization|api_?key|hexkey|private_?key|key|session|session_?id|BW_SESSION|otp|totp|code)$/i;
 const censored = '[REDACTED]';
 
-/** Copy only data properties: getters/toJSON must not bypass redaction during serialization. */
+/** Copy data properties plus native error diagnostics; never invoke toJSON. */
 export function redact(value: unknown, depth = 0, ancestors = new WeakSet<object>()): unknown {
   if (value === null || typeof value !== 'object') return typeof value === 'function' ? censored : value;
   if (depth >= 20) return '[Depth limit]';
@@ -12,6 +12,12 @@ export function redact(value: unknown, depth = 0, ancestors = new WeakSet<object
   ancestors.add(value);
   const descriptors = Object.getOwnPropertyDescriptors(value);
   if (isNativeError(value)) {
+    // V8 can expose the native stack through a lazy accessor.
+    try {
+      descriptors.stack = { value: value.stack, enumerable: true };
+    } catch {
+      descriptors.stack = { value: censored, enumerable: true };
+    }
     descriptors.type = {
       value:
         descriptors.name?.value ??
