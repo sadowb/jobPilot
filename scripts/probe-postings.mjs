@@ -13,7 +13,7 @@ if (!url) {
   const output = join(process.cwd(), `.jobpilot-postings-probe-${process.pid}.mjs`);
   try {
     const result = await build({
-      entryPoints: [new URL('./ats/probe-entry.ts', import.meta.url).pathname],
+      entryPoints: [new URL('./probe-postings-entry.ts', import.meta.url).pathname],
       bundle: true,
       platform: 'node',
       format: 'esm',
