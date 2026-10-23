@@ -44,3 +44,7 @@ export function profileMigrationDone(database: JobPilotDb): boolean {
 export function markProfileMigrated(database: JobPilotDb): void {
   new SettingsRepository(database).markProfileMigrated();
 }
+
+export function applyConcurrency(database: JobPilotDb): number {
+  return z.number().int().min(1).max(64).default(6).parse(new SettingsRepository(database).applyConcurrency());
+}

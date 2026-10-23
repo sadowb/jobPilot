@@ -7,7 +7,7 @@ import { z } from 'zod';
 const recording = z
   .object({ source: z.url(), response: z.object({ id: z.number(), title: z.string() }).passthrough() })
   .parse(JSON.parse(readFileSync(join(__dirname, 'fixtures/greenhouse.json'), 'utf8')));
-const jobUrl = `https://boards.greenhouse.io/perpay/jobs/${recording.response.id}`;
+const jobUrl = `https://job-boards.eu.greenhouse.io/perpay/jobs/${recording.response.id}`;
 
 // eslint-disable-next-line no-empty-pattern
 test('paste a job, preview real ATS data, add once, and retain it after restart', async ({}, testInfo) => {
@@ -269,7 +269,8 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     for (const url of [
       jobUrl,
       `${jobUrl}?utm_source=test#application`,
-      jobUrl.replace('boards.greenhouse.io', 'job-boards.greenhouse.io'),
+      jobUrl.replace('job-boards.eu.greenhouse.io', 'boards.greenhouse.io'),
+      jobUrl.replace('job-boards.eu.greenhouse.io', 'job-boards.greenhouse.io'),
     ]) {
       const result = await window.evaluate((url) => window.jobpilot!.postings.ingest(url), url);
       expect(result.ok).toBe(true);

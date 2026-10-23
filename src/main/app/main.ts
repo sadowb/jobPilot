@@ -1,4 +1,10 @@
 import { app, BrowserWindow, dialog } from 'electron';
+import { url as inspectorUrl } from 'node:inspector';
+import { db } from '../platform/db/database';
+import { FakeAgentProvider } from '../platform/agents/fake';
+import { FakeBrowserProvider } from '../platform/browsers/fake';
+import { RunsService } from '../modules/runs/runs.service';
+import { runsHandlers } from '../modules/runs/runs.controller';
 import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { applicationsHandlers } from '../modules/applications/applications.controller';
@@ -19,6 +25,10 @@ import { createWindow } from './window';
 
 // Inspector-only journey access follows the exports below; shipped builds disable the inspector.
 export let databaseBackupTimer: NodeJS.Timeout | undefined;
+
+let runsService: RunsService;
+export let fakeAgent: FakeAgentProvider | undefined;
+export let fakeBrowser: FakeBrowserProvider | undefined;
 
 registerAppScheme();
 process.umask(0o077);
@@ -79,11 +89,27 @@ if (!app.requestSingleInstanceLock()) {
     databaseBackupTimer = backups.timer;
     app.once('before-quit', backups.stop);
 
+    // An active Node inspector requires the fuse enabled; shipped apps cannot enter this branch.
+    if (process.env.JOBPILOT_E2E_PROVIDER === 'fake' && (!app.isPackaged || inspectorUrl() !== undefined)) {
+      fakeAgent = new FakeAgentProvider();
+      fakeBrowser = new FakeBrowserProvider();
+    }
+    runsService = new RunsService(db, app.getPath('userData'), fakeAgent, fakeBrowser);
+    await runsService.initialize();
+    let stoppingRuns = false;
+    app.on('before-quit', (event) => {
+      if (stoppingRuns) return;
+      event.preventDefault();
+      stoppingRuns = true;
+      void runsService.stop().finally(() => app.quit());
+    });
+
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
     loadTheme();
     registerIpc(
       [
+        ...runsHandlers(runsService),
         ...settingsHandlers,
         ...documentsHandlers,
         ...observabilityHandlers,
@@ -112,3 +138,4 @@ if (!app.requestSingleInstanceLock()) {
 // shortcut: exposed for the inspector-only E2E harness; shipped builds have the inspector fuse off, so unreachable. Move to a test entry if the fuse policy changes.
 export { loggerFor } from '../modules/observability/log.service';
 export { RunTraceService } from '../modules/observability/observability.service';
+export { db } from '../platform/db/database';

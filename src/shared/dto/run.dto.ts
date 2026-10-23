@@ -1,4 +1,5 @@
-import type { RunEventType, RunStatus } from './enums';
+import { z } from 'zod';
+import { RunStatus, type RunEventType } from './enums';
 
 /** One row of the live run log (`run_event`), as the renderer sees it. */
 export interface RunEventDto {
@@ -10,10 +11,13 @@ export interface RunEventDto {
   createdAt: number;
 }
 
-export interface RunSummaryDto {
-  id: string;
-  applicationId: string;
-  status: RunStatus;
-  startedAt: number | null;
-  finishedAt: number | null;
-}
+export const RunSummarySchema = z.object({
+  id: z.ulid(),
+  applicationId: z.ulid(),
+  status: RunStatus.schema,
+  startedAt: z.number().int().nullable(),
+  finishedAt: z.number().int().nullable(),
+});
+export type RunSummaryDto = z.infer<typeof RunSummarySchema>;
+export const StartRunSchema = z.object({ applicationId: z.ulid() }).strict();
+export const CancelRunSchema = z.object({ runId: z.ulid() }).strict();

@@ -7,6 +7,10 @@ const key = 'profile.localStorageMigration.v1';
 export class SettingsRepository {
   constructor(private readonly db: JobPilotDb) {}
 
+  applyConcurrency(): unknown {
+    return this.db.select().from(settings).where(eq(settings.key, 'runs.concurrency')).get()?.value;
+  }
+
   profileMigrationValue(): unknown {
     return this.db.select().from(settings).where(eq(settings.key, key)).get()?.value;
   }
