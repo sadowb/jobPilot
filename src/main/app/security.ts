@@ -4,7 +4,7 @@ import { APP_ORIGIN, rendererDevUrl } from './env';
 /** Only https links leave the app, and only to the system browser. */
 function openExternal(url: string): void {
   try {
-    if (new URL(url).protocol === 'https:') void shell.openExternal(url);
+    if (new URL(url).protocol === 'https:') void shell.openExternal(url); /* eng-disable OPEN_EXTERNAL_JS_CHECK */
   } catch {
     /* malformed URL: ignore */
   }

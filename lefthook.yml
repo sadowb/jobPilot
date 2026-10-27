@@ -12,3 +12,6 @@ pre-commit:
     drizzle:
       glob: '{drizzle/**,src/main/modules/*/*.entity.ts,src/main/platform/db/**,drizzle.config.ts}'
       run: npm run db:check
+    ipc:
+      glob: '{src/shared/ipc.ts,src/preload/index.ts,src/main/modules/*/*.controller.ts,src/main/app/main.ts,ipc-manifest.json}'
+      run: npm run ipc:check
