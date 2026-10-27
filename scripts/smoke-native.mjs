@@ -88,9 +88,10 @@ try {
   noKey.close();
   const wrong = open('wrong-key');
   assert.throws(() => wrong.prepare('SELECT 1 FROM company').get(), /not a database|file is not/i);
+  wrong.close();
   console.log(
     `ok: electron ${process.versions.electron}, node ${process.version}, sqlite ${new Database(':memory:').prepare('select sqlite_version() v').get().v}`,
   );
 } finally {
-  rmSync(dir, { recursive: true, force: true });
+  rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
 }
