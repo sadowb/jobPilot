@@ -5,6 +5,8 @@ import {
   arr,
   asObject,
   canonicalUrl,
+  cleanCompany,
+  countryName,
   form,
   json,
   jsonValue,
@@ -97,7 +99,7 @@ const greenhouse: Adapter = {
     const high = cents.length ? Math.max(...cents.map((x) => Number(x.max_cents))) : null;
     const currency = str(cents[0]?.currency_type, 3)?.toUpperCase() ?? null;
     return form({
-      company: str(d.company_name, 400) ?? titleFrom(m.tenant!),
+      company: cleanCompany(str(d.company_name, 400)) ?? titleFrom(m.tenant!),
       title: str(d.title, 400)!,
       location: str(asObject(d.location).name ?? d.location, 1000),
       salary: low !== null ? `${currency ?? ''} ${low / 100}–${high! / 100}`.trim() : null,
@@ -252,7 +254,9 @@ const workable: Adapter = {
     return form({
       company: titleFrom(m.tenant!),
       title: str(job.title, 400)!,
-      location: [str(loc.city, 100), str(loc.region, 100), str(loc.country, 100)].filter(Boolean).join(', ') || null,
+      location:
+        [str(loc.city, 100), str(loc.region, 100), countryName(str(loc.country, 100))].filter(Boolean).join(', ') ||
+        null,
       salary: str(job.salary, 500),
       salary_min: null,
       salary_max: null,
@@ -286,7 +290,9 @@ const smartRecruiters: Adapter = {
     return form({
       company: str(asObject(d.company).name, 400) ?? titleFrom(m.tenant!),
       title: str(d.name, 400)!,
-      location: [str(loc.city, 100), str(loc.region, 100), str(loc.country, 100)].filter(Boolean).join(', ') || null,
+      location:
+        [str(loc.city, 100), str(loc.region, 100), countryName(str(loc.country, 100))].filter(Boolean).join(', ') ||
+        null,
       salary: null,
       salary_min: null,
       salary_max: null,
@@ -354,7 +360,9 @@ const bamboo: Adapter = {
       company: titleFrom(m.tenant!),
       title: str(opening.jobOpeningName, 400)!,
       location:
-        [str(loc.city, 100), str(loc.state, 100), str(loc.addressCountry, 100)].filter(Boolean).join(', ') || null,
+        [str(loc.city, 100), str(loc.state, 100), countryName(str(loc.addressCountry, 100))]
+          .filter(Boolean)
+          .join(', ') || null,
       salary: str(opening.compensation, 500),
       salary_min: null,
       salary_max: null,

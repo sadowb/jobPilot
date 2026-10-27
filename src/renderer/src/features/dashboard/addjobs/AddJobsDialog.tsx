@@ -331,6 +331,9 @@ export function AddJobsDialog({
                                       : atsNames[posting.ats],
                                     posting.location,
                                     posting.salary,
+                                    posting.questions.length
+                                      ? `${posting.questions.length} question${posting.questions.length === 1 ? '' : 's'}`
+                                      : 'No questions found',
                                   ]
                                     .filter(Boolean)
                                     .join(' · ')}
