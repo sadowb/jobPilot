@@ -19,3 +19,11 @@ export function dotState(index: OnboardingStep, current: OnboardingStep): 'done'
   if (index < current) return 'done';
   return index === current ? 'current' : 'ahead';
 }
+
+export const STEP_NAMES: Record<OnboardingStep, string> = {
+  1: 'Welcome',
+  2: 'Your CV',
+  3: 'Your jobs',
+  4: 'Your answers',
+  5: 'Ready',
+};

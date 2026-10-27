@@ -45,11 +45,17 @@ test('fresh profile opens onboarding and contains only real empty states', async
     await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/1');
     await window.setViewportSize({ width: 1280, height: 800 });
     await window.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(window.getByRole('button', { name: '← Back' })).toHaveCount(0);
+    await expect(window.locator('body')).not.toContainText('Route ·');
     for (const step of [2, 3, 4, 5]) {
       await window.evaluate((step) => {
         location.hash = `#/welcome/${step}`;
       }, step);
       await expect(window.getByRole('img', { name: `Step ${step} of 5` })).toBeVisible();
+      await expect(window.getByRole('img', { name: `Step ${step} of 5` })).toContainText(`Step ${step} of 5 ·`);
+      await expect(window.getByRole('button', { name: '← Back' })).toBeVisible();
+      const cta = await window.getByRole('button', { name: /^(Continue|Open dashboard)$/ }).boundingBox();
+      expect(cta!.y + cta!.height).toBeLessThanOrEqual(800);
       if (step === 3) await expect(window.locator('body')).not.toContainText(/Add \d+ jobs|ashbyhq|greenhouse/);
       await capture(`onboarding-${step}`);
     }

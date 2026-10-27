@@ -3,7 +3,7 @@ import { AppearanceControl } from '../../components/AppearanceControl';
 import { Logo } from '../../components/Logo';
 import { Eyebrow, cn } from '../../components/ui';
 import { GoButton, H1, IT, REDUCE_ALL, S, SPEC } from '../shared-ui';
-import { ONBOARDING_STEPS, dotState, type OnboardingStep } from './steps';
+import { ONBOARDING_STEPS, STEP_NAMES, dotState, stepPath, type OnboardingStep } from './steps';
 
 /**
  * Setup header. On macOS it becomes the sticky, draggable toolbar strip behind the native window controls
@@ -52,7 +52,9 @@ export function OnboardingFrame({
               />
             );
           })}
-          <span className={cn(SPEC, 'ml-2.5 text-muted tracking-[0.02em]!')}>{step} / 5</span>
+          <span className={cn(SPEC, 'ml-2.5 text-muted tracking-[0.02em]!')}>
+            Step {step} of 5 · {STEP_NAMES[step]}
+          </span>
         </div>
         <div className={cn('flex items-center gap-2 justify-self-end', PLACE_COL_3)}>
           <AppearanceControl />
@@ -72,6 +74,16 @@ export function OnboardingFrame({
         // The minimum height is a per-step prop (the board's content height).
         style={{ minHeight }}
       >
+        {step > 1 && (
+          <GoButton
+            to={stepPath((step - 1) as OnboardingStep)}
+            variant="ghost"
+            size="sm"
+            className="-mb-3 -ml-3.5 self-start text-ink-2!"
+          >
+            ← Back
+          </GoButton>
+        )}
         {children}
       </div>
     </>
