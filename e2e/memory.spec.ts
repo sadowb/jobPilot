@@ -1,7 +1,7 @@
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { skipOnboarding } from './onboarding';
 
@@ -22,7 +22,9 @@ const QUIRK = 'Scroll to the bottom before the Submit button enables';
 test('memory: install on request, a second run on the same site recalls the first run quirk, nothing leaves userData', async ({}, testInfo) => {
   test.setTimeout(120_000);
   const userData = mkdtempSync(join(tmpdir(), 'jobpilot-memory-'));
-  const home = mkdtempSync(join(tmpdir(), 'jobpilot-memory-home-'));
+  // Overriding HOME breaks Keychain lookup in the packaged app, so check the real home before/after instead.
+  const watched = ['.mnemosyne', '.cache/uv', '.local/share/uv', '.local/bin/mnemosyne'].map((p) => join(homedir(), p));
+  const before = watched.map((p) => existsSync(p));
   const packaged = testInfo.project.name === 'packaged';
   let app: ElectronApplication | undefined;
   try {
@@ -34,7 +36,7 @@ test('memory: install on request, a second run on the same site recalls the firs
           }
         : {}),
       args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
-      env: { ...process.env, HOME: home, JOBPILOT_E2E_PROVIDER: 'fake' },
+      env: { ...process.env, JOBPILOT_E2E_PROVIDER: 'fake' },
       timeout: 60_000,
     });
     // Inspector evaluates need an idle tick before touching main-process state (see runs.spec.ts).
@@ -159,10 +161,9 @@ test('memory: install on request, a second run on the same site recalls the firs
     await app.close();
     app = undefined;
     expect(execFileSync('ps', ['-axo', 'command']).toString()).not.toContain(userData);
-    expect(readdirSync(home).filter((name) => /mnemosyne|uv|\.local|\.cache/i.test(name))).toEqual([]);
+    expect(watched.map((p) => existsSync(p))).toEqual(before);
   } finally {
     await app?.close().catch(() => undefined);
     rmSync(userData, { recursive: true, force: true });
-    rmSync(home, { recursive: true, force: true });
   }
 });
