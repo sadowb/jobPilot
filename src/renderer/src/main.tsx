@@ -1,8 +1,11 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { setProfileData } from './features/profile/profileStorage';
 import { initializeProfile } from './features/profile/startMigration';
 import { App } from './app/App';
+import { connectDataEvents } from './lib/api';
+import { queryClient } from './lib/query';
 import { WINDOW_LAYOUT } from '../../shared/window-layout';
 import './styles/index.css';
 
@@ -37,6 +40,7 @@ if (!root) throw new Error('missing #root');
 root.className =
   'motion-reduce:animate-none! motion-reduce:duration-[120ms]! motion-reduce:**:animate-none! motion-reduce:**:duration-[120ms]!';
 const reactRoot = createRoot(root);
+connectDataEvents();
 async function start(): Promise<void> {
   reactRoot.render(<p role="status">Loading your profile…</p>);
   try {
@@ -47,7 +51,9 @@ async function start(): Promise<void> {
     }
     reactRoot.render(
       <StrictMode>
-        <App />
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
       </StrictMode>,
     );
   } catch {

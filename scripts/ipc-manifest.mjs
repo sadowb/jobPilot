@@ -40,7 +40,7 @@ function walkIpc(node) {
 walkIpc(ipcSourceFile);
 
 // Broadcast / event channels sent from main to renderer that do not register a defineHandler
-const BROADCAST_CHANNELS = new Set(['theme:changed']);
+const BROADCAST_CHANNELS = new Set(['theme:changed', 'data:changed']);
 
 // 2. Scan src/main for defineHandler calls and verify no raw ipcMain listeners bypass it
 const handlers = new Map(); // channelString -> schemaName

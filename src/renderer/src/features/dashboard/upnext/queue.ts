@@ -238,8 +238,18 @@ function editableIds(s: QueueState, ids: string[]): Set<string> {
 
 export function queueReducer(s: QueueState, a: QueueAction): QueueState {
   switch (a.type) {
-    case 'loaded':
-      return { ...s, items: a.items, selected: [], cursor: null, removed: null };
+    case 'loaded': {
+      // Loads arrive live now: keep what the owner is doing (held rows, selection, cursor, undo) across them.
+      const held = new Map(s.items.filter((i) => i.stage === 'held').map((i) => [i.id, i]));
+      const items = a.items.map((i) => held.get(i.id) ?? i);
+      const has = (id: string) => items.some((i) => i.id === id);
+      return {
+        ...s,
+        items,
+        selected: s.selected.filter(has),
+        cursor: s.cursor !== null && has(s.cursor) ? s.cursor : null,
+      };
+    }
     case 'query':
       return { ...s, query: a.query };
     case 'filter':

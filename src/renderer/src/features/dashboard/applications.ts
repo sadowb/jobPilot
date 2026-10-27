@@ -18,6 +18,19 @@ const siteName = (url: string) => {
 
 export const isApplied = (item: ApplicationListItem) => item.appliedAt !== null;
 
+/** The latest run drives the row: a running run is NOW, a stopped one waits for the owner. */
+function queueStage(item: ApplicationListItem): QueueItem['stage'] {
+  switch (item.latestRunStatus) {
+    case 'running':
+      return 'running';
+    case 'awaiting_approval':
+    case 'needs_you':
+      return 'waiting';
+    default:
+      return item.status === 'running' ? 'running' : item.status === 'queued' ? 'queued' : 'waiting';
+  }
+}
+
 export function queueItem(item: ApplicationListItem): QueueItem {
   return {
     id: item.id,
@@ -27,8 +40,8 @@ export function queueItem(item: ApplicationListItem): QueueItem {
     hint: item.location ?? undefined,
     estimateMin: 0,
     source: 'Pasted',
-    stage: item.status === 'running' ? 'running' : item.status === 'queued' ? 'queued' : 'waiting',
-    agent: item.status === 'running' ? 'work' : 'idle',
+    stage: queueStage(item),
+    agent: item.latestRunStatus === 'running' ? 'work' : 'idle',
   };
 }
 

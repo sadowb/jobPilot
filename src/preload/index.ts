@@ -7,6 +7,7 @@ import {
   RendererErrorInputSchema,
   RecoveryKeySchema,
   IpcValidationErrorSchema,
+  DataChangedSchema,
 } from '../shared/ipc';
 import {
   AgentStateSchema,
@@ -143,6 +144,14 @@ const bridge: JobPilotBridge = {
       ipcRenderer.on(Channels.themeChanged, handler);
       return () => ipcRenderer.removeListener(Channels.themeChanged, handler);
     },
+  },
+  onDataChanged(listener) {
+    const handler = (_event: Electron.IpcRendererEvent, change: unknown) => {
+      const parsed = DataChangedSchema.safeParse(change);
+      if (parsed.success) listener(parsed.data);
+    };
+    ipcRenderer.on(Channels.dataChanged, handler);
+    return () => ipcRenderer.removeListener(Channels.dataChanged, handler);
   },
 };
 

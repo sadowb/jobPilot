@@ -1,4 +1,5 @@
 import type { JobPilotDb } from '../../platform/db/database';
+import { emitDataChanged } from '../../platform/ipc/events';
 import { AuditService } from '../observability/observability.service';
 import { ApplicationsRepository } from './applications.repository';
 
@@ -17,7 +18,7 @@ export class ApplicationsService {
   }
 
   create(postingId: string) {
-    return this.repository.create(postingId, (applicationId) =>
+    const item = this.repository.create(postingId, (applicationId) =>
       AuditService.record({
         applicationId,
         type: 'created',
@@ -26,5 +27,7 @@ export class ApplicationsService {
         toStatus: 'queued',
       }),
     );
+    emitDataChanged({ entity: 'application', id: item.id });
+    return item;
   }
 }
