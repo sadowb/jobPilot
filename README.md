@@ -5,6 +5,7 @@
 
 <p align="center">
   <a href="#how-it-works">How it works</a> ·
+  <a href="#download">Download</a> ·
   <a href="#status">Status</a> ·
   <a href="docs/DEVELOPMENT.md">Development</a> ·
   <a href="docs/architecture.md">Architecture</a>
@@ -51,6 +52,10 @@ Your funnel, reply rate over time, and which site, CV and role level get replies
 4. **You approve, it submits.** Approval is bound to the exact form contents.
 
 Everything stays on your computer: an encrypted local database, no account, no server, no telemetry. JobPilot writes only to its own folder and stops every agent when you quit.
+
+## Download
+
+Get the latest build from [Releases](https://github.com/sadowb/jobPilot/releases): a DMG for macOS (Apple silicon) or an installer for Windows (x64). Builds are pre-releases while the app is unfinished and are not notarized, so each OS asks you to confirm the first open. Steps and how to verify a download (`gh attestation verify`) are in [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Status
 

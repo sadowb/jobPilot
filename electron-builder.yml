@@ -22,6 +22,8 @@ mac:
   identity: null
 win:
   target: [nsis]
+nsis:
+  artifactName: JobPilot-${version}-x64-setup.${ext}
 linux:
   target: [AppImage, deb]
   category: Office
