@@ -185,10 +185,38 @@ export class NeoBrowserProvider implements BrowserProvider {
           { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
           'Neo MCP availability check failed',
         );
-        // shortcut: standard macOS app locations only; add discovery when custom installs are supported.
-        return ['/Applications/BrowserOS neo.app', join(homedir(), 'Applications/BrowserOS neo.app')].some(existsSync)
-          ? 'not_running'
-          : 'not_installed';
+        // shortcut: standard platform app locations only; add discovery when custom installs are supported.
+        const locations =
+          process.platform === 'win32'
+            ? [
+                join(
+                  process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local'),
+                  'Programs',
+                  'BrowserOS neo',
+                  'BrowserOS neo.exe',
+                ),
+                join(
+                  process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local'),
+                  'Programs',
+                  'BrowserOS',
+                  'BrowserOS.exe',
+                ),
+                join(
+                  process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local'),
+                  'BrowserOS neo',
+                  'BrowserOS neo.exe',
+                ),
+                join(process.env.ProgramFiles ?? 'C:\\Program Files', 'BrowserOS neo', 'BrowserOS neo.exe'),
+                join(process.env.ProgramFiles ?? 'C:\\Program Files', 'BrowserOS', 'BrowserOS.exe'),
+                join(
+                  process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)',
+                  'BrowserOS neo',
+                  'BrowserOS neo.exe',
+                ),
+                join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'BrowserOS', 'BrowserOS.exe'),
+              ]
+            : ['/Applications/BrowserOS neo.app', join(homedir(), 'Applications/BrowserOS neo.app')];
+        return locations.some(existsSync) ? 'not_running' : 'not_installed';
       }
     });
   }

@@ -201,3 +201,81 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/jobpilot-ci.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/jobpilot-ci-cert"
+
+  windows:
+    needs: static
+    runs-on: windows-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm config set script-shell bash
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder --win --x64 --dir
+      - run: npm run smoke:native
+      - name: Boot packaged Windows app
+        run: |
+          node --input-type=module -e '
+          import { spawn } from "node:child_process";
+          import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
+          import { tmpdir } from "node:os";
+          import { join } from "node:path";
+          import { setTimeout as sleep } from "node:timers/promises";
+
+          const dir = join(tmpdir(), `jobpilot-smoke-${Date.now()}`);
+          mkdirSync(dir, { recursive: true });
+          const exe = join(process.cwd(), "release", "win-unpacked", "JobPilot.exe");
+          if (!existsSync(exe)) {
+            console.error(`Executable not found: ${exe}`);
+            process.exit(1);
+          }
+
+          const child = spawn(exe, [`--user-data-dir=${dir}`], { stdio: ["ignore", "pipe", "pipe"] });
+          let stderr = "";
+          child.stderr?.on("data", (d) => { stderr += d; });
+          let stdout = "";
+          child.stdout?.on("data", (d) => { stdout += d; });
+
+          let booted = false;
+          for (let i = 0; i < 60; i++) {
+            if (child.exitCode !== null) break;
+            if (existsSync(join(dir, "jobpilot.db")) && existsSync(join(dir, "db-key.enc"))) {
+              booted = true;
+              break;
+            }
+            await sleep(500);
+          }
+
+          child.kill();
+          await sleep(1000);
+
+          if (!booted) {
+            console.error("App failed to boot or create database.");
+            console.error(`exitCode: ${child.exitCode}`);
+            console.error(`stdout: ${stdout}`);
+            console.error(`stderr: ${stderr}`);
+            const logsDir = join(dir, "logs");
+            if (existsSync(logsDir)) {
+              for (const f of readdirSync(logsDir)) {
+                console.error(`log file ${f}:`, readFileSync(join(logsDir, f), "utf8"));
+              }
+            }
+            rmSync(dir, { recursive: true, force: true });
+            process.exit(1);
+          }
+
+          console.log("Windows app booted successfully, encrypted database and db-key.enc created.");
+          rmSync(dir, { recursive: true, force: true });
+          '
