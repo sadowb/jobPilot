@@ -206,7 +206,11 @@ export class RunsService {
             const event = RunEventSchema.parse(rawEvent);
             RunTraceService.append({ runId, type: event.type, payload: z.json().parse(event) });
             loggerFor('runs').info({ run_id: runId, event_type: event.type }, 'Run event received');
-            if (event.type === 'session') this.repository.update(runId, { sessionId: event.sessionId });
+            // Emit only when the run row changed; plain trace events don't touch it.
+            if (event.type === 'session') {
+              this.repository.update(runId, { sessionId: event.sessionId });
+              emitDataChanged({ entity: 'run', id: runId });
+            }
             if (event.type === 'cost') {
               const current = this.repository.get(runId);
               this.repository.update(runId, {
@@ -214,8 +218,8 @@ export class RunsService {
                 outputTokens: (current.outputTokens ?? 0) + event.outputTokens,
                 costMicros: (current.costMicros ?? 0) + event.costMicros,
               });
+              emitDataChanged({ entity: 'run', id: runId });
             }
-            emitDataChanged({ entity: 'run', id: runId });
           }
         })(),
       ]);
