@@ -26,7 +26,8 @@ export class ApplyWorker {
     concurrency: number,
     execute: (runId: string, signal: AbortSignal) => Promise<void>,
     private readonly closeTab: (runId: string) => Promise<void>,
-    private readonly onError: () => void,
+    private readonly onError: (error: unknown, runId?: string) => void,
+    timeoutMs = 900_000,
   ) {
     this.database = buildDBClient(file, { runMigrations: true });
     chmodSync(file, 0o600);
@@ -48,9 +49,9 @@ export class ApplyWorker {
             this.active.delete(data.runId);
           }
         },
-        onError: async () => this.onError(),
+        onError: async ({ error, data }) => this.onError(error, data?.runId),
       },
-      { concurrency, pollIntervalMs: 25, timeoutSecs: 120, validator: PayloadSchema },
+      { concurrency, pollIntervalMs: 25, timeoutSecs: Math.ceil(timeoutMs / 1000) + 60, validator: PayloadSchema },
     );
   }
 
@@ -65,7 +66,7 @@ export class ApplyWorker {
 
   resume(): boolean {
     this.queue.paused = false;
-    this.loop ??= this.runner.run().catch(() => this.onError());
+    this.loop ??= this.runner.run().catch((error) => this.onError(error));
     return false;
   }
 

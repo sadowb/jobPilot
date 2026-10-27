@@ -1,8 +1,10 @@
 /** Contract between the runs module and agent backends (claude.ts, codex.ts, cli.ts). No backend-specific types leak out of here. */
 import { z } from 'zod';
 import type { AgentId } from '../../../shared/dto';
+import type { McpSdkServerConfigWithInstance } from '@anthropic-ai/claude-agent-sdk';
 
 export type McpServerConfig =
+  | McpSdkServerConfigWithInstance
   | { type: 'stdio'; command: string; args?: string[]; env?: Record<string, string> }
   | { type: 'http'; url: string; headers?: Record<string, string> };
 
@@ -22,8 +24,8 @@ export const RunResultSchema = z.object({
   /** Site/form quirks worth remembering (stored in Mnemosyne). */
   learned: z.array(z.string()),
   blockers: z.array(z.object({ kind: z.enum(['captcha', 'login', 'unsupported', 'other']), message: z.string() })),
-  /** Hash of the form as filled; the approval binds to it. */
-  form_hash: z.string().min(1),
+  /** Deprecated / ignored: app computes formHash directly from the owned tab snapshot. */
+  form_hash: z.string().optional(),
 });
 export type RunResult = z.infer<typeof RunResultSchema>;
 
@@ -50,8 +52,6 @@ export interface RunSpec {
   mcpServers: Record<string, McpServerConfig>;
   /** Final structured output the agent must produce. */
   outputSchema: typeof RunResultSchema;
-  /** Agent-side session id to continue (resume after an Inbox answer). */
-  resumeId?: string;
   model?: string;
   /** Only the env the agent needs; never the app's full environment. */
   env?: Record<string, string>;

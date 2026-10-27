@@ -1,5 +1,5 @@
 import type { ProfileData, ProfileSave } from '../../../shared/dto';
-import { db } from '../../platform/db/database';
+import { db, type JobPilotDb } from '../../platform/db/database';
 import { markProfileMigrated, profileMigrationDone } from '../settings/settings.service';
 import { ProfileRepository } from './profile.repository';
 
@@ -7,8 +7,8 @@ export function isProfileMigrated(): boolean {
   return profileMigrationDone(db);
 }
 
-export function getProfile(): ProfileData {
-  return new ProfileRepository(db).read();
+export function getProfile(database: JobPilotDb = db): ProfileData {
+  return new ProfileRepository(database).read();
 }
 
 export function saveProfile(input: ProfileSave): ProfileData {

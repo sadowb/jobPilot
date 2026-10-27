@@ -43,6 +43,10 @@ export class SettingsRepository {
     return this.db.select().from(settings).where(eq(settings.key, 'runs.concurrency')).get()?.value;
   }
 
+  runTimeoutMs(): unknown {
+    return this.db.select().from(settings).where(eq(settings.key, 'runs.timeoutMs')).get()?.value;
+  }
+
   profileMigrationValue(): unknown {
     return this.db.select().from(settings).where(eq(settings.key, key)).get()?.value;
   }

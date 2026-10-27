@@ -6,7 +6,7 @@ export function AgentCard() {
   const [state, setState] = useState<AgentState>();
   const [path, setPath] = useState('');
   const [model, setModel] = useState<AgentState['model']>('haiku');
-  const [auth, setAuth] = useState<AgentState['auth']>('api_key');
+  const [auth, setAuth] = useState<AgentState['auth']>('login');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   function update(value: AgentState) {

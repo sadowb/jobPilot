@@ -10,6 +10,12 @@ export type PostingsDb = BetterSQLite3Database<typeof schema>;
 export class PostingsRepository {
   constructor(private readonly db: PostingsDb) {}
 
+  get(postingId: string) {
+    const posting = this.db.select().from(jobPosting).where(eq(jobPosting.id, postingId)).get();
+    if (!posting || posting.deletedAt !== null) throw new Error('Posting is unavailable.');
+    return posting;
+  }
+
   ingest(form: PostingFormDto): string {
     return this.db.transaction((tx) => {
       const normalizedName = form.company.normalize('NFKC').toLocaleLowerCase();

@@ -157,7 +157,6 @@ export class ClaudeProvider implements AgentProvider {
             abortController: controller,
             model: spec.model ?? 'haiku',
             persistSession: false,
-            resume: spec.resumeId,
             mcpServers: spec.mcpServers,
             strictMcpConfig: true,
             settingSources: [],

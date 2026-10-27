@@ -29,9 +29,7 @@ export class AgentSettingsService implements AgentProvider {
   }
 
   private preferences() {
-    return AgentPreferencesSchema.parse(
-      this.repository.agentPreferences() ?? { auth: this.distributed ? 'api_key' : 'login' },
-    );
+    return AgentPreferencesSchema.parse(this.repository.agentPreferences() ?? { auth: 'login' });
   }
 
   async state() {

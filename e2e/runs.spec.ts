@@ -1,5 +1,6 @@
 import { skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,7 +15,11 @@ async function inspect(app: ElectronApplication) {
     return {
       tabs: [...main.fakeBrowser!.tabs.keys()],
       aborted: [...main.fakeAgent!.aborted],
-      runs: main.db.$client.prepare('SELECT id, status, error, result, tab_id FROM run').all(),
+      history: [...main.fakeAgent!.history],
+      runs: main.db.$client
+        .prepare('SELECT id, application_id, status, attempt, session_id, form_hash, error, result, tab_id FROM run')
+        .all(),
+      approvals: main.db.$client.prepare('SELECT run_id, application_id, form_hash FROM approval').all(),
       events: main.db.$client
         .prepare(
           "SELECT run_id, from_status, to_status, data FROM application_event WHERE type = 'run_transition' ORDER BY rowid",
@@ -85,7 +90,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         1,
         1,
       );
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= 16; i++) {
         db.prepare(
           'INSERT INTO job_posting (id, company_id, url, canonical_url, ats, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         ).run(
@@ -102,12 +107,12 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
           'INSERT INTO application (id, posting_id, status, queue_rank, last_activity_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         ).run(id(i + 100), id(i), 'queued', i, 1, 1, 1);
       }
-      return Array.from({ length: 10 }, (_, i) => id(i + 101));
+      return Array.from({ length: 16 }, (_, i) => id(i + 101));
     });
     expect(await window.evaluate(() => window.jobpilot!.runs.pause())).toBe(true);
     const first = await window.evaluate(
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
-      applicationIds.slice(0, 3),
+      applicationIds.slice(0, 7),
     );
     expect(first.every((run) => run.status === 'queued')).toBe(true);
     const duplicate = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[0]!);
@@ -119,15 +124,15 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         async () =>
           (await window.evaluate(() => window.jobpilot!.runs.list())).filter((row) => row.status === 'running').length,
       )
-      .toBe(2);
+      .toBe(6);
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[2]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
     ).toBe('queued');
-    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(2);
+    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(6);
     await window.evaluate(() => window.jobpilot!.runs.pause());
     await complete(
       app,
-      first.slice(0, 2).map((row) => row.id),
+      first.slice(0, 6).map((row) => row.id),
     );
     await expect
       .poll(
@@ -136,20 +141,30 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
             (row) => row.status === 'awaiting_approval',
           ).length,
       )
-      .toBe(2);
+      .toBe(6);
+    const inspectedApprovals = await inspect(app);
+    for (const row of first.slice(0, 6)) {
+      const approval = (inspectedApprovals.approvals as Array<{ run_id: string; form_hash: string }>).find(
+        (a) => a.run_id === row.id,
+      );
+      expect(approval).toBeDefined();
+      const expectedFormHash = createHash('sha256').update(`fake-form-${row.id}`).digest('hex');
+      expect(approval!.form_hash).toBe(expectedFormHash);
+      expect(approval!.form_hash).not.toBe(`fake-${row.id}`);
+    }
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[2]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
     ).toBe('queued');
     await window.evaluate(() => window.jobpilot!.runs.resume());
-    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[2]!.id)).toBe(true);
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[2]!.id)).toMatchObject({
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[6]!.id)).toBe(true);
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[2]!.id)).toMatchObject({
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[2]!.id);
-    expect((await inspect(app)).tabs).not.toContain(first[2]!.id);
+    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[6]!.id);
+    expect((await inspect(app)).tabs).not.toContain(first[6]!.id);
 
     const invalid = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[7]!);
     await expect.poll(async () => (await inspect(app!)).tabs.includes(invalid.id)).toBe(true);
@@ -198,8 +213,48 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       );
     });
 
-    for (const status of ['needs_answers', 'blocked', 'submitted']) {
-      const next = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[6]!);
+    // Run encountering missing answers transitions to needs_you, saving sessionId for tracing only.
+    const needsAnswersRun = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(needsAnswersRun.id)).toBe(true);
+    await complete(app, [needsAnswersRun.id], 'needs_answers');
+    await expect
+      .poll(
+        async () =>
+          (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === needsAnswersRun.id)
+            ?.status,
+      )
+      .toBe('needs_you');
+    const stateAfterNeedsYou = await inspect(app);
+    const run1 = (stateAfterNeedsYou.runs as Array<{ id: string; attempt: number; session_id: string | null }>).find(
+      (r) => r.id === needsAnswersRun.id,
+    );
+    expect(run1).toMatchObject({ attempt: 1, session_id: `session-${needsAnswersRun.id}` });
+
+    // A retry after needs_you starts fresh: attempt 2, no sessionId carry-over / resume, and completes to awaiting_approval.
+    const retry = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
+    expect(retry.id).not.toBe(needsAnswersRun.id);
+    const retryState = await inspect(app);
+    const retryRow = (retryState.runs as Array<{ id: string; attempt: number; session_id: string | null }>).find(
+      (r) => r.id === retry.id,
+    );
+    expect(retryRow).toBeDefined();
+    expect(retryRow!.attempt).toBe(2);
+    expect(retryRow!.session_id).not.toBe(`session-${needsAnswersRun.id}`);
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(retry.id)).toBe(true);
+    await complete(app, [retry.id], 'filled');
+    await expect
+      .poll(
+        async () =>
+          (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === retry.id)?.status,
+      )
+      .toBe('awaiting_approval');
+    const retryApproval = ((await inspect(app)).approvals as Array<{ run_id: string; form_hash: string }>).find(
+      (a) => a.run_id === retry.id,
+    );
+    expect(retryApproval?.form_hash).toBe(createHash('sha256').update(`fake-form-${retry.id}`).digest('hex'));
+
+    for (const status of ['blocked', 'submitted']) {
+      const next = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
       await expect.poll(async () => (await inspect(app!)).tabs.includes(next.id)).toBe(true);
       await complete(app, [next.id], status);
       await expect
@@ -210,12 +265,12 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         .toBe(status === 'submitted' ? 'failed' : 'needs_you');
     }
 
-    const interrupted = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[8]!);
+    const interrupted = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[10]!);
     await expect.poll(async () => (await inspect(app!)).tabs.includes(interrupted.id)).toBe(true);
     await window.evaluate(() => window.jobpilot!.runs.pause());
-    const queued = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
+    const queued = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[11]!);
     const before = await inspect(app);
-    for (const row of first.slice(0, 2)) {
+    for (const row of first.slice(0, 6)) {
       expect(before.events.filter((event) => (event as { run_id: string }).run_id === row.id)).toMatchObject([
         { from_status: null, to_status: 'queued' },
         { from_status: 'queued', to_status: 'running' },
@@ -252,7 +307,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         data: JSON.stringify({ reason: 'app restarted' }),
       }),
     );
-    const replacement = await restarted.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[8]!);
+    const replacement = await restarted.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[10]!);
     expect(replacement.id).not.toBe(interrupted.id);
     await expect
       .poll(
@@ -264,7 +319,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     await restarted.evaluate(() => window.jobpilot!.runs.pause());
     const limited = await restarted.evaluate(
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
-      applicationIds.slice(0, 3),
+      applicationIds.slice(12, 15),
     );
     await app.evaluate(({ app }) => {
       const path = process.getBuiltinModule('node:path')!;

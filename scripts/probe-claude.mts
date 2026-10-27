@@ -90,15 +90,14 @@ try {
     }
   }
   assert.equal(await readFile(resolve(directory, '.claude/settings.json'), 'utf8'), fakeSettings);
-  for (const mode of ['invalid', 'quit', 'abort', 'timeout', 'pre-abort', 'resume', 'crash']) {
+  for (const mode of ['invalid', 'quit', 'abort', 'timeout', 'pre-abort', 'crash']) {
     const controller = new AbortController();
     if (mode === 'pre-abort') controller.abort();
     const attempt = provider.run({
       ...spec,
-      prompt: ['invalid', 'crash'].includes(mode) ? mode : mode === 'resume' ? 'Fill again' : 'wait',
+      prompt: ['invalid', 'crash'].includes(mode) ? mode : 'wait',
       signal: controller.signal,
       timeoutMs: mode === 'timeout' ? 1000 : 10_000,
-      resumeId: mode === 'resume' ? 'fixture-session' : undefined,
     });
     const observed: RunEvent[] = [];
     for await (const event of attempt.events) {
@@ -108,24 +107,21 @@ try {
         else controller.abort();
       }
     }
-    if (mode === 'resume') assert.equal((await attempt.result).status, 'filled');
-    else {
-      await assert.rejects(attempt.result);
-      assert(observed.some((event) => event.type === 'error'));
-      if (['abort', 'timeout', 'quit'].includes(mode)) {
-        for (const file of ['child.pid', 'descendant.pid']) {
-          const pid = Number(await readFile(resolve(directory, file), 'utf8'));
-          // Wait for the OS to reap the killed child before checking for orphans.
-          for (let i = 0; i < 50; i++) {
-            try {
-              process.kill(pid, 0);
-            } catch {
-              break;
-            }
-            await setTimeout(20);
+    await assert.rejects(attempt.result);
+    assert(observed.some((event) => event.type === 'error'));
+    if (['abort', 'timeout', 'quit'].includes(mode)) {
+      for (const file of ['child.pid', 'descendant.pid']) {
+        const pid = Number(await readFile(resolve(directory, file), 'utf8'));
+        // Wait for the OS to reap the killed child before checking for orphans.
+        for (let i = 0; i < 50; i++) {
+          try {
+            process.kill(pid, 0);
+          } catch {
+            break;
           }
-          assert.throws(() => process.kill(pid, 0));
+          await setTimeout(20);
         }
+        assert.throws(() => process.kill(pid, 0));
       }
     }
   }

@@ -4,6 +4,7 @@ export class FakeAgentProvider implements AgentProvider {
   readonly id = 'claude';
   delayMs = 1000;
   readonly aborted = new Set<string>();
+  readonly history: Array<{ runId: string; model?: string }> = [];
   private readonly pending = new Map<string, (result: unknown) => void>();
 
   complete(
@@ -21,6 +22,7 @@ export class FakeAgentProvider implements AgentProvider {
   }
 
   run(spec: RunSpec) {
+    this.history.push({ runId: spec.runId, model: spec.model });
     const signal = AbortSignal.any([spec.signal, AbortSignal.timeout(spec.timeoutMs)]);
     let timer: NodeJS.Timeout;
     let rejectRun: (error: Error) => void;
@@ -42,6 +44,7 @@ export class FakeAgentProvider implements AgentProvider {
         this.pending.delete(spec.runId);
       });
     async function* events() {
+      yield { type: 'session' as const, sessionId: `session-${spec.runId}` };
       yield { type: 'status' as const, text: 'Fake provider started' };
     }
     return { events: events(), result };

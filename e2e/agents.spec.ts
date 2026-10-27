@@ -84,7 +84,8 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
 
     const card = () => window.getByRole('region', { name: 'Agent settings' });
     await expect(window.getByLabel('Agent model', { exact: true })).toHaveValue('haiku');
-    if (packaged) await expect(window.getByLabel('Agent authentication')).toHaveValue('api_key');
+    await expect(window.getByLabel('Agent authentication')).toHaveValue('login');
+    await expect(window.getByLabel('Crew size')).toHaveValue('6');
     expect(
       await window.evaluate(async () => {
         try {

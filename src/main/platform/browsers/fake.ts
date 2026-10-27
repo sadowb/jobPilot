@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { BrowserProvider } from './types';
 
 export class FakeBrowserProvider implements BrowserProvider {
@@ -16,5 +17,9 @@ export class FakeBrowserProvider implements BrowserProvider {
 
   async closeTab(runId: string): Promise<void> {
     this.tabs.delete(runId);
+  }
+
+  async formHash(runId: string): Promise<string> {
+    return createHash('sha256').update(`fake-form-${runId}`).digest('hex');
   }
 }
