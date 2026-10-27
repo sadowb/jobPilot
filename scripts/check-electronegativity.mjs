@@ -1,7 +1,9 @@
 import { readFileSync, existsSync } from 'node:fs';
 import process from 'node:process';
 
-const sarifPath = process.argv[2] || '/tmp/electronegativity.sarif';
+const sarifPath =
+  process.argv[2] ||
+  (process.env.RUNNER_TEMP ? `${process.env.RUNNER_TEMP}/electronegativity.sarif` : '/tmp/electronegativity.sarif');
 
 if (!existsSync(sarifPath)) {
   process.stderr.write(`Error: Electronegativity SARIF file not found at ${sarifPath}\n`);

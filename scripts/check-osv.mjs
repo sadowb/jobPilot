@@ -1,7 +1,9 @@
 import { readFileSync, existsSync } from 'node:fs';
 import process from 'node:process';
 
-const jsonPath = process.argv[2] || '/tmp/osv-results.json';
+const jsonPath =
+  process.argv[2] ||
+  (process.env.RUNNER_TEMP ? `${process.env.RUNNER_TEMP}/osv-results.json` : '/tmp/osv-results.json');
 
 if (!existsSync(jsonPath)) {
   process.stderr.write(`Error: OSV-Scanner JSON file not found at ${jsonPath}\n`);
