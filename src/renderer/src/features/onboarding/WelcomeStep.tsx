@@ -1,6 +1,6 @@
 import { CapDartArt } from '../../components/CapDartArt';
 import { Eyebrow, cn } from '../../components/ui';
-import { A_BOB, A_GUST, A_LAND, A_RISE, A_TRAIL, BUBBLE, GoButton, H1, IT, S, SPEC } from '../shared-ui';
+import { A_BOB, A_GUST, A_LAND, A_RISE, A_TRAIL, BUBBLE, GoButton, H1, IT, S } from '../shared-ui';
 import { OnboardingFrame } from './OnboardingFrame';
 import { stepPath } from './steps';
 
@@ -28,7 +28,7 @@ export function WelcomeStep() {
           </p>
           <div className="mt-9 flex items-center gap-[18px]">
             <GoButton to={stepPath(2)} variant="primary" className="min-h-[58px]! px-[30px]! text-[18px]! text-on-pri!">
-              Let’s start →
+              Let’s start
             </GoButton>
             <span className={cn(S, 'text-[13.5px]')}>5 short steps · skip any</span>
           </div>
@@ -108,9 +108,6 @@ export function WelcomeStep() {
             )}
           >
             Ready when you are.
-          </div>
-          <div className={cn(SPEC, 'absolute bottom-6 left-7 text-muted tracking-[0.02em]!')}>
-            Route · your first application
           </div>
         </div>
       </div>
