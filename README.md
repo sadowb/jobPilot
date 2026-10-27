@@ -55,20 +55,7 @@ Everything stays on your computer: an encrypted local database, no account, no s
 
 ## Download
 
-Get the latest build from [Releases](https://github.com/sadowb/jobPilot/releases): `JobPilot-X.Y.Z-arm64.dmg` (macOS, Apple silicon) or `JobPilot-X.Y.Z-x64-setup.exe` (Windows x64). Builds are pre-releases while the app is unfinished.
-
-Builds are not notarized (no Apple Developer account), so the first open needs one extra step:
-
-- **macOS:** open the DMG, drag JobPilot to Applications, open it once (macOS blocks it), then System Settings → Privacy & Security → **Open Anyway**.
-- **Windows:** SmartScreen shows "Windows protected your PC": **More info** → **Run anyway**.
-
-Verify a download came from this repository's release workflow:
-
-```bash
-gh attestation verify JobPilot-X.Y.Z-arm64.dmg -R sadowb/jobPilot
-```
-
-`SHA256SUMS` and the SPDX SBOM are attached to every release.
+Get the latest build from [Releases](https://github.com/sadowb/jobPilot/releases): a DMG for macOS (Apple silicon) or an installer for Windows (x64). Builds are pre-releases while the app is unfinished and are not notarized, so each OS asks you to confirm the first open. Steps and how to verify a download (`gh attestation verify`) are in [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Status
 
