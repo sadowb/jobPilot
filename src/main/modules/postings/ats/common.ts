@@ -32,6 +32,19 @@ export const titleFrom = (slug: string): string =>
     .replace(/[._-]+/g, ' ')
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+const regionNames = new Intl.DisplayNames('en', { type: 'region' });
+/** ISO 3166 alpha-2 codes ("us") become names ("United States"); anything else passes through. */
+export const countryName = (value: string | null): string | null => {
+  if (!value || !/^[A-Za-z]{2}$/.test(value)) return value;
+  try {
+    return regionNames.of(value.toUpperCase()) ?? value;
+  } catch {
+    return value;
+  }
+};
+/** Drops board-name suffixes like " - Career's Page", " Careers", " Jobs" from a company name. */
+export const cleanCompany = (value: string | null): string | null =>
+  value?.replace(/\s*(?:[-–—|:]\s*)?(?:career'?s?|jobs?)(?:\s+(?:page|board|site))?\s*$/i, '').trim() || value;
 export const fieldType = (value: unknown): PostingQuestionDto['type'] => {
   const type = String(value ?? '').toLowerCase();
   if (type === 'multi_value_single_select') return 'select';

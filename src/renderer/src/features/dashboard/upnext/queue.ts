@@ -12,7 +12,9 @@ export interface QueueItem {
   site: string;
   /** Extra line under the site, e.g. "creates a site account". */
   siteNote?: string;
-  /** Estimated minutes of crew time. */
+  /** Disambiguates rows with the same role, shown on hover (e.g. the location). */
+  hint?: string;
+  /** Estimated minutes of crew time; 0 means the runs engine has no estimate yet. */
   estimateMin: number;
   source: QueueSource;
   stage: QueueStage;

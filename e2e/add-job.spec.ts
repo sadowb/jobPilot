@@ -367,12 +367,29 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true }));
     }, jobUrl);
     await expect(window.getByLabel('Job links', { exact: true })).toHaveValue(jobUrl);
-    await expect(window.getByRole('list', { name: 'Job previews' })).toContainText(recording.response.title);
+    const previews = window.getByRole('list', { name: 'Job previews' });
+    await expect(previews).toContainText(recording.response.title);
+    await expect(previews).toContainText(/^Perpay — /);
+    await expect(previews).not.toContainText("Career's Page");
+    await expect(previews).toContainText(/Greenhouse · .*\d+ questions?/);
+    await window.setViewportSize({ width: 1280, height: 800 });
+    await window.evaluate(() => document.documentElement.classList.remove('dark'));
+    await window.screenshot({ path: testInfo.outputPath('preview-light.png') });
+    await window.evaluate(() => document.documentElement.classList.add('dark'));
+    await window.screenshot({ path: testInfo.outputPath('preview-dark.png') });
     expect(await window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
-    await window.getByRole('button', { name: 'Add 1 jobs', exact: true }).click();
-    await expect(window.getByRole('status').filter({ hasText: 'Added 1 jobs' })).toBeVisible();
+    await window.getByRole('button', { name: 'Add 1 job', exact: true }).click();
+    await expect(window.getByRole('status').filter({ hasText: 'Added 1 job' })).toBeVisible();
     await expect(window.getByRole('dialog')).toHaveCount(0);
-    await expect(window.getByRole('row').filter({ hasText: recording.response.title })).toHaveCount(1);
+    const queued = window.getByRole('row').filter({ hasText: recording.response.title });
+    await expect(queued).toHaveCount(1);
+    await expect(queued).toContainText('Greenhouse');
+    await expect(queued).not.toContainText('greenhouse.io');
+    await expect(queued).not.toContainText('~0 min');
+    await window.evaluate(() => document.documentElement.classList.remove('dark'));
+    await window.screenshot({ path: testInfo.outputPath('upnext-light.png') });
+    await window.evaluate(() => document.documentElement.classList.add('dark'));
+    await window.screenshot({ path: testInfo.outputPath('upnext-dark.png') });
     const [item] = await window.evaluate(() => window.jobpilot!.applications.list());
     expect(item).toMatchObject({ title: recording.response.title, status: 'queued', queueRank: 1 });
     expect(item).not.toHaveProperty('questions');
@@ -584,7 +601,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     const list = window.getByRole('list', { name: 'Job previews' });
     const pasteBox = window.getByLabel('Job links', { exact: true });
     const pasteBounds = await pasteBox.boundingBox();
-    const addBounds = await window.getByRole('button', { name: /^Add \d+ jobs$/ }).boundingBox();
+    const addBounds = await window.getByRole('button', { name: /^Add \d+ jobs?$/ }).boundingBox();
     const geometry = await list.evaluate((element) => {
       const bounds = element.getBoundingClientRect();
       return [...element.children].map((row) => {
@@ -620,7 +637,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
       element.scrollTop = element.scrollHeight;
     });
     expect(await pasteBox.boundingBox()).toEqual(pasteBounds);
-    expect(await window.getByRole('button', { name: /^Add \d+ jobs$/ }).boundingBox()).toEqual(addBounds);
+    expect(await window.getByRole('button', { name: /^Add \d+ jobs?$/ }).boundingBox()).toEqual(addBounds);
     await rows.nth(11).focus();
     await rows.nth(11).press('Backspace');
     await expect(rows).toHaveCount(11);

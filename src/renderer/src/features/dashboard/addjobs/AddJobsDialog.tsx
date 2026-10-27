@@ -158,11 +158,11 @@ export function AddJobsDialog({
           variant="primary"
           size="sm"
           type="submit"
-          aria-label={`Add ${ready.length} jobs`}
+          aria-label={`Add ${ready.length} ${ready.length === 1 ? 'job' : 'jobs'}`}
           className={cn('min-w-40 tabular-nums', controlFocus)}
           disabled={busy || reading || !ready.length}
         >
-          {busy ? 'Adding…' : `Add ${ready.length} jobs`} <V17Kbd>⌘↵</V17Kbd>
+          {busy ? 'Adding…' : `Add ${ready.length} ${ready.length === 1 ? 'job' : 'jobs'}`} <V17Kbd>⌘↵</V17Kbd>
         </AppButton>
       }
     >
@@ -331,6 +331,9 @@ export function AddJobsDialog({
                                       : atsNames[posting.ats],
                                     posting.location,
                                     posting.salary,
+                                    posting.questions.length
+                                      ? `${posting.questions.length} question${posting.questions.length === 1 ? '' : 's'}`
+                                      : 'No questions found',
                                   ]
                                     .filter(Boolean)
                                     .join(' · ')}

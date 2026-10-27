@@ -90,7 +90,9 @@ export function QueueRow(p: QueueRowProps) {
           <V17AgentBot name={item.company} state={item.agent} size={30} />
           <div className="flex min-w-0 flex-col items-start gap-1">
             <div className="text-[14.5px] font-semibold">{item.company}</div>
-            <div className="max-w-full truncate text-[13px] text-muted">{item.role}</div>
+            <div title={item.hint} className="max-w-full truncate text-[13px] text-muted">
+              {item.role}
+            </div>
             {item.stage === 'held' && item.heldAt && (
               <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-line-2 py-[3px] pr-[9px] pl-[7px] font-mono text-[11px] whitespace-nowrap text-ink-2">
                 <i className="size-1.5 flex-none rounded-full bg-brand" />
@@ -104,9 +106,7 @@ export function QueueRow(p: QueueRowProps) {
         <span className="text-[13.5px] text-muted">{item.site}</span>
         {item.siteNote && <span className="text-[11.5px] text-need">{item.siteNote}</span>}
       </div>
-      <div>
-        <span className="text-[13px] text-muted">~{item.estimateMin} min</span>
-      </div>
+      <div>{item.estimateMin > 0 && <span className="text-[13px] text-muted">~{item.estimateMin} min</span>}</div>
       <div>
         <span className="rounded-[7px] border border-line px-[7px] py-0.5 font-mono text-[11px] tracking-[0.06em] whitespace-nowrap text-ink-2">
           {item.source}

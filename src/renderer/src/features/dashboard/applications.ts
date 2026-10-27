@@ -2,6 +2,20 @@ import type { ApplicationListItem } from '../../../../shared/dto';
 import type { Application } from './types';
 import type { QueueItem } from './upnext/queue';
 
+const ATS_HOSTS: [string, string][] = [
+  ['greenhouse.io', 'Greenhouse'],
+  ['lever.co', 'Lever'],
+  ['ashbyhq.com', 'Ashby'],
+  ['workable.com', 'Workable'],
+  ['smartrecruiters.com', 'SmartRecruiters'],
+  ['bamboohr.com', 'BambooHR'],
+];
+/** ATS display name for known hosts, the raw host otherwise. */
+const siteName = (url: string) => {
+  const host = new URL(url).hostname;
+  return ATS_HOSTS.find(([domain]) => host === domain || host.endsWith(`.${domain}`))?.[1] ?? host;
+};
+
 export const isApplied = (item: ApplicationListItem) => item.appliedAt !== null;
 
 export function queueItem(item: ApplicationListItem): QueueItem {
@@ -9,7 +23,8 @@ export function queueItem(item: ApplicationListItem): QueueItem {
     id: item.id,
     company: item.companyName,
     role: item.title,
-    site: new URL(item.url).hostname,
+    site: siteName(item.url),
+    hint: item.location ?? undefined,
     estimateMin: 0,
     source: 'Pasted',
     stage: item.status === 'running' ? 'running' : item.status === 'queued' ? 'queued' : 'waiting',
@@ -34,7 +49,7 @@ export function appliedItem(item: ApplicationListItem): Application {
     statusSource: 'agent',
     statusSetOn: day(item.lastActivityAt),
     salary: '—',
-    site: new URL(item.url).hostname,
+    site: siteName(item.url),
     appliedOn: day(item.appliedAt ?? item.createdAt),
     agent: 'done',
     postingUrl: item.url,

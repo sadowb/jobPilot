@@ -104,7 +104,7 @@ export function Dashboard() {
           role="status"
           className="fixed bottom-8 left-1/2 z-10 -translate-x-1/2 rounded-2xl border border-line bg-bg px-5 py-3 text-sm text-ink shadow-float"
         >
-          Added {addedIds.length} jobs
+          Added {addedIds.length} {addedIds.length === 1 ? 'job' : 'jobs'}
         </div>
       )}
       {addJobs && <AddJobsDialog initialText={addJobs.text} onAdded={onAdded} onClose={() => setAddJobs(null)} />}
