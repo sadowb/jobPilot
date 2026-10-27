@@ -107,7 +107,9 @@ export function UpNextView({
 
   const crew = state.paused
     ? 'QUEUE PAUSED'
-    : `CREW ${running} / ${CREW_SIZE} BUSY · ${formatCrewTime(minutes)} LEFT`.toUpperCase();
+    : running === 0
+      ? `CREW IDLE · 0 / ${CREW_SIZE} RUNNING`
+      : `CREW ${running} / ${CREW_SIZE} BUSY · ${formatCrewTime(minutes)} LEFT`.toUpperCase();
 
   return (
     <div className="relative flex h-[calc(100vh-var(--app-toolbar-height))]">

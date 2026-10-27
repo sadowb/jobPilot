@@ -29,39 +29,6 @@ export const CV_FIELDS: readonly CvField[] = [
   { label: 'Languages', value: 'Arabic · Darija · French · English', delay: 0.75 },
 ];
 
-export interface QueuedJob {
-  company: string;
-  role: string;
-  site: 'Ashby' | 'Greenhouse';
-  url: string;
-  /** Row-in delay for the pasted URL line (seconds); card and bar delays derive from it. */
-  delay: number;
-}
-
-export const FIRST_JOBS: readonly QueuedJob[] = [
-  {
-    company: 'Mercury',
-    role: 'Software Engineer, New Grad',
-    site: 'Ashby',
-    url: 'https://jobs.ashbyhq.com/mercury/7f3c…',
-    delay: 0,
-  },
-  {
-    company: 'Retool',
-    role: 'Software Engineer, Early Career',
-    site: 'Ashby',
-    url: 'https://jobs.ashbyhq.com/retool/2b9…',
-    delay: 0.12,
-  },
-  {
-    company: 'Duolingo',
-    role: 'Software Engineer, New Grad',
-    site: 'Greenhouse',
-    url: 'https://boards.greenhouse.io/duolingo/jobs/61…',
-    delay: 0.24,
-  },
-];
-
 export interface FactQuestion {
   id: 'auth' | 'salary' | 'move';
   prompt: string;
