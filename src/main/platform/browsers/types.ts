@@ -9,7 +9,7 @@ export interface BrowserTab {
 export interface BrowserProvider {
   readonly id: BrowserId;
   /** MCP server the agent uses to drive this browser. */
-  mcpServerConfig(): Promise<McpServerConfig>;
+  mcpServerConfig(runId: string, signal: AbortSignal): Promise<McpServerConfig>;
   openTab(runId: string, url: string): Promise<BrowserTab>;
   /** Idempotent: closing an already-closed run's tab is a no-op. */
   closeTab(runId: string): Promise<void>;

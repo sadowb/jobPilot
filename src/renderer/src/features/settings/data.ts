@@ -37,7 +37,7 @@ export const SUBMIT_MODES: readonly { value: SubmitMode; title: string; body: st
 
 export const DEFAULT_SETTINGS = {
   autopilot: true,
-  crew: 4,
+  crew: 6,
   submitMode: 'auto' as SubmitMode,
   limits: { openTabs: 8, costPerDay: 5, runSeconds: 540, stuckSeconds: 120 },
 };

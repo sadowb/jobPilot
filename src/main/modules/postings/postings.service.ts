@@ -52,4 +52,8 @@ export class PostingService {
   resolveFillPlan(applicationId: string): FillPlanDto {
     return this.repository.resolveFillPlan(applicationId);
   }
+
+  get(postingId: string) {
+    return this.repository.get(postingId);
+  }
 }

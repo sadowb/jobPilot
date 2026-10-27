@@ -1,8 +1,10 @@
 /** Contract between the runs module and agent backends (claude.ts, codex.ts, cli.ts). No backend-specific types leak out of here. */
 import { z } from 'zod';
 import type { AgentId } from '../../../shared/dto';
+import type { McpSdkServerConfigWithInstance } from '@anthropic-ai/claude-agent-sdk';
 
 export type McpServerConfig =
+  | McpSdkServerConfigWithInstance
   | { type: 'stdio'; command: string; args?: string[]; env?: Record<string, string> }
   | { type: 'http'; url: string; headers?: Record<string, string> };
 

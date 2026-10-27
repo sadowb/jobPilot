@@ -6,7 +6,7 @@ import { app, BrowserWindow, nativeTheme } from 'electron';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Channels } from '../../../shared/ipc';
-import { ThemeSourceSchema, type ThemeSource, type ThemeState } from '../../../shared/dto';
+import { AgentPreferencesSchema, ThemeSourceSchema, type ThemeSource, type ThemeState } from '../../../shared/dto';
 
 // Phase 1 moves this into the `settings` table.
 const themeFile = () => join(app.getPath('userData'), 'theme-preference');
@@ -47,7 +47,15 @@ export function markProfileMigrated(database: JobPilotDb): void {
 }
 
 export function applyConcurrency(database: JobPilotDb): number {
-  return z.number().int().min(1).max(64).default(2).parse(new SettingsRepository(database).applyConcurrency());
+  return z.number().int().min(1).max(64).default(6).parse(new SettingsRepository(database).applyConcurrency());
+}
+
+export function runPreferences(database: JobPilotDb) {
+  const repository = new SettingsRepository(database);
+  return {
+    model: AgentPreferencesSchema.parse(repository.agentPreferences() ?? {}).model,
+    timeoutMs: z.number().int().min(1000).max(3_600_000).default(900_000).parse(repository.runTimeoutMs()),
+  };
 }
 
 export function claudeKeyService(database: JobPilotDb): AnthropicKeyStore {
