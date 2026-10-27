@@ -95,7 +95,7 @@ jobs:
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
         run: |
           if [ -z "$MAC_CERT_P12_BASE64" ] || [ -z "$MAC_CERT_PASSWORD" ]; then
-            echo "Release signing secrets are missing. Configure MAC_CERT_P12_BASE64 and MAC_CERT_PASSWORD as described in docs/RELEASE.md." >&2
+            echo "Release signing secrets are missing. Configure MAC_CERT_P12_BASE64 and MAC_CERT_PASSWORD on the `release` environment (see ADR 0014)." >&2
             exit 1
           fi
       - name: Import release signing identity into temporary keychain
