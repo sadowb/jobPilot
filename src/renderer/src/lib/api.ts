@@ -31,7 +31,13 @@ export const useCreateApplication = () =>
 
 export const useIngestPosting = () => useMutation({ mutationFn: (url: string) => bridge().postings.ingest(url) });
 
-export const useAgent = () => useQuery({ queryKey: queryKeys.agent.state(), queryFn: () => bridge().agent.get() });
+export const useAgent = () =>
+  useQuery({
+    queryKey: queryKeys.agent.state(),
+    queryFn: () => bridge().agent.get(),
+    // Claude's install and sign-in change outside the app, so re-read whenever the card mounts.
+    staleTime: 0,
+  });
 
 export const useAgentAction = () =>
   useMutation({
@@ -41,7 +47,11 @@ export const useAgentAction = () =>
   });
 
 export const useClaudeKeyStatus = () =>
-  useQuery({ queryKey: queryKeys.claudeKey.status(), queryFn: () => bridge().claudeKey.status() });
+  useQuery({
+    queryKey: queryKeys.claudeKey.status(),
+    queryFn: () => bridge().claudeKey.status(),
+    staleTime: 0,
+  });
 
 const refreshKeyStatus = () => queryClient.invalidateQueries({ queryKey: queryKeys.claudeKey.status() });
 

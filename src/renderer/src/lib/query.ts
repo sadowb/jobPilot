@@ -3,7 +3,7 @@ import type { DataChanged } from '../../../shared/ipc';
 
 /**
  * Data is fresh until main says it changed (`onDataChanged`), so there is no polling and no focus refetch.
- * Reads that main cannot signal (agent detection, key status) are refreshed by the mutation that changes them.
+ * Reads that change outside the app (agent sign-in, key status) opt out with `staleTime: 0` and re-read on mount.
  */
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: Infinity, retry: false, refetchOnWindowFocus: false } },
