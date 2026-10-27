@@ -378,8 +378,8 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     await window.evaluate(() => document.documentElement.classList.add('dark'));
     await window.screenshot({ path: testInfo.outputPath('preview-dark.png') });
     expect(await window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
-    await window.getByRole('button', { name: 'Add 1 jobs', exact: true }).click();
-    await expect(window.getByRole('status').filter({ hasText: 'Added 1 jobs' })).toBeVisible();
+    await window.getByRole('button', { name: 'Add 1 job', exact: true }).click();
+    await expect(window.getByRole('status').filter({ hasText: 'Added 1 job' })).toBeVisible();
     await expect(window.getByRole('dialog')).toHaveCount(0);
     const queued = window.getByRole('row').filter({ hasText: recording.response.title });
     await expect(queued).toHaveCount(1);
