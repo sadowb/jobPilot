@@ -1,0 +1,96 @@
+rules:
+  - id: jobpilot-ipcmain-outside-definehandler
+    patterns:
+      - pattern-either:
+          - pattern: ipcMain.handle(...)
+          - pattern: ipcMain.handleOnce(...)
+          - pattern: ipcMain.on(...)
+    paths:
+      include:
+        - src/main/**
+      exclude:
+        - src/main/platform/ipc/registry.ts
+    message: 'Register IPC handlers via defineHandler in platform/ipc, not raw ipcMain methods.'
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+
+  - id: jobpilot-fetch-undici-outside-request
+    patterns:
+      - pattern-either:
+          - pattern: fetch(...)
+          - pattern: import ... from 'undici'
+          - pattern: require('undici')
+    paths:
+      include:
+        - src/main/**
+      exclude:
+        - src/main/modules/postings/ats/common.ts
+        - src/main/platform/secrets/anthropic-key.ts
+        - src/main/platform/browsers/neo-mcp.ts
+        - src/main/app/protocol.ts
+    message: 'Outbound HTTP requests must use the SSRF-safe request() helper instead of raw fetch() or undici.'
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+
+  - id: jobpilot-child-process-shell-true
+    patterns:
+      - pattern-either:
+          - pattern: 'spawn(..., {..., shell: true, ...}, ...)'
+          - pattern: 'exec(..., {..., shell: true, ...}, ...)'
+          - pattern: 'execFile(..., {..., shell: true, ...}, ...)'
+          - pattern: 'fork(..., {..., shell: true, ...}, ...)'
+          - pattern: 'execa(..., {..., shell: true, ...}, ...)'
+          - pattern: '$CP.spawn(..., {..., shell: true, ...}, ...)'
+          - pattern: '$CP.exec(..., {..., shell: true, ...}, ...)'
+          - pattern: '$CP.execFile(..., {..., shell: true, ...}, ...)'
+          - pattern: '$CP.fork(..., {..., shell: true, ...}, ...)'
+          - pattern: '$CP.execa(..., {..., shell: true, ...}, ...)'
+    message: 'Executing child processes with shell: true is prohibited to prevent command injection.'
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+
+  - id: jobpilot-console-in-src-main
+    patterns:
+      - pattern: console.$METHOD(...)
+    paths:
+      include:
+        - src/main/**
+    message: "console.* is prohibited in src/main. Use LogService loggerFor('module') instead."
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+
+  - id: jobpilot-secrets-passed-to-logger
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: '$LOGGER.$LOG({..., $KEY: $VAL, ...}, ...)'
+              - metavariable-regex:
+                  metavariable: $LOG
+                  regex: ^(debug|info|warn|error|fatal|trace)$
+              - metavariable-regex:
+                  metavariable: $KEY
+                  regex: (?i)^(apiKey|api_key|claudeKey|claude_key|anthropicKey|anthropic_key|dbKey|db_key|recoveryKey|recovery_key|password|secret|token|credentials?|privateKey|private_key)$
+          - patterns:
+              - pattern: $LOGGER.$LOG(..., $VAL, ...)
+              - metavariable-regex:
+                  metavariable: $LOG
+                  regex: ^(debug|info|warn|error|fatal|trace)$
+              - metavariable-regex:
+                  metavariable: $VAL
+                  regex: (?i).*(apiKey|api_key|claudeKey|claude_key|anthropicKey|anthropic_key|dbKey|db_key|recoveryKey|recovery_key|password|secret|token|credentials?|privateKey|private_key).*
+    paths:
+      include:
+        - src/main/**
+    message: 'Do not pass sensitive variables or secrets (API keys, passwords, tokens, recovery keys) to loggers.'
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript

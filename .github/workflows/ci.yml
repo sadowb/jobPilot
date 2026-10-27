@@ -37,6 +37,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm audit --audit-level=high
       - run: npm run db:check
+      - name: Verify IPC manifest
+        run: npm run ipc:check
+      - name: Run Semgrep with JobPilot rules
+        run: pipx run semgrep==1.182.1 scan --config .semgrep/ --error
+      - name: Run Electronegativity (Electron misconfigurations)
+        run: |
+          npx --yes @doyensec/electronegativity@1.10.3 -i src --parser-plugins typescript,jsx -o /tmp/electronegativity.sarif || true
+          node scripts/check-electronegativity.mjs /tmp/electronegativity.sarif
+      - name: Run OSV-Scanner on package-lock.json (fail on high)
+        run: |
+          curl -fsSL https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64 -o /tmp/osv-scanner
+          chmod +x /tmp/osv-scanner
+          /tmp/osv-scanner scan source --lockfile package-lock.json --format json > /tmp/osv-results.json || true
+          node scripts/check-osv.mjs /tmp/osv-results.json
 
   app:
     needs: static

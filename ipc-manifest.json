@@ -1,0 +1,102 @@
+[
+  {
+    "channel": "agents:detect",
+    "schema": "DetectAgentSchema"
+  },
+  {
+    "channel": "agents:get",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "agents:save",
+    "schema": "SaveAgentSchema"
+  },
+  {
+    "channel": "applications:create",
+    "schema": "CreateApplicationSchema"
+  },
+  {
+    "channel": "applications:list",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "documents:save",
+    "schema": "SaveDocumentInputSchema"
+  },
+  {
+    "channel": "observability:renderer-error",
+    "schema": "RendererErrorInputSchema"
+  },
+  {
+    "channel": "postings:ingest",
+    "schema": "IngestUrlSchema"
+  },
+  {
+    "channel": "profile:get",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "profile:migrate",
+    "schema": "ProfileDataSchema"
+  },
+  {
+    "channel": "profile:migration-done",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "profile:save",
+    "schema": "ProfileSaveSchema"
+  },
+  {
+    "channel": "recovery:export",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "recovery:import",
+    "schema": "RecoveryKeySchema"
+  },
+  {
+    "channel": "runs:cancel",
+    "schema": "CancelRunSchema"
+  },
+  {
+    "channel": "runs:list",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "runs:pause",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "runs:resume",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "runs:start",
+    "schema": "StartRunSchema"
+  },
+  {
+    "channel": "secrets:claude:remove",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "secrets:claude:set",
+    "schema": "ClaudeApiKeySchema"
+  },
+  {
+    "channel": "secrets:claude:status",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "secrets:claude:test",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "theme:get",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "theme:set",
+    "schema": "ThemeSourceSchema"
+  }
+]
