@@ -74,13 +74,15 @@ export async function detectClaude(override?: string | null): Promise<{ path: st
     try {
       const path = await executablePath(candidate);
       const isCmd = process.platform === 'win32' && /\.(cmd|bat)$/i.test(path);
+      if (isCmd && (/["&|<>^%]/.test(candidate) || /["&|<>^%]/.test(path))) continue;
       const file = isCmd ? (process.env.ComSpec ?? 'cmd.exe') : path;
-      const args = isCmd ? ['/d', '/s', '/c', path, '--version'] : ['--version'];
+      const args = isCmd ? ['/d', '/s', '/c', `"${path}" --version`] : ['--version'];
       const { stdout } = await execute(file, args, {
         timeout: 5000,
         killSignal: 'SIGKILL',
         maxBuffer: 4096,
         encoding: 'utf8',
+        windowsVerbatimArguments: isCmd,
         env: {
           PATH: pathValue,
           HOME: homedir(),
