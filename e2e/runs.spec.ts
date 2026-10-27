@@ -8,7 +8,9 @@ import { join } from 'node:path';
 type Main = typeof import('../src/main/app/main');
 
 async function inspect(app: ElectronApplication) {
-  return app.evaluate(({ app }) => {
+  return app.evaluate(async ({ app }) => {
+    // Inspector evaluates can interrupt main-process JS mid-query; wait for an idle tick before using the DB.
+    await new Promise((resolve) => setImmediate(resolve));
     const path = process.getBuiltinModule('node:path')!;
     const require = process.getBuiltinModule('node:module')!.createRequire(path.join(app.getAppPath(), 'package.json'));
     const main = require(path.join(app.getAppPath(), 'out/main/index.js')) as Main;
@@ -73,7 +75,8 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     const window = await app.firstWindow();
     await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
-    const applicationIds = await app.evaluate(({ app }) => {
+    const applicationIds = await app.evaluate(async ({ app }) => {
+      await new Promise((resolve) => setImmediate(resolve));
       const path = process.getBuiltinModule('node:path')!;
       const require = process
         .getBuiltinModule('node:module')!
@@ -178,7 +181,8 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     expect((await inspect(app)).tabs).not.toContain(invalid.id);
 
     // Audit insertion failure must roll the run transition back in the same transaction.
-    await app.evaluate(({ app }) => {
+    await app.evaluate(async ({ app }) => {
+      await new Promise((resolve) => setImmediate(resolve));
       const path = process.getBuiltinModule('node:path')!;
       const require = process
         .getBuiltinModule('node:module')!
@@ -203,7 +207,8 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         (row) => row.applicationId === applicationIds[8]!,
       ),
     ).toEqual([]);
-    await app.evaluate(({ app }) => {
+    await app.evaluate(async ({ app }) => {
+      await new Promise((resolve) => setImmediate(resolve));
       const path = process.getBuiltinModule('node:path')!;
       const require = process
         .getBuiltinModule('node:module')!
@@ -321,7 +326,8 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
       applicationIds.slice(12, 15),
     );
-    await app.evaluate(({ app }) => {
+    await app.evaluate(async ({ app }) => {
+      await new Promise((resolve) => setImmediate(resolve));
       const path = process.getBuiltinModule('node:path')!;
       const require = process
         .getBuiltinModule('node:module')!
