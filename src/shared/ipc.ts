@@ -48,8 +48,13 @@ export const Channels = {
   saveDocument: 'documents:save',
   setTheme: 'theme:set',
   themeChanged: 'theme:changed',
+  dataChanged: 'data:changed',
   rendererError: 'observability:renderer-error',
 } as const;
+
+/** Main -> renderer: something the renderer may have cached changed. Carries no data, only what to refetch. */
+export const DataChangedSchema = z.object({ entity: z.enum(['application', 'run']), id: z.string().min(1).max(64) });
+export type DataChanged = z.infer<typeof DataChangedSchema>;
 
 export const RendererErrorInputSchema = z.object({
   kind: z.enum(['error', 'unhandledrejection']),
@@ -98,4 +103,5 @@ export interface JobPilotBridge {
     set(source: ThemeSource): Promise<ThemeState>;
     onChange(listener: (state: ThemeState) => void): () => void;
   };
+  onDataChanged(listener: (change: DataChanged) => void): () => void;
 }

@@ -1,4 +1,5 @@
 import { ProfileSaveSchema, type ProfileData } from '../../../../shared/dto';
+import { saveProfile } from '../../lib/api';
 import { ANSWERS_V2_KEY } from './answers';
 import { MARKETS_KEY } from './markets';
 import { PROFILE_KEY } from './personal';
@@ -19,5 +20,5 @@ export async function saveProfileData(key: string, value: unknown): Promise<void
   const section =
     key === PROFILE_KEY ? 'personal' : key === MARKETS_KEY ? 'markets' : key === ANSWERS_V2_KEY ? 'answers' : null;
   if (!section) throw new Error('Unknown profile section');
-  setProfileData(await window.jobpilot!.profile.save(ProfileSaveSchema.parse({ section, value })));
+  setProfileData(await saveProfile(ProfileSaveSchema.parse({ section, value })));
 }

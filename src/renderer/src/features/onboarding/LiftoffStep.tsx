@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { cn } from '../../components/ui';
+import { useApplications } from '../../lib/api';
 import { ANSWERS_V2_KEY, readAnswersV2 } from '../profile/answers';
 import { readProfileData } from '../profile/profileStorage';
 import { useDocumentCount } from '../profile/useDocumentCount';
@@ -44,17 +44,7 @@ function Row({ done, title, detail, to }: { done: boolean; title: string; detail
 export function LiftoffStep() {
   const cvs = useDocumentCount();
   const facts = answeredFacts();
-  const [jobs, setJobs] = useState<number | null>(null);
-  useEffect(() => {
-    let live = true;
-    window.jobpilot?.applications
-      .list()
-      .then((items) => live && setJobs(items.length))
-      .catch(() => live && setJobs(null));
-    return () => {
-      live = false;
-    };
-  }, []);
+  const jobs = useApplications().data?.length ?? null;
   return (
     <OnboardingFrame step={5} minHeight={682}>
       <StepHeading

@@ -4,6 +4,7 @@ import type { JobPilotDb } from '../../platform/db/database';
 import { type RunStatus, RunSummarySchema } from '../../../shared/dto';
 import { RunEventSchema, RunResultSchema, type AgentProvider, type RunResult } from '../../platform/agents/types';
 import type { BrowserProvider } from '../../platform/browsers/types';
+import { emitDataChanged } from '../../platform/ipc/events';
 import { ApplyWorker } from '../../platform/queue/apply';
 import { ApplicationsService } from '../applications/applications.service';
 import { AuditService, RunTraceService } from '../observability/observability.service';
@@ -89,6 +90,7 @@ export class RunsService {
       if (!result) throw new Error('Run could not be queued.');
       return result;
     });
+    emitDataChanged({ entity: 'run', id: row.id });
     try {
       await this.worker.enqueue(row.id);
     } catch (error) {
@@ -126,7 +128,7 @@ export class RunsService {
     status: RunStatus,
     details: { error?: string; result?: RunResult; formHash?: string } = {},
   ) {
-    return this.db.transaction(() => {
+    const updated = this.db.transaction(() => {
       const row = this.repository.get(runId);
       const allowed =
         row.status === 'queued'
@@ -156,6 +158,8 @@ export class RunsService {
       );
       return updated;
     });
+    emitDataChanged({ entity: 'run', id: runId });
+    return updated;
   }
 
   private async execute(runId: string, signal: AbortSignal): Promise<void> {
@@ -202,7 +206,11 @@ export class RunsService {
             const event = RunEventSchema.parse(rawEvent);
             RunTraceService.append({ runId, type: event.type, payload: z.json().parse(event) });
             loggerFor('runs').info({ run_id: runId, event_type: event.type }, 'Run event received');
-            if (event.type === 'session') this.repository.update(runId, { sessionId: event.sessionId });
+            // Emit only when the run row changed; plain trace events don't touch it.
+            if (event.type === 'session') {
+              this.repository.update(runId, { sessionId: event.sessionId });
+              emitDataChanged({ entity: 'run', id: runId });
+            }
             if (event.type === 'cost') {
               const current = this.repository.get(runId);
               this.repository.update(runId, {
@@ -210,6 +218,7 @@ export class RunsService {
                 outputTokens: (current.outputTokens ?? 0) + event.outputTokens,
                 costMicros: (current.costMicros ?? 0) + event.costMicros,
               });
+              emitDataChanged({ entity: 'run', id: runId });
             }
           }
         })(),

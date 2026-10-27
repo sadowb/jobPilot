@@ -7,6 +7,7 @@ import { V17Icon } from '../../../components/V17Icon';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { V17StatusChip } from '../../../components/V17StatusChip';
 import { AppButton } from '../components/AppButton';
+import { useCreateApplication, useIngestPosting } from '../../../lib/api';
 
 function candidates(text: string) {
   return [...new Set((text.match(/https?:\/\/[^\s,<>"'“”]+/gi) ?? []).map((url) => url.replace(/[.!?;:)}\]]+$/, '')))];
@@ -40,6 +41,8 @@ export function AddJobsDialog({
       .slice(0, 50)
       .map((url, id) => ({ id, url })),
   );
+  const { mutateAsync: ingest } = useIngestPosting();
+  const createApplication = useCreateApplication();
   const active = useRef(new Set<number>());
   const adding = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -55,7 +58,7 @@ export function AddJobsDialog({
       void (async () => {
         let result: IngestResult;
         try {
-          result = await window.jobpilot!.postings.ingest(row.url);
+          result = await ingest(row.url);
         } catch {
           result = {
             ok: false,
@@ -67,7 +70,7 @@ export function AddJobsDialog({
         setRows((current) => current.map((item) => (item.id === row.id ? { ...item, result } : item)));
       })();
     }
-  }, [rows]);
+  }, [rows, ingest]);
 
   const ready = rows.filter((row) => row.result?.ok && !row.result.alreadyTracked && !row.added);
   const readingCount = rows.filter((row) => !row.result).length;
@@ -107,7 +110,7 @@ export function AddJobsDialog({
         if (!row.result?.ok) continue;
         try {
           if (!postingIds.has(row.result.posting.postingId)) {
-            const application = await window.jobpilot!.applications.create(row.result.posting.postingId);
+            const application = await createApplication.mutateAsync(row.result.posting.postingId);
             addedIds.push(application.id);
             postingIds.add(row.result.posting.postingId);
           }

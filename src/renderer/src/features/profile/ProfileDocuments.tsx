@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../components/ui';
+import { hasBridge, useSaveDocument } from '../../lib/api';
 import { PButton, ghostLinkButton } from './buttons';
 import { documentError } from './personal';
 import { documentStore, type ProfileDocument } from './documents';
@@ -24,12 +25,13 @@ function DocumentRow({
 }) {
   const download = useRef<HTMLAnchorElement>(null);
   const [saving, setSaving] = useState(false);
+  const saveDocument = useSaveDocument();
   const saveCopy = async () => {
-    if (saving || !window.jobpilot) return;
+    if (saving || !hasBridge()) return;
     setSaving(true);
     onError('');
     try {
-      await window.jobpilot.documents.save(doc.name, new Uint8Array(await doc.file.arrayBuffer()));
+      await saveDocument.mutateAsync({ name: doc.name, bytes: new Uint8Array(await doc.file.arrayBuffer()) });
     } catch {
       onError('Could not save a copy. Please try again.');
     } finally {
@@ -71,7 +73,7 @@ function DocumentRow({
           aria-label={`Download ${doc.name}`}
           aria-disabled={saving}
           onClick={(e) => {
-            if (window.jobpilot) {
+            if (hasBridge()) {
               e.preventDefault();
               void saveCopy();
             }
