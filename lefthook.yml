@@ -15,3 +15,9 @@ pre-commit:
     ipc:
       glob: '{src/shared/ipc.ts,src/preload/index.ts,src/main/modules/*/*.controller.ts,src/main/app/main.ts,ipc-manifest.json}'
       run: npm run ipc:check
+
+commit-msg:
+  commands:
+    # agy appends an Antigravity co-author trailer that GitHub credits to an unrelated account.
+    strip-antigravity-coauthor:
+      run: node -e "const fs=require('fs');const f=process.argv[1];fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/^co-authored-by:.*antigravity@google\\.com.*\\n?/gim,''))" {1}
