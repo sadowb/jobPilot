@@ -26,6 +26,7 @@ import { DatabaseUnlockError, openDatabase, startDailyBackups } from '../platfor
 import { originCheck, registerIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
+import { installAppMenu } from './menu';
 import { registerAppScheme, serveRenderer } from './protocol';
 import { denyPermissionsByDefault, lockDown } from './security';
 import { createWindow } from './window';
@@ -67,6 +68,7 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     serveRenderer();
+    installAppMenu();
     denyPermissionsByDefault();
     registerIpc(recoveryHandlers, originCheck(isTrustedUrl), loggerFor('ipc'));
     let recoveryWindow: BrowserWindow | undefined;
