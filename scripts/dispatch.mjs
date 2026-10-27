@@ -85,7 +85,7 @@ try {
   const brief = `Invoke the installed ponytail skill (full).
 Read AGENTS.md and the relevant module AGENTS.md before editing.
 Do not launch the app GUI and do not call \`security\` or safeStorage locally. Using the existing git and gh CLI auth to push and open the PR is allowed and expected.
-Run only typecheck, lint, and format:check locally; leave builds and app journeys to CI. Never skip commit hooks (no --no-verify, no LEFTHOOK=0).
+Run only typecheck, lint, and format:check locally; leave builds and app journeys to CI. Never skip commit hooks (no --no-verify, no LEFTHOOK=0). Add no Co-authored-by trailers to commits.
 Verification (the PR is not done without it):
 - Renderer change: the journey saves light and dark screenshots of every changed screen at 1280x800 under the Playwright output dir (testInfo.outputPath('<name>-light.png' / '-dark.png')) with realistic data, so CI uploads them. If the issue links an approved mockup or spec, match it and say in the PR where you deviated.
 - Gentle footprint (ADR in #70): no writes outside userData, no changes to the user's installed tools or their config (~/.claude, PATH, shell rc), no new background presence (login item, LaunchAgent, tray, global shortcut); child processes and browser tabs end on cancel and quit.
