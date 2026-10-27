@@ -10,7 +10,7 @@
   <a href="docs/architecture.md">Architecture</a>
 </p>
 
-JobPilot is a macOS app that applies to jobs for you. Paste a stack of links: a crew of agents reads each posting, fills the form from your profile, CV and saved answers, and asks you only what it can't know. **Nothing is submitted until you've seen exactly what will be sent.**
+JobPilot is an Electron desktop app that applies to jobs for you. Paste a stack of links: a crew of agents reads each posting, fills the form from your profile, CV and saved answers, and asks you only what it can't know. **Nothing is submitted until you've seen exactly what will be sent.**
 
 ## Review before anything is sent
 
@@ -50,7 +50,7 @@ Your funnel, reply rate over time, and which site, CV and role level get replies
 3. **Unknown questions come to you** in the Inbox, with a drafted answer.
 4. **You approve, it submits.** Approval is bound to the exact form contents.
 
-Everything stays on your Mac: an encrypted local database, no account, no server, no telemetry. JobPilot writes only to its own folder and stops every agent when you quit.
+Everything stays on your computer: an encrypted local database, no account, no server, no telemetry. JobPilot writes only to its own folder and stops every agent when you quit.
 
 ## Status
 
