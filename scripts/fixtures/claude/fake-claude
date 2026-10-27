@@ -2,13 +2,26 @@
 import process from 'node:process';
 import assert from 'node:assert/strict';
 import { createInterface } from 'node:readline';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { spawn } from 'node:child_process';
+if (process.argv.length === 3 && process.argv[2] === '--version') {
+  process.stdout.write('2.1.303 (Claude Code fixture)\n');
+  process.exit(0);
+}
+const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
 
 // Deterministic CLI protocol fixture: real SDK transport + stdio MCP, no model or credentials.
 assert.equal(process.env.POISON, undefined);
 assert.equal(process.env.CLAUDE_CODE_OAUTH_TOKEN, undefined);
-assert.equal(process.env.ANTHROPIC_API_KEY, 'fixture-key');
+if (process.env.ANTHROPIC_API_KEY) {
+  assert.equal(process.env.ANTHROPIC_API_KEY, 'fixture-key');
+  assert(process.env.CLAUDE_CONFIG_DIR);
+} else assert.equal(process.env.CLAUDE_CONFIG_DIR, undefined);
+assert.equal(process.env.CLAUDE_CODE_DISABLE_AUTO_MEMORY, '1');
+assert.equal(process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC, '1');
+assert.equal(process.env.CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL, '1');
 const send = (value) => process.stdout.write(JSON.stringify(value) + '\n');
 const argument = (flag) => {
   const inline = process.argv.find((value) => value.startsWith(flag + '='));
@@ -25,16 +38,37 @@ for await (const line of createInterface({ input: process.stdin })) {
   } else if (request.type === 'user') {
     send({ type: 'system', subtype: 'init', session_id: 'fixture-session' });
     const prompt = JSON.stringify(request.message);
-    assert.equal(argument('--model'), 'fixture-model');
+    assert(['fixture-model', 'haiku', 'sonnet', 'opus'].includes(argument('--model')));
     assert(argument('--json-schema'));
     assert(process.argv.includes('--strict-mcp-config'));
+    assert(process.argv.includes('--no-session-persistence'));
+    assert.equal(argument('--setting-sources'), '');
+    assert.equal(argument('--tools'), '');
+    assert(!process.argv.includes('--plugin-dir'));
+    const config = JSON.parse(argument('--mcp-config'));
+    assert.deepEqual(Object.keys(config.mcpServers), ['form']);
+    if (prompt.includes('isolation')) {
+      const settings = JSON.parse(readFileSync(join(process.env.HOME, '.claude/settings.json'), 'utf8'));
+      assert(settings.hooks.SessionStart);
+      assert(settings.mcpServers.personal);
+      assert(!JSON.stringify(config).includes('personal'));
+    }
+    if (prompt.includes('wait')) {
+      writeFileSync(join(process.cwd(), 'child.pid'), String(process.pid));
+      const descendant = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+      writeFileSync(join(process.cwd(), 'descendant.pid'), String(descendant.pid));
+    }
+    send({ type: 'assistant', message: { content: [{ type: 'text', text: 'model:' + argument('--model') }] } });
+    if (prompt.includes('not-logged-in')) {
+      send({ type: 'assistant', error: 'authentication_failed', message: { content: [] } });
+      process.exit(1);
+    }
     if (prompt.includes('Fill again')) assert.equal(argument('--resume'), 'fixture-session');
     if (prompt.includes('wait')) continue;
     if (prompt.includes('crash')) {
       process.stderr.write('token=fixture-token ' + 'x'.repeat(175) + 'fixture-key' + 'x'.repeat(250) + 'beyond-limit');
       process.exit(23);
     }
-    const config = JSON.parse(argument('--mcp-config'));
     const server = config.mcpServers.form;
     const client = new Client({ name: 'fixture', version: '1.0.0' });
     try {

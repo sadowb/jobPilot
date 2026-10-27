@@ -8,3 +8,4 @@ export * from './postings.dto';
 export * from './theme.dto';
 export * from './profile.dto';
 export * from './claude-key.dto';
+export * from './agent.dto';

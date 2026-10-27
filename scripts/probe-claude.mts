@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { ClaudeProvider } from '../src/main/platform/agents/claude';
 import { RunResultSchema, type RunEvent, type RunSpec } from '../src/main/platform/agents/types';
+import { detectClaude } from '../src/main/platform/agents/detect';
 import { redact } from '../src/main/modules/observability/redact';
 
 const diagnostics: Record<string, unknown>[] = [];
@@ -14,6 +15,19 @@ const crashDiagnostic = new Promise<Record<string, unknown>>((resolve) => {
 });
 const directory = await mkdtemp(resolve(tmpdir(), 'jobpilot-claude-'));
 try {
+  assert.deepEqual(await detectClaude(resolve('scripts/fixtures/claude/fake-claude')), {
+    path: resolve('scripts/fixtures/claude/fake-claude'),
+    version: '2.1.303 (Claude Code fixture)',
+  });
+  assert.equal(await detectClaude(resolve(directory, 'missing')), null);
+  await mkdir(resolve(directory, '.claude'));
+  const fakeSettings = JSON.stringify({
+    hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'touch should-never-run' }] }] },
+    mcpServers: { personal: { command: 'should-never-run' } },
+    enabledPlugins: { 'personal@owner': true },
+  });
+  await writeFile(resolve(directory, '.claude/settings.json'), fakeSettings);
+  await writeFile(resolve(directory, '.claude/CLAUDE.md'), 'Personal instructions must not load.');
   const provider = new ClaudeProvider({
     executablePath: resolve('scripts/fixtures/claude/fake-claude'),
     cwd: directory,
@@ -58,25 +72,61 @@ try {
   for (const type of ['session', 'message', 'tool_call', 'tool_result', 'cost'])
     assert(events.some((event) => event.type === type));
   assert(!JSON.stringify(events).includes('fixture-key'));
-  for (const mode of ['invalid', 'abort', 'timeout', 'pre-abort', 'resume', 'crash']) {
+  const loginProvider = new ClaudeProvider({
+    executablePath: resolve('scripts/fixtures/claude/fake-claude'),
+    cwd: directory,
+    configDirectory: directory,
+    logger: { debug: () => undefined },
+    redact,
+  });
+  for (const prompt of ['isolation', 'not-logged-in']) {
+    const attempt = loginProvider.run({ ...spec, prompt });
+    const observed: RunEvent[] = [];
+    for await (const event of attempt.events) observed.push(event);
+    if (prompt === 'isolation') assert.equal((await attempt.result).status, 'filled');
+    else {
+      await assert.rejects(attempt.result, /not_logged_in/);
+      assert(observed.some((event) => event.type === 'error' && event.message === 'not_logged_in'));
+    }
+  }
+  assert.equal(await readFile(resolve(directory, '.claude/settings.json'), 'utf8'), fakeSettings);
+  for (const mode of ['invalid', 'quit', 'abort', 'timeout', 'pre-abort', 'resume', 'crash']) {
     const controller = new AbortController();
     if (mode === 'pre-abort') controller.abort();
     const attempt = provider.run({
       ...spec,
       prompt: ['invalid', 'crash'].includes(mode) ? mode : mode === 'resume' ? 'Fill again' : 'wait',
       signal: controller.signal,
-      timeoutMs: mode === 'timeout' ? 100 : 10_000,
+      timeoutMs: mode === 'timeout' ? 1000 : 10_000,
       resumeId: mode === 'resume' ? 'fixture-session' : undefined,
     });
     const observed: RunEvent[] = [];
     for await (const event of attempt.events) {
       observed.push(event);
-      if (mode === 'abort' && event.type === 'session') controller.abort();
+      if (['abort', 'quit'].includes(mode) && event.type === 'message' && event.text.startsWith('model:')) {
+        if (mode === 'quit') provider.stop();
+        else controller.abort();
+      }
     }
     if (mode === 'resume') assert.equal((await attempt.result).status, 'filled');
     else {
       await assert.rejects(attempt.result);
       assert(observed.some((event) => event.type === 'error'));
+      if (['abort', 'timeout', 'quit'].includes(mode)) {
+        for (const file of ['child.pid', 'descendant.pid']) {
+          const pid = Number(await readFile(resolve(directory, file), 'utf8'));
+          // Wait for the OS to reap the killed child before checking for orphans.
+          for (let i = 0; i < 50; i++) {
+            try {
+              process.kill(pid, 0);
+            } catch {
+              break;
+            }
+            await setTimeout(20);
+          }
+          assert.throws(() => process.kill(pid, 0));
+        }
+      }
     }
   }
   const crash = await Promise.race([

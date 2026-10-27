@@ -107,7 +107,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     expect(await window.evaluate(() => window.jobpilot!.runs.pause())).toBe(true);
     const first = await window.evaluate(
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
-      applicationIds.slice(0, 7),
+      applicationIds.slice(0, 3),
     );
     expect(first.every((run) => run.status === 'queued')).toBe(true);
     const duplicate = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[0]!);
@@ -119,15 +119,15 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         async () =>
           (await window.evaluate(() => window.jobpilot!.runs.list())).filter((row) => row.status === 'running').length,
       )
-      .toBe(6);
+      .toBe(2);
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[2]!.id)?.status,
     ).toBe('queued');
-    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(6);
+    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(2);
     await window.evaluate(() => window.jobpilot!.runs.pause());
     await complete(
       app,
-      first.slice(0, 6).map((row) => row.id),
+      first.slice(0, 2).map((row) => row.id),
     );
     await expect
       .poll(
@@ -136,20 +136,20 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
             (row) => row.status === 'awaiting_approval',
           ).length,
       )
-      .toBe(6);
+      .toBe(2);
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[2]!.id)?.status,
     ).toBe('queued');
     await window.evaluate(() => window.jobpilot!.runs.resume());
-    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[6]!.id)).toBe(true);
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[2]!.id)).toBe(true);
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[2]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[2]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[6]!.id);
-    expect((await inspect(app)).tabs).not.toContain(first[6]!.id);
+    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[2]!.id);
+    expect((await inspect(app)).tabs).not.toContain(first[2]!.id);
 
     const invalid = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[7]!);
     await expect.poll(async () => (await inspect(app!)).tabs.includes(invalid.id)).toBe(true);
@@ -215,7 +215,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     await window.evaluate(() => window.jobpilot!.runs.pause());
     const queued = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
     const before = await inspect(app);
-    for (const row of first.slice(0, 6)) {
+    for (const row of first.slice(0, 2)) {
       expect(before.events.filter((event) => (event as { run_id: string }).run_id === row.id)).toMatchObject([
         { from_status: null, to_status: 'queued' },
         { from_status: 'queued', to_status: 'running' },
@@ -274,7 +274,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       const { db } = require(path.join(app.getAppPath(), 'out/main/index.js')) as Main;
       db.$client
         .prepare('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)')
-        .run('runs.concurrency', '2', Date.now());
+        .run('runs.concurrency', '1', Date.now());
     });
     await app.close();
     app = await electron.launch(options);
@@ -288,7 +288,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
           .map((row) => row.status)
           .sort(),
       )
-      .toEqual(['queued', 'running', 'running']);
+      .toEqual(['queued', 'queued', 'running']);
     await expect
       .poll(
         async () =>

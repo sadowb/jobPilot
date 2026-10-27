@@ -336,7 +336,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
       'https://apply.workable.com/j/3A8C3159E7',
     );
     await expect(window.getByRole('list', { name: 'Job previews' })).toContainText('Social Media Manager');
-    await window.getByRole('button', { name: 'Close editor', exact: true }).click();
+    await window.keyboard.press('Escape');
     await expect(window.getByRole('dialog')).toHaveCount(0);
 
     let workablePostingId: string | undefined;

@@ -1,5 +1,7 @@
 /** Single source of truth for IPC channel names and the renderer bridge (imported by main, preload and renderer). */
 import type {
+  AgentState,
+  SaveAgentSchema,
   ApplicationListItem,
   IngestResult,
   ProfileData,
@@ -21,6 +23,9 @@ export const IpcValidationErrorSchema = z.object({
 export type IpcValidationError = z.infer<typeof IpcValidationErrorSchema>;
 
 export const Channels = {
+  getAgent: 'agents:get',
+  detectAgent: 'agents:detect',
+  saveAgent: 'agents:save',
   setClaudeKey: 'secrets:claude:set',
   getClaudeKeyStatus: 'secrets:claude:status',
   removeClaudeKey: 'secrets:claude:remove',
@@ -55,6 +60,11 @@ export const RendererErrorInputSchema = z.object({
 export const RecoveryKeySchema = z.string().regex(/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/);
 
 export interface JobPilotBridge {
+  agent: {
+    get(): Promise<AgentState>;
+    detect(path?: string | null): Promise<AgentState>;
+    save(input: z.infer<typeof SaveAgentSchema>): Promise<AgentState>;
+  };
   claudeKey: {
     set(key: string): Promise<void>;
     status(): Promise<ClaudeKeyStatus>;
