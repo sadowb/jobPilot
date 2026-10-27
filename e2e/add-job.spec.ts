@@ -601,7 +601,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     const list = window.getByRole('list', { name: 'Job previews' });
     const pasteBox = window.getByLabel('Job links', { exact: true });
     const pasteBounds = await pasteBox.boundingBox();
-    const addBounds = await window.getByRole('button', { name: /^Add \d+ jobs$/ }).boundingBox();
+    const addBounds = await window.getByRole('button', { name: /^Add \d+ jobs?$/ }).boundingBox();
     const geometry = await list.evaluate((element) => {
       const bounds = element.getBoundingClientRect();
       return [...element.children].map((row) => {
@@ -637,7 +637,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
       element.scrollTop = element.scrollHeight;
     });
     expect(await pasteBox.boundingBox()).toEqual(pasteBounds);
-    expect(await window.getByRole('button', { name: /^Add \d+ jobs$/ }).boundingBox()).toEqual(addBounds);
+    expect(await window.getByRole('button', { name: /^Add \d+ jobs?$/ }).boundingBox()).toEqual(addBounds);
     await rows.nth(11).focus();
     await rows.nth(11).press('Backspace');
     await expect(rows).toHaveCount(11);
