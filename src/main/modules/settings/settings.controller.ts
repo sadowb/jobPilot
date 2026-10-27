@@ -1,4 +1,5 @@
 import type { AgentSettingsService } from './agent.service';
+import type { MemorySettingsService } from './memory.service';
 import { z } from 'zod';
 import { Channels, RecoveryKeySchema } from '../../../shared/ipc';
 import { ClaudeApiKeySchema, ThemeSourceSchema, DetectAgentSchema, SaveAgentSchema } from '../../../shared/dto';
@@ -30,5 +31,13 @@ export function agentHandlers(service: AgentSettingsService) {
     defineHandler(Channels.getAgent, z.void(), () => service.state()),
     defineHandler(Channels.detectAgent, DetectAgentSchema, ({ path }) => service.detect(path)),
     defineHandler(Channels.saveAgent, SaveAgentSchema, (input) => service.save(input)),
+  ];
+}
+
+export function memoryHandlers(service: MemorySettingsService) {
+  return [
+    defineHandler(Channels.getMemory, z.void(), () => service.status()),
+    defineHandler(Channels.installMemory, z.void(), () => service.install()),
+    defineHandler(Channels.removeMemory, z.void(), () => service.remove()),
   ];
 }

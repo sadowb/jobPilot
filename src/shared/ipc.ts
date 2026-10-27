@@ -8,6 +8,7 @@ import type {
   ProfileSave,
   ClaudeKeyStatus,
   ClaudeKeyTest,
+  MemoryStatus,
   ThemeSource,
   ThemeState,
   RunSummaryDto,
@@ -30,6 +31,9 @@ export const Channels = {
   getClaudeKeyStatus: 'secrets:claude:status',
   removeClaudeKey: 'secrets:claude:remove',
   testClaudeKey: 'secrets:claude:test',
+  getMemory: 'memory:status',
+  installMemory: 'memory:install',
+  removeMemory: 'memory:remove',
   startRun: 'runs:start',
   cancelRun: 'runs:cancel',
   pauseRuns: 'runs:pause',
@@ -70,6 +74,11 @@ export interface JobPilotBridge {
     status(): Promise<ClaudeKeyStatus>;
     remove(): Promise<void>;
     test(): Promise<ClaudeKeyTest>;
+  };
+  memory: {
+    status(): Promise<MemoryStatus>;
+    install(): Promise<MemoryStatus>;
+    remove(): Promise<MemoryStatus>;
   };
   runs: {
     start(applicationId: string): Promise<RunSummaryDto>;

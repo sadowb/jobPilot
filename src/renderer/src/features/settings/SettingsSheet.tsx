@@ -8,6 +8,7 @@ import { AgentCard } from './AgentCard';
 import { ClaudeKeyField } from './ClaudeKeyField';
 import { CrewSlider } from './CrewSlider';
 import { DEFAULT_SETTINGS, SUBMIT_MODES } from './data';
+import { MemoryCard } from './MemoryCard';
 import { LimitField } from './LimitField';
 import { LIMIT_SPECS, type Limits } from './model';
 
@@ -89,6 +90,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-7">
         <AgentCard />
+        <MemoryCard />
         <ClaudeKeyField />
         <Section
           title="Autopilot"
