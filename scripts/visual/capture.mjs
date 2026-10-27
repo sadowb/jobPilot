@@ -79,6 +79,77 @@ for (const theme of THEMES) {
     args: [appDir, `--user-data-dir=${userData}`],
     env: { ...process.env, NODE_ENV: 'production' },
   });
+  await app.evaluate(({ app }, fixture) => {
+    const path = process.getBuiltinModule('node:path');
+    const { createRequire } = process.getBuiltinModule('node:module');
+    const req = createRequire(path.join(app.getAppPath(), 'package.json'));
+    const main = req(path.join(app.getAppPath(), 'out/main/index.js'));
+    const db = main.db.$client;
+
+    const personal = fixture['jobpilot.profile.v1'];
+    const markets = fixture['jobpilot.markets.v1'] ?? [];
+    const answers = fixture['jobpilot.answers.v2'] ?? [];
+    const profileData = { personal, markets, answers };
+    const pid = '01JPROFILE00000000000000000';
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO profile (
+        id, first_name, last_name, email, phone, city, country, address,
+        linkedin_url, github_url, portfolio_url, summary,
+        salary_min, salary_currency, notice_period_days, preferences,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    ).run(
+      pid,
+      personal?.firstName ?? '',
+      personal?.lastName ?? '',
+      personal?.email ?? '',
+      personal?.phone ?? null,
+      personal?.city ?? null,
+      personal?.countryCode ?? personal?.country ?? null,
+      personal?.address ?? null,
+      personal?.linkedin ?? null,
+      personal?.github ?? null,
+      personal?.website ?? null,
+      personal?.bio ?? null,
+      personal?.salaryAmount ?? null,
+      personal?.salaryCurrency ?? null,
+      personal?.notice?.days ?? null,
+      JSON.stringify(profileData),
+      1760000000000,
+      1760000000000,
+    );
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('profile.localStorageMigration.v1', 'true', ?)
+    `,
+    ).run(1760000000000);
+
+    const cid = '01JCOMPANY00000000000000000';
+    const jid = '01JPOSTING00000000000000000';
+    const aid = '01JAPPLIC000000000000000000';
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO company (id, name, name_key, created_at, updated_at)
+      VALUES (?, 'Ramp', 'ramp', 1760000000000, 1760000000000)
+    `,
+    ).run(cid);
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO job_posting (
+        id, company_id, url, canonical_url, ats, title, location, created_at, updated_at
+      ) VALUES (?, ?, 'https://jobs.ashbyhq.com/ramp/product-engineer', 'https://jobs.ashbyhq.com/ramp/product-engineer', 'ashby', 'Product Engineer', 'New York, NY', 1760000000000, 1760000000000)
+    `,
+    ).run(jid, cid);
+    db.prepare(
+      `
+      INSERT OR REPLACE INTO application (
+        id, posting_id, status, queue_rank, applied_at, last_activity_at, created_at, updated_at
+      ) VALUES (?, ?, 'applied', 1, 1760000000000, 1760000000000, 1760000000000, 1760000000000)
+    `,
+    ).run(aid, jid);
+  }, fixture);
   try {
     const page = await app.firstWindow();
     await page.emulateMedia({ reducedMotion: 'reduce' });
