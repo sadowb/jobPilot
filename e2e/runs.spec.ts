@@ -1,5 +1,6 @@
 import { skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,7 +15,11 @@ async function inspect(app: ElectronApplication) {
     return {
       tabs: [...main.fakeBrowser!.tabs.keys()],
       aborted: [...main.fakeAgent!.aborted],
-      runs: main.db.$client.prepare('SELECT id, status, error, result, tab_id FROM run').all(),
+      history: [...main.fakeAgent!.history],
+      runs: main.db.$client
+        .prepare('SELECT id, application_id, status, attempt, session_id, form_hash, error, result, tab_id FROM run')
+        .all(),
+      approvals: main.db.$client.prepare('SELECT run_id, application_id, form_hash FROM approval').all(),
       events: main.db.$client
         .prepare(
           "SELECT run_id, from_status, to_status, data FROM application_event WHERE type = 'run_transition' ORDER BY rowid",
@@ -137,6 +142,16 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
           ).length,
       )
       .toBe(6);
+    const inspectedApprovals = await inspect(app);
+    for (const row of first.slice(0, 6)) {
+      const approval = (inspectedApprovals.approvals as Array<{ run_id: string; form_hash: string }>).find(
+        (a) => a.run_id === row.id,
+      );
+      expect(approval).toBeDefined();
+      const expectedFormHash = createHash('sha256').update(`fake-form-${row.id}`).digest('hex');
+      expect(approval!.form_hash).toBe(expectedFormHash);
+      expect(approval!.form_hash).not.toBe(`fake-${row.id}`);
+    }
     expect(
       (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
     ).toBe('queued');
@@ -198,7 +213,41 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       );
     });
 
-    for (const status of ['needs_answers', 'blocked', 'submitted']) {
+    // Run encountering missing answers transitions to needs_you, saving sessionId for tracing only.
+    const needsAnswersRun = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(needsAnswersRun.id)).toBe(true);
+    await complete(app, [needsAnswersRun.id], 'needs_answers');
+    await expect
+      .poll(
+        async () =>
+          (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === needsAnswersRun.id)
+            ?.status,
+      )
+      .toBe('needs_you');
+    const stateAfterNeedsYou = await inspect(app);
+    const run1 = (stateAfterNeedsYou.runs as Array<{ id: string; attempt: number; session_id: string | null }>).find(
+      (r) => r.id === needsAnswersRun.id,
+    );
+    expect(run1).toMatchObject({ attempt: 1, session_id: `session-${needsAnswersRun.id}` });
+
+    // A retry after needs_you starts fresh: attempt 2, no sessionId carry-over / resume, and completes to awaiting_approval.
+    const retry = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
+    expect(retry.id).not.toBe(needsAnswersRun.id);
+    expect(retry.attempt).toBe(2);
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(retry.id)).toBe(true);
+    await complete(app, [retry.id], 'filled');
+    await expect
+      .poll(
+        async () =>
+          (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === retry.id)?.status,
+      )
+      .toBe('awaiting_approval');
+    const retryApproval = ((await inspect(app)).approvals as Array<{ run_id: string; form_hash: string }>).find(
+      (a) => a.run_id === retry.id,
+    );
+    expect(retryApproval?.form_hash).toBe(createHash('sha256').update(`fake-form-${retry.id}`).digest('hex'));
+
+    for (const status of ['blocked', 'submitted']) {
       const next = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
       await expect.poll(async () => (await inspect(app!)).tabs.includes(next.id)).toBe(true);
       await complete(app, [next.id], status);

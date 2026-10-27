@@ -66,7 +66,6 @@ export class RunsService {
     const browser = this.browser.id;
     const previous = this.repository.latest(applicationId);
     const attempt = previous ? previous.attempt + 1 : 1;
-    const sessionId = previous?.sessionId ?? null;
     const row = this.db.transaction(() => {
       const created = this.repository.create({
         applicationId,
@@ -74,7 +73,7 @@ export class RunsService {
         browser,
         model: runPreferences(this.db).model,
         attempt,
-        sessionId,
+        sessionId: null,
       });
       if (created) {
         AuditService.record({
@@ -122,7 +121,11 @@ export class RunsService {
     );
   }
 
-  private transition(runId: string, status: RunStatus, details: { error?: string; result?: RunResult } = {}) {
+  private transition(
+    runId: string,
+    status: RunStatus,
+    details: { error?: string; result?: RunResult; formHash?: string } = {},
+  ) {
     return this.db.transaction(() => {
       const row = this.repository.get(runId);
       const allowed =
@@ -135,7 +138,7 @@ export class RunsService {
       const updated = this.repository.update(runId, {
         status,
         ...details,
-        ...(details.result ? { formHash: details.result.form_hash } : {}),
+        ...(details.formHash ? { formHash: details.formHash } : {}),
         ...(status === 'running' ? { startedAt: Date.now() } : { finishedAt: Date.now() }),
       });
       AuditService.record({
@@ -190,7 +193,6 @@ export class RunsService {
         signal,
         model: row.model ?? 'haiku',
         timeoutMs: this.timeoutMs,
-        resumeId: row.sessionId ?? undefined,
       });
       // Attach the result handler immediately: providers may reject while events are still streaming.
       const [raw] = await Promise.all([
@@ -222,9 +224,14 @@ export class RunsService {
           : result.status === 'needs_answers' || result.status === 'blocked'
             ? 'needs_you'
             : 'failed';
+      let formHash: string | undefined;
+      if (status === 'awaiting_approval') {
+        formHash = await this.browser.formHash(runId);
+      }
       this.db.transaction(() => {
         this.transition(runId, status, {
           result,
+          formHash,
           ...(result.status === 'submitted' ? { error: 'Submission is not authorized' } : {}),
         });
         if (status === 'awaiting_approval') this.repository.requestApproval(runId, application.cvVersionId);

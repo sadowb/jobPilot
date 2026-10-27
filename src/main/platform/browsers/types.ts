@@ -13,4 +13,6 @@ export interface BrowserProvider {
   openTab(runId: string, url: string): Promise<BrowserTab>;
   /** Idempotent: closing an already-closed run's tab is a no-op. */
   closeTab(runId: string): Promise<void>;
+  /** Form hash computed directly from the owned tab snapshot for approval binding. */
+  formHash(runId: string): Promise<string>;
 }
