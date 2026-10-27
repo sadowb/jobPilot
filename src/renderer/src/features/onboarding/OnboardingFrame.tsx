@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { AppearanceControl } from '../../components/AppearanceControl';
+import { CapDartArt } from '../../components/CapDartArt';
 import { Logo } from '../../components/Logo';
 import { Eyebrow, cn } from '../../components/ui';
-import { GoButton, H1, IT, REDUCE_ALL, S, SPEC } from '../shared-ui';
+import { A_BOB, BUBBLE, GoButton, H1, IT, REDUCE_ALL, S, SPEC } from '../shared-ui';
 import { ONBOARDING_STEPS, STEP_NAMES, dotState, stepPath, type OnboardingStep } from './steps';
 
 /**
@@ -23,11 +24,14 @@ const PLACE_COL_3 = 'in-[html[data-platform=darwin]]:[grid-column:3] in-[html[da
 export function OnboardingFrame({
   step,
   minHeight,
+  aside,
   children,
 }: {
   step: OnboardingStep;
   /** Content height at the board's size (board height minus the 78px header). */
   minHeight: number;
+  /** Right-hand column from step 2 on (V17 boards); defaults to the Cap panel. */
+  aside?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -70,7 +74,7 @@ export function OnboardingFrame({
         </div>
       </header>
       <div
-        className={cn('flex flex-col gap-7 px-14 pt-2 pb-12', REDUCE_ALL)}
+        className={cn('flex flex-col gap-5 px-14 pt-2 pb-8', REDUCE_ALL)}
         // The minimum height is a per-step prop (the board's content height).
         style={{ minHeight }}
       >
@@ -84,13 +88,40 @@ export function OnboardingFrame({
             ← Back
           </GoButton>
         )}
-        {children}
+        {step === 1 ? (
+          children
+        ) : (
+          <div className="grid min-w-0 grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] items-start gap-10">
+            <div className="flex min-w-0 flex-col gap-6">{children}</div>
+            {aside ?? <CapPanel note="Ready when you are." />}
+          </div>
+        )}
       </div>
     </>
   );
 }
 
-/** Eyebrow, 56px headline (serif tail in italics) and lede shared by steps 2 to 5. */
+const PANEL =
+  'rounded-[28px] border border-line [background:radial-gradient(circle_at_80%_18%,var(--brand-tint),transparent_55%),var(--panel)]';
+
+/** Right-hand column shell: the V17 panel surface around `children`. */
+export function AsidePanel({ children, className }: { children: ReactNode; className?: string }) {
+  return <aside className={cn(PANEL, 'min-w-0 p-6', className)}>{children}</aside>;
+}
+
+/** Cap on the dart with a one-line bubble, for steps whose right column has nothing of its own to show. */
+export function CapPanel({ note }: { note: string }) {
+  return (
+    <AsidePanel className="flex h-[420px] flex-col items-center justify-center gap-4">
+      <div className={cn('size-[220px]', A_BOB)}>
+        <CapDartArt size={220} gust />
+      </div>
+      <div className={cn(BUBBLE, 'px-4 py-3 text-[15px]')}>{note}</div>
+    </AsidePanel>
+  );
+}
+
+/** Eyebrow, 44px headline (serif tail in italics) and lede shared by steps 2 to 5. */
 export function StepHeading({
   eyebrow,
   lead,
@@ -105,10 +136,10 @@ export function StepHeading({
   return (
     <div className="flex flex-col gap-2.5">
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h1 className={cn(H1, 'text-[56px] leading-[1.04]')}>
+      <h1 className={cn(H1, 'text-[44px] leading-[1.06]')}>
         {lead} <span className={IT}>{tail}</span>
       </h1>
-      <p className={cn(S, 'm-0 max-w-[760px] text-[17px] leading-normal')}>{lede}</p>
+      <p className={cn(S, 'm-0 max-w-[620px] text-[16px] leading-normal')}>{lede}</p>
     </div>
   );
 }

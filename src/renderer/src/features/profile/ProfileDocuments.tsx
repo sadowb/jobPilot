@@ -90,7 +90,7 @@ function DocumentRow({
 const THUMB_LINE = 'block h-0.5 rounded-[1px] bg-[#dcdcdc]';
 
 /** Small CV preview. Always light: it depicts a printed page, in both themes. */
-function CvThumb({ large = false }: { large?: boolean }) {
+export function CvThumb({ large = false }: { large?: boolean }) {
   return (
     <span
       className={cn(

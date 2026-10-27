@@ -54,10 +54,41 @@ test('fresh profile opens onboarding and contains only real empty states', async
       await expect(window.getByRole('img', { name: `Step ${step} of 5` })).toBeVisible();
       await expect(window.getByRole('img', { name: `Step ${step} of 5` })).toContainText(`Step ${step} of 5 ·`);
       await expect(window.getByRole('button', { name: '← Back' })).toBeVisible();
-      const cta = await window.getByRole('button', { name: /^(Continue|Open dashboard)$/ }).boundingBox();
+      const cta = await window
+        .getByRole('button', { name: /^(Continue|Skip this step|Open dashboard)$/ })
+        .boundingBox();
       expect(cta!.y + cta!.height).toBeLessThanOrEqual(800);
       if (step === 3) await expect(window.locator('body')).not.toContainText(/Add \d+ jobs|ashbyhq|greenhouse/);
       await capture(`onboarding-${step}`);
+      if (step === 2) {
+        await window.getByLabel('Upload CV').setInputFiles({
+          name: 'Sample_CV.pdf',
+          mimeType: 'application/pdf',
+          buffer: Buffer.from('%PDF-1.4 sample'),
+        });
+        await expect(window.getByText('Sample_CV.pdf saved on this device.')).toBeVisible();
+        await expect(window.getByRole('button', { name: 'Continue' })).toBeVisible();
+        await capture('onboarding-2-uploaded');
+      }
+      if (step === 4) {
+        await window.getByRole('radio', { name: 'No, I don’t' }).click();
+        await window.getByRole('radio', { name: '$90k' }).click();
+        await capture('onboarding-4-answered');
+        await window.getByRole('button', { name: 'Continue' }).click();
+        await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/5');
+        const saved = await window.evaluate(() => window.jobpilot!.profile.get());
+        expect(saved.answers?.map((a) => [a.id, a.default])).toEqual(
+          expect.arrayContaining([
+            ['sponsorship', 'No, I don’t'],
+            ['salary-floor', '$90k'],
+          ]),
+        );
+      }
+      if (step === 5) {
+        await expect(window.getByText('2 of 3 answered')).toBeVisible();
+        await expect(window.getByText('1 saved on this device')).toBeVisible();
+        await expect(window.getByText('No jobs added yet')).toBeVisible();
+      }
     }
     await window.getByRole('button', { name: 'Open dashboard' }).click();
     await expect(window.getByText('No applications yet', { exact: true })).toBeVisible();
