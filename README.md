@@ -5,6 +5,7 @@
 
 <p align="center">
   <a href="#how-it-works">How it works</a> ·
+  <a href="#download">Download</a> ·
   <a href="#status">Status</a> ·
   <a href="docs/DEVELOPMENT.md">Development</a> ·
   <a href="docs/architecture.md">Architecture</a>
@@ -51,6 +52,23 @@ Your funnel, reply rate over time, and which site, CV and role level get replies
 4. **You approve, it submits.** Approval is bound to the exact form contents.
 
 Everything stays on your computer: an encrypted local database, no account, no server, no telemetry. JobPilot writes only to its own folder and stops every agent when you quit.
+
+## Download
+
+Get the latest build from [Releases](https://github.com/sadowb/jobPilot/releases): `JobPilot-X.Y.Z-arm64.dmg` (macOS, Apple silicon) or `JobPilot-X.Y.Z-x64-setup.exe` (Windows x64). Builds are pre-releases while the app is unfinished.
+
+Builds are not notarized (no Apple Developer account), so the first open needs one extra step:
+
+- **macOS:** open the DMG, drag JobPilot to Applications, open it once (macOS blocks it), then System Settings → Privacy & Security → **Open Anyway**.
+- **Windows:** SmartScreen shows "Windows protected your PC": **More info** → **Run anyway**.
+
+Verify a download came from this repository's release workflow:
+
+```bash
+gh attestation verify JobPilot-X.Y.Z-arm64.dmg -R sadowb/jobPilot
+```
+
+`SHA256SUMS` and the SPDX SBOM are attached to every release.
 
 ## Status
 

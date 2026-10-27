@@ -1,27 +1,55 @@
 name: release
+# One workflow on purpose: tags and releases created with GITHUB_TOKEN cannot trigger other workflows,
+# and we use no PAT or GitHub App. release-please opens/updates the "Release vX.Y.Z" PR on every push to main;
+# merging that PR makes it create a draft release + tag, and the jobs below build, attest and publish it.
 on:
   push:
-    tags: ['v*']
-permissions:
-  contents: read
-  pull-requests: read
+    branches: [main]
+permissions: {}
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      sha: ${{ steps.rp.outputs.sha }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
   static:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.sha }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          package-manager-cache: false # release has contents: write; never restore a shared cache
+          package-manager-cache: false # release jobs never restore a shared cache
       - run: npm ci
       - run: node -e "if (process.env.TAG_VERSION.replace(/^v/, '') !== require('./package.json').version) process.exit(1)"
         env:
-          TAG_VERSION: ${{ github.ref_name }}
+          TAG_VERSION: ${{ needs.release-please.outputs.tag_name }}
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
@@ -48,11 +76,11 @@ jobs:
           "$RUNNER_TEMP/osv-scanner" scan source --lockfile package-lock.json --format json > "$RUNNER_TEMP/osv-results.json" || true
           node scripts/check-osv.mjs "$RUNNER_TEMP/osv-results.json"
 
-  package:
+  package-mac:
     environment: release
+    needs: [release-please, static]
     permissions:
-      contents: write
-    needs: static
+      contents: read # SBOM download only; assets are uploaded by the publish job
     runs-on: macos-14
     timeout-minutes: 12
     steps:
@@ -60,6 +88,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.sha }}
       - name: Require release signing secrets
         env:
           MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
@@ -130,24 +159,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" --jq '.sbom' > jobpilot.spdx.json
-      - name: Build arm64 DMG from the tested .app and checksum
-        run: |
-          npx electron-builder --mac dmg --arm64 --prepackaged release/mac-arm64/JobPilot.app
-          (cd release && shasum -a 256 *.dmg) > SHA256SUMS
-          shasum -a 256 jobpilot.spdx.json >> SHA256SUMS
+      - name: Build arm64 DMG from the tested .app
+        run: npx electron-builder --mac dmg --arm64 --prepackaged release/mac-arm64/JobPilot.app
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-dmg-${{ github.ref_name }}
+          name: release-mac
           path: |
             release/*.dmg
-            SHA256SUMS
             jobpilot.spdx.json
           if-no-files-found: error
-      - name: Open draft GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --draft release/*.dmg SHA256SUMS jobpilot.spdx.json --title "JobPilot $TAG" --notes "Draft release. Owner review and publish required."
       - name: Delete release signing identity
         if: always()
         # Trust records disappear with the ephemeral runner.
@@ -155,3 +175,65 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/jobpilot-release.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/jobpilot-release-cert"
+
+  package-win:
+    needs: [release-please, static]
+    permissions:
+      contents: read
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false' # unsigned by design; no secrets in this job
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.release-please.outputs.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder --win nsis --x64
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-win
+          path: release/*-x64-setup.exe
+          if-no-files-found: error
+
+  publish:
+    needs: [release-please, package-mac, package-win]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # upload to the draft and publish it
+      id-token: write # Sigstore signing for attestations
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.release-please.outputs.tag_name }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Checksum every asset
+        working-directory: dist
+        run: sha256sum -- *.dmg *-x64-setup.exe jobpilot.spdx.json > SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.dmg
+            dist/*-x64-setup.exe
+            dist/jobpilot.spdx.json
+            dist/SHA256SUMS
+      - name: Upload assets to the draft, then publish
+        # Draft-first: immutable releases reject asset changes after publishing.
+        run: |
+          set -euo pipefail
+          [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true ]
+          gh release upload "$TAG" dist/*.dmg dist/*-x64-setup.exe dist/jobpilot.spdx.json dist/SHA256SUMS
+          gh release edit "$TAG" --draft=false
