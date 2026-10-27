@@ -1,75 +1,92 @@
-import { cn } from '../../../components/ui';
-import { V17Kbd } from '../../../components/V17Kbd';
+import { useState } from 'react';
+import { cn, Select } from '../../../components/ui';
 
 const cell = 'flex size-8 items-center justify-center rounded-[10px] border text-[13px] font-semibold tabular-nums';
 
-/**
- * Footer: range text and the pager. Sample data holds one page, so the pager only navigates what exists;
- * `totalPages > 1` draws the board's "1 2 3 … 7" run (pages beyond the first have no rows yet).
- */
-export function Pagination({
-  from,
-  to,
-  total,
-  perPage,
-  totalPages,
-}: {
-  from: number;
-  to: number;
-  total: number;
-  perPage: number;
-  totalPages: number;
-}) {
-  const more = totalPages > 1;
+export const PAGE_SIZES = [10, 25, 50] as const;
+
+/** Page state for a list of `total` rows. The page clamps when the list shrinks (filter, search, removal). */
+export function usePaging(total: number) {
+  const [size, setSize] = useState<number>(PAGE_SIZES[0]);
+  const [requested, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const page = Math.min(requested, totalPages);
+  return {
+    page,
+    size,
+    totalPages,
+    total,
+    start: (page - 1) * size,
+    setPage,
+    setSize: (n: number) => {
+      setSize(n);
+      setPage(1);
+    },
+  };
+}
+
+/** Footer: range text, page-size select and the pager. Page sizes are fixed (10/25/50), never derived from the rows. */
+export function Pagination({ paging }: { paging: ReturnType<typeof usePaging> }) {
+  const { page, size, totalPages, total, start, setPage, setSize } = paging;
+  const from = total ? start + 1 : 0;
+  const to = Math.min(start + size, total);
+  const go = (n: number) => setPage(Math.min(Math.max(n, 1), totalPages));
+  const nav = (disabled: boolean) => cn(cell, 'border-line bg-bg text-ink', disabled ? 'opacity-35' : 'cursor-pointer');
   return (
     <div className="flex flex-nowrap items-center justify-between gap-4">
       <span className="text-[13px] text-muted tabular-nums">
         Showing {from}–{to} of {total}
       </span>
       <div className="flex flex-nowrap items-center gap-2">
-        <span className="flex h-8 flex-nowrap items-center gap-1.5 rounded-[10px] border border-line px-3 text-[13px] text-ink-2">
-          {perPage} per page{' '}
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--muted)"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="flex-none"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </span>
+        <Select
+          size="sm"
+          aria-label="Rows per page"
+          className="w-auto flex-none"
+          value={size}
+          onChange={(e) => setSize(Number(e.target.value))}
+        >
+          {PAGE_SIZES.map((n) => (
+            <option key={n} value={n}>
+              {n} per page
+            </option>
+          ))}
+        </Select>
         <span className="w-2" />
-        <span className={cn(cell, 'border-line bg-bg text-ink opacity-35')} aria-disabled="true">
+        <button
+          type="button"
+          aria-label="Previous page"
+          disabled={page === 1}
+          className={nav(page === 1)}
+          onClick={() => go(page - 1)}
+        >
           ‹
-        </span>
-        <span className={cn(cell, 'border-pri bg-pri text-on-pri')} aria-current="page">
-          1
-        </span>
-        {more ? (
-          <>
-            <span className={cn(cell, 'border-line bg-bg text-ink')}>2</span>
-            <span className={cn(cell, 'border-line bg-bg text-ink')}>3</span>
-            <span className="flex h-8 w-5 items-center justify-center text-[13px] text-muted">…</span>
-            <span className={cn(cell, 'border-line bg-bg text-ink')}>{totalPages}</span>
-            <span className={cn(cell, 'border-line bg-bg text-ink')}>›</span>
-          </>
-        ) : (
-          <span className={cn(cell, 'border-line bg-bg text-ink opacity-35')} aria-disabled="true">
-            ›
-          </span>
-        )}
-        <span className="w-2" />
-        <span className="flex flex-nowrap items-center gap-1 text-[12px] text-muted">
-          <V17Kbd>[</V17Kbd>
-          <V17Kbd>]</V17Kbd>
-          <span className="ml-1">page</span>
-        </span>
+        </button>
+        {/* shortcut: every page gets a button, 500+ rows at 10 per page overflows; windowed run with "…" then */}
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-label={`Page ${n}`}
+            aria-current={n === page ? 'page' : undefined}
+            className={cn(
+              cell,
+              'cursor-pointer',
+              n === page ? 'border-pri bg-pri text-on-pri' : 'border-line bg-bg text-ink',
+            )}
+            onClick={() => go(n)}
+          >
+            {n}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-label="Next page"
+          disabled={page === totalPages}
+          className={nav(page === totalPages)}
+          onClick={() => go(page + 1)}
+        >
+          ›
+        </button>
       </div>
     </div>
   );

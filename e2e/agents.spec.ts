@@ -2,6 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication } from '@
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { skipOnboarding } from './onboarding';
 
 type Main = typeof import('../src/main/app/main');
 
@@ -24,6 +25,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
   async function launch() {
     app = await electron.launch(options);
     const window = await app.firstWindow();
+    await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await window.evaluate(() => {
       location.hash = '#/settings';

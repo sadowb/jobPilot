@@ -79,7 +79,7 @@ export async function initializeProfile(
   const answers = readAnswersV2(store.getItem(ANSWERS_V2_KEY), store.getItem(ANSWERS_KEY));
   const plan = planStartMigration(personal, answers);
   const data = await bridge.migrate({
-    personal: plan.profile ?? personal,
+    personal: plan.profile ?? (store.getItem(PROFILE_KEY) === null ? null : personal),
     markets: readMarkets(store.getItem(MARKETS_KEY)),
     answers: plan.answers ?? answers,
   });

@@ -3,11 +3,10 @@ import { AppButton } from './components/AppButton';
 import { cn } from '../../components/ui';
 import { V17Icon } from '../../components/V17Icon';
 import { V17Kbd } from '../../components/V17Kbd';
-import { Pagination } from './components/Pagination';
+import { Pagination, usePaging } from './components/Pagination';
 import { SearchField } from './components/SearchField';
 import { TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { clockTime } from './format';
-import { SAMPLE_TOTALS } from './sample';
 import { BulkBar } from './upnext/BulkBar';
 import {
   CREW_SIZE,
@@ -40,6 +39,7 @@ const isTextTarget = (t: EventTarget | null): boolean =>
 
 export function UpNextView({
   state,
+  appliedCount,
   dispatch,
   frozenNow,
   onTab,
@@ -49,6 +49,7 @@ export function UpNextView({
   addedIds = [],
 }: {
   state: QueueState;
+  appliedCount: number;
   dispatch: Dispatch<QueueAction>;
   /** Dev fixtures freeze the undo clock so the toast matches the board. */
   frozenNow?: number;
@@ -76,6 +77,7 @@ export function UpNextView({
   }, [hasBatch, frozenNow, dispatch]);
 
   const rows = useMemo(() => visibleQueue(state), [state]);
+  const paging = usePaging(rows.length);
   const counts = useMemo(() => queueFilterCounts(state.items), [state.items]);
   const running = state.items.filter((i) => i.stage === 'running').length;
   const minutes = minutesLeft(state.items);
@@ -105,7 +107,9 @@ export function UpNextView({
 
   const crew = state.paused
     ? 'QUEUE PAUSED'
-    : `CREW ${running} / ${CREW_SIZE} BUSY · ${formatCrewTime(minutes)} LEFT`.toUpperCase();
+    : running === 0
+      ? `CREW IDLE · 0 / ${CREW_SIZE} RUNNING`
+      : `CREW ${running} / ${CREW_SIZE} BUSY · ${formatCrewTime(minutes)} LEFT`.toUpperCase();
 
   return (
     <div className="relative flex h-[calc(100vh-var(--app-toolbar-height))]">
@@ -115,7 +119,7 @@ export function UpNextView({
             <h1 className="m-0 font-serif text-[42px] leading-[1.02] font-[350] tracking-[-0.025em]">Dashboard</h1>
             <TabSwitch
               active="up-next"
-              appliedCount={SAMPLE_TOTALS.applied}
+              appliedCount={appliedCount}
               upNextCount={state.items.length}
               onChange={onTab}
               className="flex-none"
@@ -207,7 +211,7 @@ export function UpNextView({
               {state.items.length === 0 ? 'Nothing queued. Add jobs to start the crew.' : 'No queued jobs match.'}
             </div>
           )}
-          {rows.map((item) => (
+          {rows.slice(paging.start, paging.start + paging.size).map((item) => (
             <QueueRow
               added={addedIds.includes(item.id)}
               key={item.id}
@@ -231,7 +235,7 @@ export function UpNextView({
             />
           ))}
         </div>
-        <Pagination from={rows.length ? 1 : 0} to={rows.length} total={rows.length} perPage={10} totalPages={1} />
+        <Pagination paging={paging} />
       </main>
       {state.removed && <UndoToast batch={state.removed} now={now} onUndo={() => dispatch({ type: 'undoRemove' })} />}
       {state.selected.length > 0 && (

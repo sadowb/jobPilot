@@ -1,3 +1,4 @@
+import { skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { cpSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -23,6 +24,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
     let window: Page;
     try {
       window = await app.firstWindow({ timeout: 15_000 });
+      await skipOnboarding(window);
     } catch (error) {
       const startupState = await Promise.race([
         app.evaluate(({ app }) => {
@@ -435,6 +437,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       const restoredWindowPromise = app.waitForEvent('window');
       await recoveryWindow.getByRole('button', { name: 'Unlock database' }).click();
       window = await restoredWindowPromise;
+      await skipOnboarding(window);
       await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
       expect(
         await window.evaluate(() => window.jobpilot.recovery.import('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=')),
@@ -496,6 +499,7 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
       args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
       timeout: 60_000,
     });
+    await skipOnboarding(await app.firstWindow());
     await expect((await app.firstWindow()).getByRole('navigation', { name: 'Main' })).toBeVisible();
     const result = await app.evaluate(async ({ app }) => {
       const fs = process.getBuiltinModule('node:fs')!;
@@ -597,6 +601,7 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
       encrypted: true,
       mode: 0o600,
     });
+    await skipOnboarding(await app.firstWindow());
     await expect((await app.firstWindow()).getByRole('navigation', { name: 'Main' })).toBeVisible();
   } finally {
     if (app) await app.close();
@@ -635,6 +640,7 @@ test('profile edits and common answers persist in the database after relaunch', 
   try {
     instance = await launch();
     let window = await instance.firstWindow({ timeout: 60_000 });
+    await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await window.evaluate(() => {
       location.hash = '#/profile';
@@ -667,6 +673,7 @@ test('profile edits and common answers persist in the database after relaunch', 
     await close();
     instance = await launch();
     window = await instance.firstWindow({ timeout: 60_000 });
+    await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await window.evaluate(() => {
       location.hash = '#/profile';

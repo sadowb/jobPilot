@@ -1,11 +1,5 @@
-import { SAMPLE_STATS } from '../sample';
-
 /** The four KPI cells under the title (board `.mcell`, dashboard variant: radius 20, padding 12 18). */
-export function MetricRow({
-  stats = SAMPLE_STATS,
-}: {
-  stats?: readonly { label: string; value: string; sub: string }[];
-}) {
+export function MetricRow({ stats }: { stats: readonly { label: string; value: string; sub: string }[] }) {
   return (
     <div className="flex items-stretch gap-3">
       {stats.map((m) => (

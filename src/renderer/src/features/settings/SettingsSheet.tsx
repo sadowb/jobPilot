@@ -1,28 +1,21 @@
 import { useState, type ReactNode } from 'react';
 import { KbdKey } from '../../components/KbdKey';
-import { Button, cn, Segmented, type SegmentedOption } from '../../components/ui';
+import { Button, cn, Segmented } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
 import { IT, S, V17N, V17X, shellButton } from '../shared-ui';
 import { AgentCard } from './AgentCard';
 import { ClaudeKeyField } from './ClaudeKeyField';
 import { CrewSlider } from './CrewSlider';
-import { DEFAULT_SETTINGS, SITES, SITE_LOGINS, SUBMIT_MODES } from './data';
+import { DEFAULT_SETTINGS, SUBMIT_MODES } from './data';
 import { LimitField } from './LimitField';
-import { LIMIT_SPECS, autopilotStatus, type Limits, type SiteMode } from './model';
+import { LIMIT_SPECS, type Limits } from './model';
 
-const SITE_MODES: readonly SegmentedOption<SiteMode>[] = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'assisted', label: 'Assisted' },
-  { value: 'manual', label: 'Manual' },
-];
-
-const THEMES: readonly SegmentedOption<ThemeSource>[] = [
+const THEMES: readonly { value: ThemeSource; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
   { value: 'system', label: 'System' },
 ];
-const SITE_SEGMENTED = 'w-[236px] inline-flex! gap-0.5! [&>span]:rounded-full!';
 
 const stroke = { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
@@ -58,12 +51,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [autopilot, setAutopilot] = useState(DEFAULT_SETTINGS.autopilot);
   const [crew, setCrew] = useState(DEFAULT_SETTINGS.crew);
   const [submitMode, setSubmitMode] = useState(DEFAULT_SETTINGS.submitMode);
-  const [sites, setSites] = useState(
-    () => Object.fromEntries(SITES.map((s) => [s.name, s.mode])) as Record<string, SiteMode>,
-  );
   const [limits, setLimits] = useState<Limits>(DEFAULT_SETTINGS.limits);
   const [advancedOpen, setAdvancedOpen] = useState(true);
-  const [logins, setLogins] = useState(SITE_LOGINS);
 
   return (
     <aside
@@ -127,7 +116,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         >
           <div className={cn(S, 'flex items-center gap-2 text-[13px]')}>
             <i className={cn('block size-[7px] rounded-full', autopilot ? 'bg-brand' : 'bg-line-2')} />
-            {autopilotStatus(autopilot, crew)}
+            Not available yet.
           </div>
         </Section>
         <Section
@@ -181,26 +170,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             })}
           </div>
         </Section>
-        <Section
-          title="Sites"
-          desc="How the crew handles each board. Submit mode above still decides who presses the button."
-        >
-          {SITES.map((s) => (
-            <div key={s.name} className="flex items-center justify-between gap-3 border-t border-line py-[7px]">
-              <div className="min-w-0">
-                <div className="text-[14px] font-semibold">{s.name}</div>
-                <div className={cn(S, 'text-[13px]')}>{s.stat}</div>
-              </div>
-              <Segmented
-                label={`${s.name} mode`}
-                options={SITE_MODES}
-                value={sites[s.name] ?? s.mode}
-                onChange={(m) => setSites((cur) => ({ ...cur, [s.name]: m }))}
-                className={SITE_SEGMENTED}
-              />
-            </div>
-          ))}
-        </Section>
+        <Section title="Sites" desc="Not available yet." />
         <Section
           title="Advanced"
           desc="Hard limits. The crew stops at these, even in Auto."
@@ -242,51 +212,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </Section>
-        <Section
-          title="Site logins"
-          desc="Accounts the crew created on job boards. Encrypted on this Mac; Reveal asks for your Mac password."
-          aside={<span className={cn(S, 'text-[13px]')}>{logins.length}</span>}
-        >
-          {logins.map((l) => (
-            <div
-              key={l.id}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-line px-3.5 py-3"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="grid size-[34px] flex-none place-items-center rounded-[10px] border border-line-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" strokeWidth="1.8" {...stroke} aria-hidden="true">
-                    <rect x="5" y="11" width="14" height="9" rx="2" />
-                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <div className="font-mono text-[13.5px] font-semibold">{l.host}</div>
-                  <div className={cn(S, 'text-[13px]')}>{l.meta}</div>
-                </div>
-              </div>
-              <div className="flex flex-none items-center gap-1.5">
-                {/* Reveal needs the OS keychain prompt, which is backend work (docs/FRONTEND.md section 9). */}
-                <Button
-                  size="sm"
-                  // The old `.btn` had no disabled styling; keep the full-strength look.
-                  className={cn(shellButton(), 'disabled:cursor-pointer disabled:opacity-100')}
-                  disabled
-                  title="Needs the system keychain (not connected yet)"
-                >
-                  Reveal
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className={shellButton('danger')}
-                  onClick={() => setLogins((cur) => cur.filter((x) => x.id !== l.id))}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-        </Section>
+        <Section title="Site logins" desc="Not available yet." />
         <Section
           title="Database recovery"
           desc="Keep a recovery key in your main Bitwarden vault in case this Mac loses Keychain access."

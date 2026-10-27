@@ -23,16 +23,23 @@ export function EmptyResults({
     >
       <V17CapDart size={96} />
       <div className="mt-2 font-serif text-[30px] leading-[1.1] font-normal tracking-[-0.015em]">
-        No jobs match <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">“{query}”</span>
+        {appliedTotal === 0 ? 'No applications yet' : query ? 'No jobs match ' : 'No applications in this filter'}
+        {appliedTotal > 0 && query && (
+          <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">“{query}”</span>
+        )}
       </div>
       <div className="max-w-[470px] text-[14px] leading-[1.55] text-muted">
-        Search covers company, role, location and work mode across your {appliedTotal} applied jobs.
+        {appliedTotal === 0
+          ? 'Add jobs to Up next. Your applications appear here after they are sent.'
+          : `Search covers company, role, location and work mode across your ${appliedTotal} applied jobs.`}
         {upNextCompany ? ` ${upNextCompany} is still in Up next, so it isn’t here yet.` : ''}
       </div>
       <div className="mt-2 flex flex-nowrap items-center gap-2">
-        <AppButton variant="primary" size="sm" onClick={onClear}>
-          Clear filters
-        </AppButton>
+        {appliedTotal > 0 && (
+          <AppButton variant="primary" size="sm" onClick={onClear}>
+            Clear filters
+          </AppButton>
+        )}
         <AppButton size="sm" onClick={onOpenUpNext}>
           Open Up next
         </AppButton>
