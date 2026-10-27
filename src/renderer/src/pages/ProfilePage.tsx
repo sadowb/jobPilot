@@ -24,7 +24,7 @@ export function ProfilePage() {
     </div>
   );
   return (
-    <div className="mx-auto box-border max-w-[1320px] px-12 pt-8 pb-12 [@media(width<=1190px)]:px-7 [@media(width<=1190px)]:pt-7 [@media(width<=1190px)]:pb-10 [@media(width<=800px)]:p-5">
+    <div className="mx-auto box-border max-w-[1320px] px-12 pt-8 pb-12 [@media(width<=1190px)]:px-7 [@media(width<=1190px)]:pt-7 [@media(width<=1190px)]:pb-10 [@media(width<=800px)]:p-5 [@media(height<=760px)]:pt-4">
       <ProfileHeader />
       <ProfileTabs tab={tab} onTab={go} counts={{ documents, answers: answersCount, knowledge: facts.review.length }} />
       {panel('about', <AboutMe onSeeAllCvs={() => go('documents')} />)}

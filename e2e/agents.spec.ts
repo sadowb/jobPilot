@@ -83,6 +83,8 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     }
 
     const card = () => window.getByRole('region', { name: 'Agent settings' });
+    await window.setViewportSize({ width: 1280, height: 800 });
+    await card().screenshot({ path: testInfo.outputPath('agent-card-first-run.png'), animations: 'disabled' });
     await expect(window.getByLabel('Agent model', { exact: true })).toHaveValue('haiku');
     await expect(window.getByLabel('Agent authentication')).toHaveValue('login');
     await expect(window.getByLabel('Crew size')).toHaveValue('6');
@@ -97,16 +99,16 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
       }),
     ).toBe(true);
     await window.getByLabel('Claude executable path', { exact: true }).fill(join(userData, 'missing'));
-    await card().getByRole('button', { name: 'Confirm path and save' }).click();
-    await expect(card().getByRole('button', { name: 'Confirm path and save' })).toBeEnabled();
-    await expect(card().getByRole('status')).toContainText('Choose an absolute');
+    await card().getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+    await expect(card().getByRole('status')).toContainText('not a working copy of Claude');
     const removable = join(userData, 'removable-claude');
     writeFileSync(removable, '#!/bin/sh\nprintf "fixture version\\n"\n', { mode: 0o700 });
     await window.getByLabel('Claude executable path', { exact: true }).fill(removable);
     await window.getByLabel('Agent authentication').selectOption('login');
-    await card().getByRole('button', { name: 'Confirm path and save' }).click();
-    await expect(card().getByRole('button', { name: 'Confirm path and save' })).toBeEnabled();
-    await expect(window.getByTestId('agent-status')).toHaveText('Claude · ready');
+    await card().getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+    await expect(window.getByTestId('agent-status')).toHaveText('Ready');
     unlinkSync(removable);
     expect((await window.evaluate(() => window.jobpilot!.agent.get())).status).toBe('tool_not_installed');
 
@@ -114,16 +116,17 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
       .getByLabel('Claude executable path', { exact: true })
       .fill(resolve('scripts/fixtures/claude/fake-claude'));
     await window.getByLabel('Agent authentication').selectOption('login');
-    await card().getByRole('button', { name: 'Confirm path and save' }).click();
-    await expect(card().getByRole('button', { name: 'Confirm path and save' })).toBeEnabled();
-    await expect(window.getByTestId('agent-status')).toHaveText('Claude · ready');
+    await card().getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+    await expect(window.getByTestId('agent-status')).toHaveText('Ready');
+    await card().screenshot({ path: testInfo.outputPath('agent-card-ready.png'), animations: 'disabled' });
     const first = await runFixture('Fill the local form');
     expect(first.status, JSON.stringify(first)).toBe('filled');
     expect(first.events).toContainEqual({ type: 'message', role: 'assistant', text: 'model:haiku' });
     await window.getByLabel('Agent model', { exact: true }).selectOption('sonnet');
-    await card().getByRole('button', { name: 'Confirm path and save' }).click();
-    await expect(card().getByRole('button', { name: 'Confirm path and save' })).toBeEnabled();
-    await expect(card().getByRole('status')).toContainText('Path confirmed');
+    await card().getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+    await expect(card().getByRole('status')).toHaveText('Saved.');
     await app!.close();
     window = await launch();
     await expect(window.getByLabel('Agent model', { exact: true })).toHaveValue('sonnet');
@@ -142,8 +145,8 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     await window.evaluate(() => {
       location.hash = '#/settings';
     });
-    await expect(window.getByTestId('agent-status')).toHaveText('Claude · not logged in');
-    await expect(card().getByText('Open Terminal and run `claude` once to sign in')).toBeVisible();
+    await expect(window.getByTestId('agent-status')).toHaveText('Sign in needed');
+    await expect(card().getByText('Open Terminal and run claude once to sign in.')).toBeVisible();
     await window.setViewportSize({ width: 1280, height: 800 });
     for (const theme of ['light', 'dark'] as const) {
       await window.evaluate(async (source) => {
@@ -153,14 +156,14 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
       else await expect(window.locator('html')).not.toHaveClass(/dark/);
       await window.screenshot({ path: testInfo.outputPath(`settings-agent-${theme}.png`), animations: 'disabled' });
     }
-    await card().getByRole('button', { name: 'Re-detect' }).click();
-    await expect(card().getByRole('status')).toHaveText('Confirm a path before starting a run.');
+    await card().getByRole('button', { name: 'Find again' }).click();
+    await expect(card().getByRole('status')).toHaveText('Save once before starting a run.');
     await window
       .getByLabel('Claude executable path', { exact: true })
       .fill(resolve('scripts/fixtures/claude/fake-claude'));
-    await card().getByRole('button', { name: 'Confirm path and save' }).click();
-    await expect(card().getByRole('button', { name: 'Confirm path and save' })).toBeEnabled();
-    await expect(window.getByTestId('agent-status')).toHaveText('Claude · ready');
+    await card().getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+    await expect(window.getByTestId('agent-status')).toHaveText('Ready');
     expect((await runFixture('wait')).status).toBe('waiting');
     const pids = ['child.pid', 'descendant.pid'].map((file) =>
       Number(readFileSync(join(userData, 'agents/claude/fixture', file), 'utf8')),

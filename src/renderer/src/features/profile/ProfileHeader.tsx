@@ -15,11 +15,11 @@ export const panelId = (tab: ProfileTab) => `profile-panel-${tab}`;
 export function ProfileHeader() {
   const identity = useProfileIdentity();
   return (
-    <header className="mb-7">
+    <header className="mb-7 [@media(height<=760px)]:mb-4">
       <div className={monoLabel}>Profile & documents</div>
-      <div className="mt-3 flex items-center gap-6 [@media(width<=800px)]:flex-wrap">
+      <div className="mt-3 flex items-center gap-6 [@media(width<=800px)]:flex-wrap [@media(height<=760px)]:mt-2">
         <div
-          className="grid size-[76px] flex-none place-items-center rounded-full bg-brand-tint font-sans text-[28px] leading-[normal] font-semibold text-brand-text"
+          className="grid size-[76px] flex-none [@media(height<=760px)]:size-14 place-items-center rounded-full bg-brand-tint font-sans text-[28px] leading-[normal] font-semibold text-brand-text"
           aria-hidden="true"
         >
           {identity.initials}
@@ -27,7 +27,7 @@ export function ProfileHeader() {
         <div className="min-w-0 flex-1">
           <h1
             className={cn(
-              'm-0 font-serif text-[46px] leading-[1.08] font-normal tracking-[-0.02em] [overflow-wrap:anywhere] [@media(width<=800px)]:text-[34px]',
+              'm-0 font-serif text-[46px] leading-[1.08] font-normal tracking-[-0.02em] [overflow-wrap:anywhere] [@media(width<=800px)]:text-[34px] [@media(height<=760px)]:text-[36px]',
               !identity.name && 'text-muted',
             )}
           >
