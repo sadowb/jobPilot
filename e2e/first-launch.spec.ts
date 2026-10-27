@@ -74,6 +74,11 @@ test('fresh profile opens onboarding and contains only real empty states', async
       }, route!);
       if (route === '/settings') await expect(window.getByRole('dialog', { name: 'Settings' })).toBeVisible();
       else await expect(window.getByRole('heading', { name: title!, exact: true })).toBeVisible();
+      await expect(window.locator('body')).not.toContainText(/Arrives with|Phase \d/);
+      if (route === '/inbox') {
+        await expect(window.getByText('Nothing needs you', { exact: true })).toBeVisible();
+        await expect(window.getByRole('button', { name: 'Open Up next' })).toBeVisible();
+      }
       await capture(name!);
       if (route === '/settings') {
         await window.getByRole('heading', { name: 'Site logins', exact: true }).scrollIntoViewIfNeeded();
@@ -136,6 +141,10 @@ test('fresh profile opens onboarding and contains only real empty states', async
     await expect(window.getByRole('tab', { name: 'Up next 1', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'All 2', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'Submitted 1', exact: true })).toBeVisible();
+    await expect(window.getByText('Showing 1–2 of 2')).toBeVisible();
+    const perPage = window.getByRole('combobox', { name: 'Rows per page' });
+    await expect(perPage).toHaveValue('10');
+    expect(await perPage.locator('option').allTextContents()).toEqual(['10 per page', '25 per page', '50 per page']);
     await capture('real-applied');
     await window.getByPlaceholder('Search company, role, location').fill('missing employer');
     await expect(window.getByText('No jobs match “missing employer”')).toBeVisible();
@@ -147,6 +156,7 @@ test('fresh profile opens onboarding and contains only real empty states', async
     await window.getByRole('row').filter({ hasText: 'Software Engineer' }).click();
     await window.getByRole('button', { name: 'View full size' }).click();
     await expect(window.getByRole('dialog', { name: 'Application CV' })).toBeVisible();
+    await expect(window.getByText('No CV pinned to this application.')).toBeVisible();
     await capture('unavailable-application-cv');
     await window.getByRole('button', { name: 'Done', exact: true }).click();
     await window.getByRole('button', { name: '⌘K Ask Cap' }).click();

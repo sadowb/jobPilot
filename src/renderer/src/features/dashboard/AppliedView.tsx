@@ -7,7 +7,7 @@ import { EmptyResults } from './components/EmptyResults';
 import { FilterChips } from './components/FilterChips';
 import { KeyHints, type HintMode } from './components/KeyHints';
 import { MetricRow } from './components/MetricRow';
-import { Pagination } from './components/Pagination';
+import { Pagination, usePaging } from './components/Pagination';
 import { PeekPanel } from './components/PeekPanel';
 import { SearchField } from './components/SearchField';
 import { TabSwitch, type DashboardTab } from './components/TabSwitch';
@@ -46,6 +46,7 @@ export function AppliedView({
   const counts = live;
   const selected = selectedApp(state);
   const total = rows.length;
+  const paging = usePaging(total);
 
   const onEffect = useCallback(
     (effect: KeyEffect) => {
@@ -118,7 +119,7 @@ export function AppliedView({
         ) : (
           <>
             <ApplicationsTable
-              rows={rows}
+              rows={rows.slice(paging.start, paging.start + paging.size)}
               query={state.query}
               selectedId={state.selectedId}
               statusMenu={state.statusMenu}
@@ -127,7 +128,7 @@ export function AppliedView({
               onPickStatus={pickStatus}
               onCloseStatus={() => dispatch({ type: 'closeStatus' })}
             />
-            <Pagination from={1} to={rows.length} total={total} perPage={rows.length} totalPages={1} />
+            <Pagination paging={paging} />
           </>
         )}
         <KeyHints mode={hintMode} />
@@ -146,7 +147,7 @@ export function AppliedView({
       )}
       {state.cvOpen && selected && (
         <Dialog open title="Application CV" eyebrow={selected.company} onClose={() => dispatch({ type: 'closeCv' })}>
-          <p>Arrives with pinned application documents.</p>
+          <p>No CV pinned to this application.</p>
         </Dialog>
       )}
     </div>

@@ -114,7 +114,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         >
           <div className={cn(S, 'flex items-center gap-2 text-[13px]')}>
             <i className={cn('block size-[7px] rounded-full', autopilot ? 'bg-brand' : 'bg-line-2')} />
-            Arrives with live crew status.
+            Not available yet.
           </div>
         </Section>
         <Section
@@ -168,7 +168,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             })}
           </div>
         </Section>
-        <Section title="Sites" desc="Arrives with saved site preferences." />
+        <Section title="Sites" desc="Not available yet." />
         <Section
           title="Advanced"
           desc="Hard limits. The crew stops at these, even in Auto."
@@ -210,7 +210,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </Section>
-        <Section title="Site logins" desc="Arrives with the dedicated Bitwarden vault integration." />
+        <Section title="Site logins" desc="Not available yet." />
         <Section
           title="Database recovery"
           desc="Keep a recovery key in your main Bitwarden vault in case this Mac loses Keychain access."
