@@ -219,30 +219,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+          # PR-only verification job; release-path jobs intentionally avoid shared cache
           cache: npm
       - run: npm config set script-shell bash
       - run: npm ci
       - run: npm run build
       - run: npx electron-builder --win --x64 --dir
-      - name: Close smoke test database handle on Windows
-        run: |
-          node -e '
-          import fs from "node:fs";
-          const file = "scripts/smoke-native.mjs";
-          const code = fs.readFileSync(file, "utf8");
-          fs.writeFileSync(
-            file,
-            code
-              .replace(
-                "assert.throws(() => wrong.prepare(\x27SELECT 1 FROM company\x27).get(), /not a database|file is not/i);",
-                "assert.throws(() => wrong.prepare(\x27SELECT 1 FROM company\x27).get(), /not a database|file is not/i);\n  wrong.close();",
-              )
-              .replace(
-                "rmSync(dir, { recursive: true, force: true });",
-                "rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });",
-              ),
-          );
-          '
       - run: npm run smoke:native
       - name: Boot packaged Windows app
         run: |
