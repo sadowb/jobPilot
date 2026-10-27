@@ -233,7 +233,13 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     // A retry after needs_you starts fresh: attempt 2, no sessionId carry-over / resume, and completes to awaiting_approval.
     const retry = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
     expect(retry.id).not.toBe(needsAnswersRun.id);
-    expect(retry.attempt).toBe(2);
+    const retryState = await inspect(app);
+    const retryRow = (retryState.runs as Array<{ id: string; attempt: number; session_id: string | null }>).find(
+      (r) => r.id === retry.id,
+    );
+    expect(retryRow).toBeDefined();
+    expect(retryRow!.attempt).toBe(2);
+    expect(retryRow!.session_id).not.toBe(`session-${needsAnswersRun.id}`);
     await expect.poll(async () => (await inspect(app!)).tabs.includes(retry.id)).toBe(true);
     await complete(app, [retry.id], 'filled');
     await expect
