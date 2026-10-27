@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AgentModelSchema, type AgentState } from '../../../../shared/dto';
 import { Button, Field, Input, Select, Status, type StatusKind } from '../../components/ui';
+import { hasBridge, useAgent, useAgentAction } from '../../lib/api';
 import { S } from '../shared-ui';
 
 const STATUS: Record<AgentState['status'], { kind: StatusKind; label: string; help: string }> = {
@@ -16,42 +17,30 @@ const STATUS: Record<AgentState['status'], { kind: StatusKind; label: string; he
 };
 
 export function AgentCard() {
-  const [state, setState] = useState<AgentState>();
+  const query = useAgent();
+  const state = query.data;
+  const agentAction = useAgentAction();
   const [path, setPath] = useState('');
   const [model, setModel] = useState<AgentState['model']>('haiku');
   const [auth, setAuth] = useState<AgentState['auth']>('login');
   const [manual, setManual] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  function update(value: AgentState) {
-    setState(value);
-    setPath(value.path ?? '');
-    setModel(value.model);
-    setAuth(value.auth);
-    if (!value.confirmed) setManual(true);
+  // Mirror the saved state into the editable form whenever a new one arrives (load, detect, save).
+  const [mirrored, setMirrored] = useState<AgentState>();
+  if (state && state !== mirrored) {
+    setMirrored(state);
+    setPath(state.path ?? '');
+    setModel(state.model);
+    setAuth(state.auth);
+    if (!state.confirmed) setManual(true);
   }
-  useEffect(() => {
-    let active = true;
-    void window.jobpilot?.agent.get().then(
-      (value) => {
-        if (active) update(value);
-      },
-      () => active && setError('Could not read Agent settings.'),
-    );
-    return () => {
-      active = false;
-    };
-  }, []);
   async function act(action: 'detect' | 'save') {
-    if (!window.jobpilot || busy) return;
+    if (!hasBridge() || busy) return;
     setBusy(true);
     setError('');
     try {
-      update(
-        await (action === 'detect'
-          ? window.jobpilot.agent.detect()
-          : window.jobpilot.agent.save({ path, model, auth })),
-      );
+      await agentAction.mutateAsync(action === 'detect' ? 'detect' : { save: { path, model, auth } });
     } catch {
       setManual(true);
       setError('That location is not a working copy of Claude. Choose the claude file itself.');
@@ -128,7 +117,9 @@ export function AgentCard() {
           Find again
         </Button>
         <p role="status" className={`${S} ml-1`}>
-          {error || (state?.confirmed ? 'Saved.' : 'Save once before starting a run.')}
+          {error ||
+            (query.isError && 'Could not read Agent settings.') ||
+            (state?.confirmed ? 'Saved.' : 'Save once before starting a run.')}
         </p>
       </div>
     </section>

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AddJobsDialog } from '../features/dashboard/addjobs/AddJobsDialog';
 import { appliedItem, isApplied, queueItem } from '../features/dashboard/applications';
 import { AppliedView } from '../features/dashboard/AppliedView';
 import type { DashboardTab } from '../features/dashboard/components/TabSwitch';
+import { useApplications } from '../lib/api';
 import { dashboardReducer, initialState } from '../features/dashboard/state';
 import { UpNextView } from '../features/dashboard/UpNextView';
 import { initialQueueState, queueReducer } from '../features/dashboard/upnext/queue';
@@ -29,19 +30,14 @@ export function Dashboard() {
   const [queue, dispatchQueue] = useReducer(queueReducer, initialQueueState([]));
   const [addJobs, setAddJobs] = useState<AddJobsState | null>(null);
   const [addedIds, setAddedIds] = useState<string[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const reload = useCallback(
-    () =>
-      window.jobpilot!.applications.list().then((items) => {
-        dispatchApplied({ type: 'loaded', apps: items.filter(isApplied).map(appliedItem) });
-        dispatchQueue({ type: 'loaded', items: items.filter((item) => !isApplied(item)).map(queueItem) });
-        setLoadError(null);
-      }),
-    [],
-  );
+  const { data: items, isError } = useApplications();
+  const loadError = isError ? 'Could not load applications. Please reload.' : null;
+  // Main pushes data-changed events, so `items` updates live; mirror each new list into the screen reducers.
   useEffect(() => {
-    void reload().catch(() => setLoadError('Could not load applications. Please reload.'));
-  }, [reload]);
+    if (!items) return;
+    dispatchApplied({ type: 'loaded', apps: items.filter(isApplied).map(appliedItem) });
+    dispatchQueue({ type: 'loaded', items: items.filter((item) => !isApplied(item)).map(queueItem) });
+  }, [items]);
   const addJobsOpen = addJobs !== null;
 
   useEffect(() => {
@@ -64,7 +60,6 @@ export function Dashboard() {
   }, [addedIds]);
 
   const onAdded = async (ids: string[], complete: boolean) => {
-    await reload();
     navigate('/?tab=up-next');
     setAddedIds(ids);
     if (complete) setAddJobs(null);

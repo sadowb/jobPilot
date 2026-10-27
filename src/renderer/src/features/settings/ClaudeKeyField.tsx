@@ -1,46 +1,37 @@
-import { useEffect, useRef, useState } from 'react';
-import type { ClaudeKeyStatus } from '../../../../shared/dto';
+import { useRef, useState } from 'react';
 import { Button, Field, Input } from '../../components/ui';
+import { hasBridge, useClaudeKeyStatus, useRemoveClaudeKey, useSetClaudeKey, useTestClaudeKey } from '../../lib/api';
 import { S } from '../shared-ui';
 
 export function ClaudeKeyField() {
   const input = useRef<HTMLInputElement>(null);
-  const [status, setStatus] = useState<ClaudeKeyStatus>();
+  const query = useClaudeKeyStatus();
+  const status = query.data;
+  const setKey = useSetClaudeKey();
+  const removeKey = useRemoveClaudeKey();
+  const testKey = useTestClaudeKey();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    void window.jobpilot?.claudeKey.status().then(
-      (value) => {
-        if (!active) return;
-        setStatus(value);
-        if (value.set) setOpen(true);
-      },
-      () => active && setMessage('Could not read Claude API key status.'),
-    );
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Open by default when a key is already saved; once the owner toggles it, their choice wins.
+  const [toggled, setToggled] = useState<boolean>();
+  const open = toggled ?? !!status?.set;
 
   async function act(action: 'save' | 'test' | 'remove') {
-    if (!window.jobpilot || busy) return;
+    if (!hasBridge() || busy) return;
     setBusy(true);
     setMessage('');
     try {
       if (action === 'save') {
-        const pending = window.jobpilot.claudeKey.set(input.current?.value ?? '');
+        const pending = setKey.mutateAsync(input.current?.value ?? '');
         if (input.current) input.current.value = '';
         await pending;
         setMessage('Claude API key saved.');
       } else if (action === 'remove') {
-        await window.jobpilot.claudeKey.remove();
+        await removeKey.mutateAsync();
         if (input.current) input.current.value = '';
         setMessage('Claude API key removed.');
       } else {
-        const result = await window.jobpilot.claudeKey.test();
+        const result = await testKey.mutateAsync();
         setMessage(
           result === 'ok'
             ? 'Claude API key works.'
@@ -51,7 +42,6 @@ export function ClaudeKeyField() {
                 : "Couldn't reach Anthropic. Check your connection and try again.",
         );
       }
-      setStatus(await window.jobpilot.claudeKey.status());
     } catch {
       setMessage('Could not update or test the Claude API key.');
     } finally {
@@ -62,7 +52,7 @@ export function ClaudeKeyField() {
 
   return (
     <section className="border-t border-line py-2.5 text-[13px]" aria-label="Claude API key settings">
-      <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <details open={open} onToggle={(event) => setToggled(event.currentTarget.open)}>
         <summary className="flex cursor-pointer items-center justify-between gap-4 select-none">
           <span className="font-semibold">Use an API key instead (optional)</span>
           <span className={S} data-testid="claude-key-status">
@@ -97,7 +87,7 @@ export function ClaudeKeyField() {
             </Button>
           </div>
           <p role="status" className={S}>
-            {message}
+            {message || (query.isError ? 'Could not read Claude API key status.' : '')}
           </p>
         </div>
       </details>

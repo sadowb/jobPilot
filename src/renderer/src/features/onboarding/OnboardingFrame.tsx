@@ -3,6 +3,7 @@ import { AppearanceControl } from '../../components/AppearanceControl';
 import { CapDartArt } from '../../components/CapDartArt';
 import { Logo } from '../../components/Logo';
 import { Eyebrow, cn } from '../../components/ui';
+import { hostPlatform } from '../../lib/api';
 import { A_BOB, BUBBLE, GoButton, H1, IT, REDUCE_ALL, S, SPEC } from '../shared-ui';
 import { ONBOARDING_STEPS, STEP_NAMES, dotState, stepPath, type OnboardingStep } from './steps';
 
@@ -37,7 +38,7 @@ export function OnboardingFrame({
   return (
     <>
       <header className={HEADER}>
-        {window.jobpilot?.platform !== 'darwin' && <Logo label="JobPilot, setup" />}
+        {hostPlatform() !== 'darwin' && <Logo label="JobPilot, setup" />}
         <div
           className={cn('flex items-center gap-2 justify-self-center', PLACE_COL_2)}
           role="img"

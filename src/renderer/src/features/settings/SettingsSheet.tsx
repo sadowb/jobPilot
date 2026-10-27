@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { KbdKey } from '../../components/KbdKey';
 import { Button, cn, Segmented } from '../../components/ui';
+import { useExportRecoveryKey } from '../../lib/api';
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
 import { IT, S, V17N, V17X, shellButton } from '../shared-ui';
@@ -48,6 +49,7 @@ function Section({
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { state: theme, setSource, error: themeError } = useTheme();
   const [recoveryError, setRecoveryError] = useState(false);
+  const exportRecoveryKey = useExportRecoveryKey();
   const [autopilot, setAutopilot] = useState(DEFAULT_SETTINGS.autopilot);
   const [crew, setCrew] = useState(DEFAULT_SETTINGS.crew);
   const [submitMode, setSubmitMode] = useState(DEFAULT_SETTINGS.submitMode);
@@ -220,7 +222,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <Button
             onClick={() => {
               setRecoveryError(false);
-              void window.jobpilot?.recovery.export().catch(() => setRecoveryError(true));
+              exportRecoveryKey.mutate(undefined, { onError: () => setRecoveryError(true) });
             }}
           >
             Export recovery key
