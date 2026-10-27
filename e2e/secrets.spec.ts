@@ -42,6 +42,7 @@ test('Claude key persists encrypted, stays write-only, tests in main, and can be
     let window = await launch();
     const section = () => window.getByRole('region', { name: 'Claude API key settings' });
     await expect(section().getByTestId('claude-key-status')).toHaveText('No key saved');
+    await section().getByText('Use an API key instead (optional)').click();
     await expect(window.getByLabel('Claude API key (optional)', { exact: true })).toHaveAccessibleDescription(
       "JobPilot uses the Claude you're signed into on this Mac. Add a key only to use API billing instead.",
     );

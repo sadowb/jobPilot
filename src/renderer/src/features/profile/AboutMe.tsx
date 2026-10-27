@@ -162,7 +162,7 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
   const status = profile.error || profile.message || markets.message;
   return (
     <>
-      <div className="grid auto-rows-[minmax(300px,auto)] grid-cols-3 gap-5 [@media(width<=1190px)]:grid-cols-2 [@media(width<=800px)]:auto-rows-auto [@media(width<=800px)]:grid-cols-1">
+      <div className="grid auto-rows-[minmax(300px,auto)] grid-cols-3 gap-5 [@media(height<=760px)]:auto-rows-[minmax(236px,auto)] [@media(height<=760px)]:gap-4 [@media(width<=1190px)]:grid-cols-2 [@media(width<=800px)]:auto-rows-auto [@media(width<=800px)]:grid-cols-1">
         <ContactCard profile={draft} onEdit={() => setView({ type: 'profile', group: 'contact' })} />
         <WhereCard
           markets={markets.draft}

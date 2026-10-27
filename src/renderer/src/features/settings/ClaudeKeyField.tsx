@@ -1,17 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ClaudeKeyStatus } from '../../../../shared/dto';
 import { Button, Field, Input } from '../../components/ui';
+import { S } from '../shared-ui';
 
 export function ClaudeKeyField() {
   const input = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<ClaudeKeyStatus>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
     void window.jobpilot?.claudeKey.status().then(
-      (value) => active && setStatus(value),
+      (value) => {
+        if (!active) return;
+        setStatus(value);
+        if (value.set) setOpen(true);
+      },
       () => active && setMessage('Could not read Claude API key status.'),
     );
     return () => {
@@ -55,39 +61,46 @@ export function ClaudeKeyField() {
   }
 
   return (
-    <section className="border-t border-line py-2.5" aria-label="Claude API key settings">
-      <p className="text-[13px]" data-testid="claude-key-status">
-        {status ? (status.set ? `Saved · ••••${status.last4}` : 'No key saved') : 'Status unavailable'}
-      </p>
-      <Field
-        label="Claude API key (optional)"
-        hint="JobPilot uses the Claude you're signed into on this Mac. Add a key only to use API billing instead."
-      >
-        <Input
-          id="claude-api-key"
-          ref={input}
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          maxLength={512}
-          disabled={busy}
-          placeholder="Enter a new key"
-        />
-      </Field>
-      <div className="mt-2 flex gap-2">
-        <Button size="sm" disabled={busy || !status} onClick={() => void act('save')}>
-          Save key
-        </Button>
-        <Button size="sm" disabled={busy || !status?.set} onClick={() => void act('test')}>
-          Test
-        </Button>
-        <Button size="sm" disabled={busy || !status?.set} onClick={() => void act('remove')}>
-          Remove
-        </Button>
-      </div>
-      <p role="status" className="text-[13px]">
-        {message}
-      </p>
+    <section className="border-t border-line py-2.5 text-[13px]" aria-label="Claude API key settings">
+      <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+        <summary className="flex cursor-pointer items-center justify-between gap-4 select-none">
+          <span className="font-semibold">Use an API key instead (optional)</span>
+          <span className={S} data-testid="claude-key-status">
+            {status ? (status.set ? `Saved · ••••${status.last4}` : 'No key saved') : 'Status unavailable'}
+          </span>
+        </summary>
+        <div className="mt-2.5">
+          <Field
+            label="Claude API key (optional)"
+            hint="JobPilot uses the Claude you're signed into on this Mac. Add a key only to use API billing instead."
+          >
+            <Input
+              id="claude-api-key"
+              ref={input}
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={512}
+              disabled={busy}
+              placeholder="Enter a new key"
+            />
+          </Field>
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" disabled={busy || !status} onClick={() => void act('save')}>
+              Save key
+            </Button>
+            <Button size="sm" disabled={busy || !status?.set} onClick={() => void act('test')}>
+              Test
+            </Button>
+            <Button size="sm" disabled={busy || !status?.set} onClick={() => void act('remove')}>
+              Remove
+            </Button>
+          </div>
+          <p role="status" className={S}>
+            {message}
+          </p>
+        </div>
+      </details>
     </section>
   );
 }

@@ -24,11 +24,11 @@ const MonoCaption = ({ children }: { children: string }) => (
 /** V17 "manual control": every automatic change shows who made it and has one fix. Static states, no store. */
 export function ManualControlBoard() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-[22px] px-10 pt-7 pb-10">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 px-10 pt-5 pb-8">
       <div className="flex items-end justify-between gap-8">
         <div className="min-w-0">
           <Eyebrow>V17 · manual control</Eyebrow>
-          <h1 className="m-0 mt-1.5 font-serif text-[36px] leading-[1.02] font-[350] tracking-[-0.025em]">
+          <h1 className="m-0 mt-1 font-serif text-[32px] leading-[1.02] font-[350] tracking-[-0.025em]">
             Auto does the work.{' '}
             <span className="font-serif text-[1em] font-light tracking-[-0.01em] italic">You keep the last word.</span>
           </h1>
@@ -49,7 +49,7 @@ export function ManualControlBoard() {
           </span>
         </div>
       </div>
-      <div className="grid grid-cols-[repeat(4,minmax(0,1fr))] gap-4 [@media(max-width:1194px)]:grid-cols-[repeat(2,minmax(0,1fr))]">
+      <div className="grid grid-cols-[repeat(4,minmax(0,1fr))] gap-3 [@media(max-width:1194px)]:grid-cols-[repeat(2,minmax(0,1fr))]">
         <FixCard
           n="01"
           by="email"

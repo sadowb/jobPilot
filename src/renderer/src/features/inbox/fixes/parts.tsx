@@ -141,7 +141,7 @@ export function FixCard({
   after: ReactNode;
 }) {
   return (
-    <div className="row-[span_5] grid min-w-0 grid-rows-subgrid gap-y-2.5 rounded-[22px] border border-line bg-bg p-4">
+    <div className="row-[span_5] grid min-w-0 grid-rows-subgrid gap-y-2 rounded-[22px] border border-line bg-bg p-3.5">
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[11.5px] tracking-[0.06em] text-muted">{n}</span>
         <SetByChip by={by} />
