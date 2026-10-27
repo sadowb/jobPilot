@@ -7,9 +7,9 @@ rules:
           - pattern: ipcMain.on(...)
     paths:
       include:
-        - src/main/**
+        - '**/src/main/**'
       exclude:
-        - src/main/platform/ipc/registry.ts
+        - '**/src/main/platform/ipc/registry.ts'
     message: 'Register IPC handlers via defineHandler in platform/ipc, not raw ipcMain methods.'
     severity: ERROR
     languages:
@@ -20,16 +20,19 @@ rules:
     patterns:
       - pattern-either:
           - pattern: fetch(...)
-          - pattern: import ... from 'undici'
-          - pattern: require('undici')
+          - pattern: 'import $X from "undici"'
+          - pattern: 'import { ... } from "undici"'
+          - pattern: 'import * as $X from "undici"'
+          - pattern: 'import "undici"'
+          - pattern: 'require("undici")'
     paths:
       include:
-        - src/main/**
+        - '**/src/main/**'
       exclude:
-        - src/main/modules/postings/ats/common.ts
-        - src/main/platform/secrets/anthropic-key.ts
-        - src/main/platform/browsers/neo-mcp.ts
-        - src/main/app/protocol.ts
+        - '**/src/main/modules/postings/ats/common.ts'
+        - '**/src/main/platform/secrets/anthropic-key.ts'
+        - '**/src/main/platform/browsers/neo-mcp.ts'
+        - '**/src/main/app/protocol.ts'
     message: 'Outbound HTTP requests must use the SSRF-safe request() helper instead of raw fetch() or undici.'
     severity: ERROR
     languages:
@@ -60,7 +63,7 @@ rules:
       - pattern: console.$METHOD(...)
     paths:
       include:
-        - src/main/**
+        - '**/src/main/**'
     message: "console.* is prohibited in src/main. Use LogService loggerFor('module') instead."
     severity: ERROR
     languages:
@@ -88,7 +91,7 @@ rules:
                   regex: (?i).*(apiKey|api_key|claudeKey|claude_key|anthropicKey|anthropic_key|dbKey|db_key|recoveryKey|recovery_key|password|secret|token|credentials?|privateKey|private_key).*
     paths:
       include:
-        - src/main/**
+        - '**/src/main/**'
     message: 'Do not pass sensitive variables or secrets (API keys, passwords, tokens, recovery keys) to loggers.'
     severity: ERROR
     languages:
