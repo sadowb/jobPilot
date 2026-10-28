@@ -114,6 +114,8 @@ describe('initializeProfile migration (#135)', () => {
     });
     const freshResult = await initializeProfile(bridgeFresh, emptyStore);
     expect(freshResult.onboardingCompletedAt).toBeNull();
+    // Starter answers must not reach main as owner data, or main infers a finished onboarding.
+    expect(freshResult.answers).toBeNull();
 
     const existingStore = {
       getItem: (key: string) =>
