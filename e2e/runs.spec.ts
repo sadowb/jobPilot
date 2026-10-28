@@ -115,7 +115,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     expect(await window.evaluate(() => window.jobpilot!.runs.pause())).toBe(true);
     const first = await window.evaluate(
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
-      applicationIds.slice(0, 7),
+      applicationIds.slice(0, 5),
     );
     expect(first.every((run) => run.status === 'queued')).toBe(true);
     const duplicate = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[0]!);
@@ -127,15 +127,15 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         async () =>
           (await window.evaluate(() => window.jobpilot!.runs.list())).filter((row) => row.status === 'running').length,
       )
-      .toBe(6);
+      .toBe(4);
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[4]!.id)?.status,
     ).toBe('queued');
-    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(6);
+    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(4);
     await window.evaluate(() => window.jobpilot!.runs.pause());
     await complete(
       app,
-      first.slice(0, 6).map((row) => row.id),
+      first.slice(0, 4).map((row) => row.id),
     );
     await expect
       .poll(
@@ -144,9 +144,9 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
             (row) => row.status === 'awaiting_approval',
           ).length,
       )
-      .toBe(6);
+      .toBe(4);
     const inspectedApprovals = await inspect(app);
-    for (const row of first.slice(0, 6)) {
+    for (const row of first.slice(0, 4)) {
       const approval = (inspectedApprovals.approvals as Array<{ run_id: string; form_hash: string }>).find(
         (a) => a.run_id === row.id,
       );
@@ -156,18 +156,18 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       expect(approval!.form_hash).not.toBe(`fake-${row.id}`);
     }
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[4]!.id)?.status,
     ).toBe('queued');
     await window.evaluate(() => window.jobpilot!.runs.resume());
-    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[6]!.id)).toBe(true);
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[4]!.id)).toBe(true);
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[4]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[4]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[6]!.id);
-    expect((await inspect(app)).tabs).not.toContain(first[6]!.id);
+    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[4]!.id);
+    expect((await inspect(app)).tabs).not.toContain(first[4]!.id);
 
     const invalid = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[7]!);
     await expect.poll(async () => (await inspect(app!)).tabs.includes(invalid.id)).toBe(true);
@@ -275,7 +275,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     await window.evaluate(() => window.jobpilot!.runs.pause());
     const queued = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[11]!);
     const before = await inspect(app);
-    for (const row of first.slice(0, 6)) {
+    for (const row of first.slice(0, 4)) {
       expect(before.events.filter((event) => (event as { run_id: string }).run_id === row.id)).toMatchObject([
         { from_status: null, to_status: 'queued' },
         { from_status: 'queued', to_status: 'running' },

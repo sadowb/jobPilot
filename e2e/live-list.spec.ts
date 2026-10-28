@@ -72,7 +72,7 @@ test('Up next updates live, with no reload, as two runs change state', async ({}
       location.hash = '#/?tab=up-next';
     });
     await expect(window.getByText('Frontend Engineer 1')).toBeVisible();
-    await expect(window.getByText('CREW IDLE · 0 / 6 RUNNING')).toBeVisible();
+    await expect(window.getByText('CREW IDLE · 0 / 4 RUNNING')).toBeVisible();
 
     // A navigation marker proves the page is never reloaded while the list changes.
     await window.evaluate(() => {
@@ -82,7 +82,7 @@ test('Up next updates live, with no reload, as two runs change state', async ({}
       (applicationIds) => Promise.all(applicationIds.map((id) => window.jobpilot!.runs.start(id))),
       ids,
     );
-    await expect(window.getByText(/CREW 2 \/ 6 BUSY/)).toBeVisible();
+    await expect(window.getByText(/CREW 2 \/ 4 BUSY/)).toBeVisible();
     await expect(window.getByText('NOW', { exact: true })).toHaveCount(2);
     await window.screenshot({ path: testInfo.outputPath('up-next-running-light.png'), animations: 'disabled' });
 
