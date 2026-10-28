@@ -12,6 +12,13 @@ import {
   parseLimit,
   tickTransform,
 } from '../src/renderer/src/features/settings/model';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as schema from '../src/main/platform/db/schema';
+import type { JobPilotDb } from '../src/main/platform/db/database';
+import { AppSettingsSchema, UpdateSettingsSchema } from '../src/shared/dto';
+import { applyConcurrency, getSettings, updateSettings } from '../src/main/modules/settings/settings.service';
+import * as queueModule from '../src/renderer/src/features/dashboard/upnext/queue';
 
 const key = (over: Partial<KeyEventLike> = {}): KeyEventLike => ({
   key: ',',
@@ -87,5 +94,81 @@ describe('settings shortcut', () => {
     }
     expect(isSettingsShortcut(key({ target: { tagName: 'DIV', isContentEditable: true } }))).toBe(false);
     expect(isSettingsShortcut(key({ target: { tagName: 'BUTTON', isContentEditable: false } }))).toBe(true);
+  });
+});
+
+describe('settings IPC validation', () => {
+  it('validates ranges and rejects out-of-bounds values', () => {
+    expect(() => UpdateSettingsSchema.parse({ crew: 0 })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ crew: 33 })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ crew: -5 })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ crew: 1.5 })).toThrow();
+    expect(UpdateSettingsSchema.parse({ crew: 1 }).crew).toBe(1);
+    expect(UpdateSettingsSchema.parse({ crew: 32 }).crew).toBe(32);
+
+    expect(() => UpdateSettingsSchema.parse({ limits: { openTabs: 0 } })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ limits: { openTabs: 33 } })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ limits: { costPerDay: 0 } })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ limits: { costPerDay: 1001 } })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ limits: { runSeconds: 29 } })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ limits: { runSeconds: 3601 } })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ limits: { stuckSeconds: 29 } })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ limits: { stuckSeconds: 3601 } })).toThrow();
+
+    expect(() => UpdateSettingsSchema.parse({ submitMode: 'invalid' as never })).toThrow();
+    expect(UpdateSettingsSchema.parse({ submitMode: 'review' }).submitMode).toBe('review');
+    expect(UpdateSettingsSchema.parse({ submitMode: 'auto' }).submitMode).toBe('auto');
+  });
+
+  it('defaults autopilot to off', () => {
+    expect(AppSettingsSchema.parse({}).autopilot).toBe(false);
+  });
+});
+
+describe('settings persistence and queue concurrency reuse', () => {
+  function makeTestDb(): JobPilotDb {
+    const sqlite = new Database(':memory:');
+    sqlite.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL);');
+    return drizzle(sqlite, { schema }) as JobPilotDb;
+  }
+
+  it('reads defaults when empty and persists modifications across re-reads', () => {
+    const testDb = makeTestDb();
+    const defaults = getSettings(testDb);
+    expect(defaults).toEqual({
+      autopilot: false,
+      crew: 6,
+      submitMode: 'review',
+      sites: {},
+      limits: { openTabs: 8, costPerDay: 5, runSeconds: 540, stuckSeconds: 120 },
+    });
+
+    const updated = updateSettings({ crew: 30 }, testDb);
+    expect(updated.crew).toBe(30);
+
+    expect(applyConcurrency(testDb)).toBe(30);
+
+    const updatedLimits = updateSettings({ limits: { costPerDay: 50 } }, testDb);
+    expect(updatedLimits.limits).toEqual({
+      openTabs: 8,
+      costPerDay: 50,
+      runSeconds: 540,
+      stuckSeconds: 120,
+    });
+
+    updateSettings({ submitMode: 'auto', autopilot: true }, testDb);
+
+    const fresh = getSettings(testDb);
+    expect(fresh.crew).toBe(30);
+    expect(fresh.submitMode).toBe('auto');
+    expect(fresh.autopilot).toBe(true);
+    expect(fresh.limits.costPerDay).toBe(50);
+    expect(fresh.limits.openTabs).toBe(8);
+  });
+});
+
+describe('issue 137: crew size in queue module', () => {
+  it('does not export a hardcoded CREW_SIZE constant from queue.ts', () => {
+    expect('CREW_SIZE' in queueModule).toBe(false);
   });
 });

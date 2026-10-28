@@ -98,7 +98,7 @@ test('fresh profile opens onboarding and contains only real empty states', async
     await capture('empty-applied');
     await window.getByRole('tab', { name: /Up next 0/ }).click();
     await expect(window.getByText('Nothing queued. Add jobs to start the crew.')).toBeVisible();
-    await expect(window.getByText('CREW IDLE · 0 / 4 RUNNING')).toBeVisible();
+    await expect(window.getByText('CREW IDLE · 0 / 6 RUNNING')).toBeVisible();
     await expect(window.locator('body')).not.toContainText('BUSY');
     await capture('empty-up-next');
     for (const [route, title, name] of [
@@ -187,7 +187,7 @@ test('fresh profile opens onboarding and contains only real empty states', async
     expect(await perPage.locator('option').allTextContents()).toEqual(['10 per page', '25 per page', '50 per page']);
     await capture('real-applied');
     await window.getByRole('tab', { name: 'Up next 1', exact: true }).click();
-    await expect(window.getByText('CREW IDLE · 0 / 4 RUNNING')).toBeVisible();
+    await expect(window.getByText('CREW IDLE · 0 / 6 RUNNING')).toBeVisible();
     await capture('real-up-next');
     await window.getByRole('tab', { name: /Applied 2/ }).click();
     await window.getByPlaceholder('Search company, role, location').fill('missing employer');

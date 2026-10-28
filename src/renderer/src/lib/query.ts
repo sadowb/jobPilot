@@ -15,6 +15,7 @@ export const queryKeys = {
   runs: { all: ['runs'] as const },
   agent: { state: () => ['agent', 'state'] as const },
   claudeKey: { status: () => ['claude-key', 'status'] as const },
+  settings: { all: ['settings'] as const, current: () => [...queryKeys.settings.all, 'current'] as const },
 };
 
 /** A run change also changes the application list (it embeds the latest run status). */

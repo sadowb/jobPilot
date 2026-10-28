@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { ProfileSave, ProfileData, AgentState } from '../../../shared/dto';
+import type { ProfileSave, ProfileData, AgentState, AppSettings, UpdateSettingsInput } from '../../../shared/dto';
 import type { JobPilotBridge } from '../../../shared/ipc';
 import { invalidateForChange, queryClient, queryKeys } from './query';
 
@@ -67,6 +67,38 @@ export const useSaveDocument = () =>
   });
 
 export const useExportRecoveryKey = () => useMutation({ mutationFn: () => bridge().recovery.export() });
+
+export const useSettings = () =>
+  useQuery({
+    queryKey: queryKeys.settings.current(),
+    queryFn: () => bridge().settings.get(),
+  });
+
+export const useUpdateSettings = () =>
+  useMutation({
+    mutationFn: (input: UpdateSettingsInput) => bridge().settings.update(input),
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.settings.current() });
+      const previous = queryClient.getQueryData<AppSettings>(queryKeys.settings.current());
+      if (previous) {
+        queryClient.setQueryData<AppSettings>(queryKeys.settings.current(), {
+          ...previous,
+          ...patch,
+          limits: patch.limits ? { ...previous.limits, ...patch.limits } : previous.limits,
+          sites: patch.sites ? { ...previous.sites, ...patch.sites } : previous.sites,
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.settings.current(), context.previous);
+      }
+    },
+    onSuccess: (saved: AppSettings) => {
+      queryClient.setQueryData(queryKeys.settings.current(), saved);
+    },
+  });
 
 /** Not a hook: the profile lives in a module cache (`profileStorage`) read synchronously by the editors. */
 export const saveProfile = (input: ProfileSave): Promise<ProfileData> => bridge().profile.save(input);

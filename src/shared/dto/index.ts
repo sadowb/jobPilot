@@ -10,3 +10,4 @@ export * from './profile.dto';
 export * from './claude-key.dto';
 export * from './agent.dto';
 export * from './memory.dto';
+export * from './settings.dto';
