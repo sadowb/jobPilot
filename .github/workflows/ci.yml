@@ -228,7 +228,6 @@ jobs:
           node-version: 22
           # PR-only verification job; release-path jobs intentionally avoid shared cache
           cache: npm
-      - run: npm config set script-shell bash
       - run: npm ci
       - run: npm run build
       - run: npm run smoke:native
