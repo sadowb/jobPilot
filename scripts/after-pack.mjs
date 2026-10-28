@@ -1,61 +1,25 @@
-// Flips Electron fuses on the packaged binary (hardening that cannot be changed at runtime)
-// and ensures macOS helper app bundles are named to match their display name.
-import { execFile } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+// Flips Electron fuses on the packaged binary (hardening that cannot be changed at runtime) and names the macOS
+// helper bundles after the app, so Activity Monitor shows "JobPilot Helper (…)" instead of "Electron Helper (…)".
+import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { promisify } from 'node:util';
 import { FuseV1Options, FuseVersion, flipFuses } from '@electron/fuses';
 
-const execFileAsync = promisify(execFile);
+const PLIST_BUDDY = '/usr/libexec/PlistBuddy';
 
-let plistModule = null;
-try {
-  plistModule = (await import('plist')).default;
-} catch {
-  plistModule = null;
-}
-
-export async function fixHelperBundleNames(appPath, platform = process.platform, { forcePlistBuddy = false } = {}) {
-  if (platform !== 'darwin') return;
-  const frameworksDir = join(appPath, 'Contents', 'Frameworks');
-  if (!existsSync(frameworksDir)) return;
-  const entries = readdirSync(frameworksDir);
-  const helpers = entries.filter((entry) => entry.endsWith('.app') && entry.includes('Helper'));
+/** Sets each helper's CFBundleName to its CFBundleDisplayName. Runs before signing; macOS builds only. */
+export function nameHelperBundles(appPath) {
+  const frameworks = join(appPath, 'Contents', 'Frameworks');
+  const helpers = readdirSync(frameworks).filter((entry) => entry.endsWith('.app') && entry.includes('Helper'));
+  if (!helpers.length) throw new Error(`No helper bundles in ${frameworks}`);
   for (const helper of helpers) {
-    const plistPath = join(frameworksDir, helper, 'Contents', 'Info.plist');
-    if (!existsSync(plistPath)) {
-      throw new Error(`Helper Info.plist not found: ${plistPath}`);
-    }
-
-    if (plistModule && !forcePlistBuddy) {
-      const parsed = plistModule.parse(readFileSync(plistPath, 'utf8'));
-      const displayName = parsed?.CFBundleDisplayName;
-      if (!displayName || typeof displayName !== 'string' || !displayName.trim()) {
-        throw new Error(`Helper plist missing CFBundleDisplayName: ${plistPath}`);
-      }
-      parsed.CFBundleName = displayName;
-      writeFileSync(plistPath, plistModule.build(parsed) + '\n');
-    } else {
-      let displayName;
-      try {
-        const { stdout } = await execFileAsync('/usr/libexec/PlistBuddy', [
-          '-c',
-          'Print :CFBundleDisplayName',
-          plistPath,
-        ]);
-        displayName = stdout.trim();
-      } catch (err) {
-        throw new Error(`Helper plist missing CFBundleDisplayName: ${plistPath} (${err.message})`, { cause: err });
-      }
-      if (!displayName) {
-        throw new Error(`Helper plist missing CFBundleDisplayName: ${plistPath}`);
-      }
-      try {
-        await execFileAsync('/usr/libexec/PlistBuddy', ['-c', `Set :CFBundleName ${displayName}`, plistPath]);
-      } catch {
-        await execFileAsync('/usr/libexec/PlistBuddy', ['-c', `Add :CFBundleName string ${displayName}`, plistPath]);
-      }
-    }
+    const plist = join(frameworks, helper, 'Contents', 'Info.plist');
+    // Throws if the plist or the key is missing: a build must not ship half-renamed helpers.
+    const displayName = execFileSync(PLIST_BUDDY, ['-c', 'Print :CFBundleDisplayName', plist], {
+      encoding: 'utf8',
+    }).trim();
+    if (!displayName) throw new Error(`Empty CFBundleDisplayName in ${plist}`);
+    execFileSync(PLIST_BUDDY, ['-c', `Set :CFBundleName ${displayName}`, plist]);
   }
 }
 
@@ -63,9 +27,7 @@ export default async function afterPack(context) {
   const { electronPlatformName, appOutDir, packager } = context;
   const name = packager.appInfo.productFilename;
   const appPath = join(appOutDir, `${name}.app`);
-
-  await fixHelperBundleNames(appPath, electronPlatformName);
-
+  if (electronPlatformName === 'darwin') nameHelperBundles(appPath);
   const executable =
     electronPlatformName === 'darwin'
       ? join(appPath, 'Contents', 'MacOS', name)
