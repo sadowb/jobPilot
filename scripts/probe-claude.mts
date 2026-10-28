@@ -44,6 +44,7 @@ try {
   });
   const spec: RunSpec = {
     runId: 'fixture',
+    sessionId: crypto.randomUUID(),
     prompt: 'Fill the local form',
     model: 'fixture-model',
     mcpServers: {

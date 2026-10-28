@@ -152,7 +152,11 @@ export class ClaudeProvider implements AgentProvider {
             env,
             abortController: controller,
             model: spec.model ?? 'haiku',
-            persistSession: false,
+            // Transcripts are written only under the private config dir (API-key mode); login mode would write
+            // ~/.claude, which ADR 0016 forbids.
+            // shortcut: login-mode runs cannot resume and restart a fresh session, upgrade when the SDK takes a transcript dir.
+            persistSession: apiKey !== '',
+            ...(spec.resume && apiKey ? { resume: spec.sessionId } : { sessionId: spec.sessionId }),
             mcpServers: spec.mcpServers,
             strictMcpConfig: true,
             settingSources: [],

@@ -300,20 +300,25 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       )
       .toBe('awaiting_approval');
     const recovered = await inspect(app);
-    expect(recovered.runs.find((row) => (row as { id: string }).id === interrupted.id)).toMatchObject({
-      status: 'failed',
-      error: 'app restarted',
-    });
+    // The interrupted run is requeued and resumed (ADR 0017): same row, second attempt.
+    await expect
+      .poll(
+        async () =>
+          (await restarted.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === interrupted.id)
+            ?.status,
+      )
+      .toBe('awaiting_approval');
     expect(recovered.events).toContainEqual(
       expect.objectContaining({
         run_id: interrupted.id,
         from_status: 'running',
-        to_status: 'failed',
+        to_status: 'queued',
         data: JSON.stringify({ reason: 'app restarted' }),
       }),
     );
+    // Starting again returns the active run instead of creating a second one.
     const replacement = await restarted.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[10]!);
-    expect(replacement.id).not.toBe(interrupted.id);
+    expect(replacement.id).toBe(interrupted.id);
     await expect
       .poll(
         async () =>

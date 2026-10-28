@@ -1,7 +1,7 @@
-import { desc, eq, and, inArray } from 'drizzle-orm';
+import { desc, eq, and, inArray, sql } from 'drizzle-orm';
 import { ACTIVE_RUN_STATUSES } from '../../../shared/dto';
 import type { JobPilotDb } from '../../platform/db/database';
-import { approval, run } from './runs.entity';
+import { approval, run, runEvent } from './runs.entity';
 
 export class RunsRepository {
   constructor(private readonly db: JobPilotDb) {}
@@ -31,6 +31,48 @@ export class RunsRepository {
       .where(eq(run.applicationId, applicationId))
       .orderBy(desc(run.createdAt), desc(run.id))
       .get();
+  }
+
+  /**
+   * Claim the oldest queued run for a slot. One synchronous UPDATE, so two slots can never claim the same run.
+   * The session id is minted here and kept across re-claims so a restart can resume it.
+   */
+  claim(sessionId: string) {
+    const now = Date.now();
+    return this.db
+      .update(run)
+      .set({
+        status: 'running',
+        sessionId: sql`coalesce(${run.sessionId}, ${sessionId})`,
+        attempts: sql`${run.attempts} + 1`,
+        claimedAt: now,
+        progressAt: now,
+        startedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(run.id, sql`(select id from run where status = 'queued' order by created_at, id limit 1)`))
+      .returning()
+      .get();
+  }
+
+  /** Heartbeat: any agent event counts as progress. */
+  touch(id: string) {
+    this.db.update(run).set({ progressAt: Date.now() }).where(eq(run.id, id)).run();
+  }
+
+  progressAt(id: string) {
+    return this.db.select({ at: run.progressAt }).from(run).where(eq(run.id, id)).get()?.at ?? undefined;
+  }
+
+  hasSessionEvent(runId: string) {
+    return (
+      this.db
+        .select({ id: runEvent.id })
+        .from(runEvent)
+        .where(and(eq(runEvent.runId, runId), eq(runEvent.type, 'session')))
+        .limit(1)
+        .get() !== undefined
+    );
   }
 
   create(values: typeof run.$inferInsert) {

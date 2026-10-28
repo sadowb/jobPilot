@@ -11,7 +11,7 @@ flowchart LR
   Preload --> Main[Electron main process]
   Main --> Modules[Feature modules]
   Modules --> DB[(SQLCipher SQLite<br/>Drizzle + migrations)]
-  Modules --> Queue[in-memory apply queue]
+  Modules --> Queue[run table + slot scheduler]
   Queue --> Agents[AgentProvider]
   Agents --> Claude[Claude Agent SDK]
   Agents --> Codex[Codex SDK]
@@ -91,7 +91,7 @@ sequenceDiagram
   participant UI as Renderer
   participant IPC as Typed IPC
   participant App as Applications / Runs services
-  participant Q as p-queue (in memory)
+  participant Q as Slot scheduler (run table)
   participant Agent as AgentProvider
   participant Browser as BrowserProvider (Neo)
   participant DB as SQLCipher SQLite
@@ -99,8 +99,8 @@ sequenceDiagram
   UI->>IPC: Validated request
   IPC->>App: Origin-check + zod-parse
   App->>DB: Create application and queued run
-  App->>Q: Enqueue application
-  Q->>App: Claim run
+  App->>Q: Run is queued
+  Q->>App: Atomic claim: queued → running
   App->>DB: queued → running
   App->>Browser: Open run tab
   App->>Agent: RunSpec + MCP config + output schema

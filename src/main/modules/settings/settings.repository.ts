@@ -83,10 +83,6 @@ export class SettingsRepository {
     this.setSetting('runs.limits', value);
   }
 
-  runTimeoutMs(): unknown {
-    return this.getSetting('runs.timeoutMs');
-  }
-
   profileMigrationValue(): unknown {
     return this.getSetting(key);
   }

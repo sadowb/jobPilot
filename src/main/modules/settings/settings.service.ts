@@ -9,6 +9,7 @@ import { Channels } from '../../../shared/ipc';
 import {
   AgentPreferencesSchema,
   AppSettingsSchema,
+  SettingsLimitsSchema,
   ThemeSourceSchema,
   UpdateSettingsSchema,
   type AppSettings,
@@ -56,7 +57,7 @@ export function markProfileMigrated(database: JobPilotDb): void {
 }
 
 export function applyConcurrency(database: JobPilotDb): number {
-  return z.number().int().min(1).max(64).default(6).parse(new SettingsRepository(database).applyConcurrency());
+  return z.number().int().min(1).max(32).default(4).parse(new SettingsRepository(database).applyConcurrency());
 }
 
 export function getSettings(database: JobPilotDb = db): AppSettings {
@@ -99,9 +100,11 @@ export function updateSettings(input: UpdateSettingsInput, database: JobPilotDb 
 
 export function runPreferences(database: JobPilotDb) {
   const repository = new SettingsRepository(database);
+  const limits = SettingsLimitsSchema.parse(repository.limits() ?? {});
   return {
     model: AgentPreferencesSchema.parse(repository.agentPreferences() ?? {}).model,
-    timeoutMs: z.number().int().min(1000).max(3_600_000).default(900_000).parse(repository.runTimeoutMs()),
+    timeoutMs: limits.runSeconds * 1000,
+    stuckMs: limits.stuckSeconds * 1000,
   };
 }
 

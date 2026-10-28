@@ -57,6 +57,9 @@ export interface RunSpec {
   model?: string;
   /** Only the env the agent needs; never the app's full environment. */
   env?: Record<string, string>;
+  /** Agent-side session id owned by the run row; first turn creates it, a resumed turn continues it. */
+  sessionId: string;
+  resume?: boolean;
   signal: AbortSignal;
   timeoutMs: number;
 }

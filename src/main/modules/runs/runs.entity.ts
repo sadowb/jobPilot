@@ -29,6 +29,11 @@ export const run = sqliteTable(
     outputTokens: integer('output_tokens'),
     /** Cost in millionths of a USD; integer to avoid float drift. */
     costMicros: integer('cost_micros'),
+    /** Slot claims so far; a run interrupted three times is failed instead of resumed again. */
+    attempts: integer('attempts').notNull().default(0),
+    claimedAt: integer('claimed_at'),
+    /** Last agent event; the stuck watchdog compares it to limits.stuckSeconds. */
+    progressAt: integer('progress_at'),
     startedAt: integer('started_at'),
     finishedAt: integer('finished_at'),
     ...timestamps(),
