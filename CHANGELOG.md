@@ -9,6 +9,7 @@
 
 ### Features
 
+* **linux:** ship .deb with AppArmor profile for Ubuntu 24.04 ([#170](https://github.com/sadowb/jobPilot/issues/170)) ([342b206](https://github.com/sadowb/jobPilot/commit/342b206))
 * **observability:** keep pino, drop pino-roll; crash diagnostics and export ([#166](https://github.com/sadowb/jobPilot/issues/166)) ([4b60a4d](https://github.com/sadowb/jobPilot/commit/4b60a4d6af2200efa00cd401713f846ad9926a6a))
 
 
