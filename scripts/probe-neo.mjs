@@ -5,10 +5,7 @@ import { join } from 'node:path';
 import { pathToFileURL, URL } from 'node:url';
 import process from 'node:process';
 import ts from 'typescript';
-
-const logger = Object.fromEntries(
-  ['debug', 'info', 'warn', 'error', 'fatal'].map((level) => [level, (...args) => console.error(level, ...args)]),
-);
+import pino from 'pino';
 
 const directory = await mkdtemp(join(process.cwd(), '.neo-probe-'));
 try {
@@ -21,7 +18,10 @@ try {
     await writeFile(join(directory, `${name}.mjs`), outputText.replace("'./neo-mcp'", "'./neo-mcp.mjs'"));
   }
   const { NeoBrowserProvider } = await import(pathToFileURL(join(directory, 'neo.mjs')).href);
-  const provider = new NeoBrowserProvider(logger, process.env.NEO_MCP_URL);
+  const provider = new NeoBrowserProvider(
+    pino({ level: 'debug' }).child({ module: 'browsers' }),
+    process.env.NEO_MCP_URL,
+  );
   assert.equal(await provider.status(), 'installed', provider.installHint);
   // Owner supplies a public HTTPS canonical_url read from a disposable posting in the DB.
   const url = process.argv[2];

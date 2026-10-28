@@ -18,7 +18,12 @@ import { postingsHandlers } from '../modules/postings/postings.controller';
 import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
-import { initCrashReporting, startSession } from '../modules/observability/diagnostics.service';
+import {
+  initCrashReporting,
+  installCrashHandlers,
+  startSession,
+  watchContents,
+} from '../modules/observability/diagnostics.service';
 import { initLogService, loggerFor } from '../modules/observability/log.service';
 import {
   agentHandlers,
@@ -52,6 +57,7 @@ process.umask(0o077);
 // Before ready, so startup failures and crashes are on disk.
 initLogService();
 initCrashReporting();
+installCrashHandlers();
 registerAppScheme();
 
 // One instance only; a second launch focuses the first.
@@ -67,7 +73,10 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   startSession();
-  app.on('web-contents-created', (_event, contents) => lockDown(contents));
+  app.on('web-contents-created', (_event, contents) => {
+    lockDown(contents);
+    watchContents(contents);
+  });
 
   void app.whenReady().then(async () => {
     const logger = loggerFor('main');

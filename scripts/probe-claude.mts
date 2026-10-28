@@ -34,8 +34,8 @@ try {
     configDirectory: directory,
     readApiKey: async () => 'fixture-key',
     logger: {
-      debug: (entry: object | string) => {
-        const diagnostic = (typeof entry === 'string' ? {} : entry) as Record<string, unknown>;
+      debug: (entry: object) => {
+        const diagnostic = entry as Record<string, unknown>;
         diagnostics.push(diagnostic);
         if (diagnostic.exit_code === 23) resolveCrash(diagnostic);
       },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Logger } from '../src/main/platform/logging/types';
+import type { Logger } from 'pino';
 import { allowlistedErrorCode, NeoMcp } from '../src/main/platform/browsers/neo-mcp';
 import { computeFormHash, extractFormFields, NeoBrowserProvider } from '../src/main/platform/browsers/neo';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';

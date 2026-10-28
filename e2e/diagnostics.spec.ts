@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-type Entry = { level?: string; module?: string; msg?: string; reason?: string; time?: string };
+type Entry = { level?: number; module?: string; msg?: string; reason?: string; time?: number };
 
 // eslint-disable-next-line no-empty-pattern
 test('writes JSON logs under userData and records crashes and unclean shutdowns (#165)', async ({}, testInfo) => {
@@ -26,7 +26,7 @@ test('writes JSON logs under userData and records crashes and unclean shutdowns 
           .filter(Boolean)
           .map((line) => JSON.parse(line) as Entry)
       : [];
-  // electron-log's platform default; ADR 0016 forbids writing there.
+  // Common logger default; ADR 0016 forbids writing there.
   const external = join(homedir(), 'Library', 'Logs', 'JobPilot');
   const externalBefore = existsSync(external) ? statSync(external).mtimeMs : undefined;
   let app: ElectronApplication | undefined;
@@ -34,7 +34,7 @@ test('writes JSON logs under userData and records crashes and unclean shutdowns 
     app = await launch();
     await app.firstWindow({ timeout: 15_000 });
     await expect.poll(() => entries().some((entry) => entry.msg === 'Session started')).toBe(true);
-    expect(entries().every((entry) => typeof entry.time === 'string' && typeof entry.level === 'string')).toBe(true);
+    expect(entries().every((entry) => typeof entry.time === 'number' && typeof entry.level === 'number')).toBe(true);
     expect(existsSync(join(userData, 'crashes'))).toBe(true);
     expect(existsSync(join(userData, 'logs', 'session.lock'))).toBe(true);
 
@@ -42,9 +42,9 @@ test('writes JSON logs under userData and records crashes and unclean shutdowns 
       BrowserWindow.getAllWindows()[0]?.webContents.forcefullyCrashRenderer();
     });
     await expect
-      .poll(() => entries().find((entry) => entry.msg?.includes('render-process-gone')))
-      .toMatchObject({ level: 'error', module: 'electron' });
-    expect(entries().find((entry) => entry.msg?.includes('render-process-gone'))?.reason).toBeTruthy();
+      .poll(() => entries().find((entry) => entry.msg === 'Renderer process gone'))
+      .toMatchObject({ level: 50, module: 'electron' });
+    expect(entries().find((entry) => entry.msg === 'Renderer process gone')?.reason).toBeTruthy();
 
     app.process().kill('SIGKILL');
     await app.waitForEvent('close').catch(() => undefined);
@@ -53,7 +53,7 @@ test('writes JSON logs under userData and records crashes and unclean shutdowns 
     await app.firstWindow({ timeout: 15_000 });
     await expect
       .poll(() => entries().find((entry) => entry.msg === 'Previous session ended unexpectedly'))
-      .toMatchObject({ level: 'warn' });
+      .toMatchObject({ level: 40 });
 
     await app.close();
     app = undefined;

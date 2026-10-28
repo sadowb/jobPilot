@@ -3,32 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-const userData = mkdtempSync(join(tmpdir(), 'jobpilot-log-test-'));
-const quit = vi.hoisted(() => vi.fn());
+const userData = vi.hoisted(() => `${process.env.TMPDIR ?? '/tmp'}/jobpilot-log-test-${process.pid}`);
+vi.mock('electron', () => ({ app: { getPath: () => userData } }));
 
-vi.mock('electron', () => ({
-  app: {
-    getPath: () => userData,
-    isPackaged: true,
-    quit,
-    name: 'JobPilot',
-    getVersion: () => '0.0.0',
-    isReady: () => true,
-    on: () => undefined,
-    off: () => undefined,
-    once: () => undefined,
-  },
-  ipcMain: {
-    removeAllListeners: () => undefined,
-    removeHandler: () => undefined,
-    on: () => undefined,
-    handle: () => undefined,
-  },
-  webContents: { getAllWebContents: () => [] },
-}));
-
-import log from 'electron-log/main';
-import { archiveLog, initLogService, loggerFor } from '../src/main/modules/observability/log.service';
+import { initLogService, loggerFor, rotateLog, ARCHIVE_COUNT } from '../src/main/modules/observability/log.service';
 
 const mainLog = join(userData, 'logs', 'main.log');
 const lines = () =>
@@ -37,22 +15,20 @@ const lines = () =>
     .filter(Boolean)
     .map((line) => JSON.parse(line) as Record<string, unknown>);
 
-afterAll(() => {
-  log.errorHandler.stopCatching();
-  rmSync(userData, { recursive: true, force: true });
-});
+afterAll(() => rmSync(userData, { recursive: true, force: true }));
 
 describe('LogService (#165)', () => {
   initLogService();
 
-  it('writes one JSON object per line with module and correlation fields', () => {
-    loggerFor('runs').info({ run_id: 'run-1', agent: 'claude' }, 'Run started');
+  it('writes JSON lines synchronously with module and correlation fields', () => {
+    loggerFor('runs').fatal({ run_id: 'run-1', agent: 'claude' }, 'Run died');
+    // No flush: the line must already be on disk.
     expect(lines().at(-1)).toMatchObject({
-      level: 'info',
+      level: 60,
       module: 'runs',
       run_id: 'run-1',
       agent: 'claude',
-      msg: 'Run started',
+      msg: 'Run died',
     });
   });
 
@@ -69,38 +45,24 @@ describe('LogService (#165)', () => {
       'Redaction fixture',
     );
     const text = readFileSync(mainLog, 'utf8');
-    expect(text).not.toContain(apiKey);
-    expect(text).not.toContain(email);
-    expect(text).not.toContain('abc123');
-    expect(lines().at(-1)).toMatchObject({ msg: 'Redaction fixture', level: 'error' });
+    for (const secret of [apiKey, email, 'abc123']) expect(text).not.toContain(secret);
+    expect(lines().at(-1)).toMatchObject({ msg: 'Redaction fixture' });
   });
 
-  it('has the fatal line on disk before quitting on an uncaught exception', () => {
-    let onDiskAtQuit = false;
-    quit.mockImplementationOnce(() => {
-      onDiskAtQuit = lines().some((line) => line.level === 'fatal' && line.msg === 'Uncaught main-process exception');
-    });
-    (log.errorHandler as unknown as { handleError(error: Error): void }).handleError(new Error('boom'));
-    expect(quit).toHaveBeenCalledTimes(1);
-    expect(onDiskAtQuit).toBe(true);
-  });
-
-  it('keeps the last five archives and deletes the oldest', () => {
+  it('rotates past the size limit keeping five archives and deleting the oldest', () => {
     const directory = mkdtempSync(join(tmpdir(), 'jobpilot-rotate-'));
     const path = join(directory, 'main.log');
+    writeFileSync(path, 'small');
+    expect(rotateLog(path, 100)).toBe(false);
     for (let generation = 1; generation <= 7; generation++) {
-      writeFileSync(path, `generation ${generation}`);
-      archiveLog({ toString: () => path });
+      writeFileSync(path, `generation ${generation} `.padEnd(200, '.'));
+      expect(rotateLog(path, 100)).toBe(true);
     }
-    expect(readdirSync(directory).sort()).toEqual([
-      'main.1.log',
-      'main.2.log',
-      'main.3.log',
-      'main.4.log',
-      'main.5.log',
-    ]);
-    expect(readFileSync(join(directory, 'main.1.log'), 'utf8')).toBe('generation 7');
-    expect(readFileSync(join(directory, 'main.5.log'), 'utf8')).toBe('generation 3');
+    expect(readdirSync(directory).sort()).toEqual(
+      Array.from({ length: ARCHIVE_COUNT }, (_, index) => `main.${index + 1}.log`),
+    );
+    expect(readFileSync(join(directory, 'main.1.log'), 'utf8')).toMatch(/^generation 7/);
+    expect(readFileSync(join(directory, 'main.5.log'), 'utf8')).toMatch(/^generation 3/);
     rmSync(directory, { recursive: true, force: true });
   });
 });

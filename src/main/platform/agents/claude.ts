@@ -5,7 +5,7 @@ import { isAbsolute } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import type { Logger } from '../logging/types';
+import type { Logger } from 'pino';
 import {
   RunEventSchema,
   RunResultSchema,

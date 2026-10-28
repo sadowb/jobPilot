@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import type { z } from 'zod';
-import type { Logger } from '../logging/types';
+import type { Logger } from 'pino';
 import type { IpcValidationError } from '../../../shared/ipc';
 
 type IpcLogger = Pick<Logger, 'debug' | 'warn' | 'error'>;

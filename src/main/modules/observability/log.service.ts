@@ -1,25 +1,41 @@
-import { app, ipcMain } from 'electron';
-import log from 'electron-log/main';
-import { chmodSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { app } from 'electron';
+import pino, { type Logger } from 'pino';
+import { chmodSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { Logger } from '../../platform/logging/types';
 import { redact } from './redact';
 
-export type { Logger };
-
-const LogLevelSchema = z.enum(['info', 'debug']).default('info');
+export const MAX_LOG_BYTES = 10 * 1024 * 1024;
 export const ARCHIVE_COUNT = 5;
-const LEVELS = ['debug', 'info', 'warn', 'error', 'fatal'] as const;
+const ROTATION_CHECK_MS = 5 * 60 * 1000;
+const LogLevelSchema = z.enum(['info', 'debug']).default('info');
 
-type LevelFn = (...data: unknown[]) => void;
-let initialized = false;
+const emailPattern = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+const apiKeyPattern = /\bsk-[A-Za-z0-9_-]{16,}/g;
+
+/** redact() handles keys and key=value text; this catches emails and sk- keys inside free text. */
+export function scrub(object: object): Record<string, unknown> {
+  const redacted = redact(object);
+  try {
+    const text = JSON.stringify(redacted).replace(emailPattern, '[EMAIL]').replace(apiKeyPattern, '[REDACTED]');
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return redacted as Record<string, unknown>;
+  }
+}
+
+let root: Logger | undefined;
+let destination: ReturnType<typeof pino.destination> | undefined;
 
 export const logsDirectory = (): string => join(app.getPath('userData'), 'logs');
 
-/** main.log -> main.1.log -> ... -> main.5.log; the oldest archive is deleted. */
-export function archiveLog(file: { toString(): string }): void {
-  const path = file.toString();
+/** main.log -> main.1.log -> ... -> main.5.log; the oldest archive is deleted. Returns whether it rotated. */
+export function rotateLog(path: string, maxBytes = MAX_LOG_BYTES): boolean {
+  try {
+    if (statSync(path).size <= maxBytes) return false;
+  } catch {
+    return false;
+  }
   const archive = (index: number) => path.replace(/\.log$/, `.${index}.log`);
   rmSync(archive(ARCHIVE_COUNT), { force: true });
   for (let index = ARCHIVE_COUNT - 1; index >= 1; index--) {
@@ -30,113 +46,46 @@ export function archiveLog(file: { toString(): string }): void {
     }
   }
   renameSync(path, archive(1));
-}
-
-const emailPattern = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
-const apiKeyPattern = /\bsk-[A-Za-z0-9_-]{16,}/g;
-
-/** One JSON object per line. The message is already redacted; the pattern pass catches secrets inside free text. */
-export function formatLine({
-  data,
-  date,
-  level,
-  scope,
-}: {
-  data: unknown[];
-  date: Date;
-  level: string;
-  scope?: string;
-}): string {
-  const [first, ...rest] = data;
-  const message = typeof first === 'string' ? first : '';
-  const extra = typeof first === 'string' ? rest : data;
-  const fields =
-    extra.length === 1 && typeof extra[0] === 'object' && extra[0] !== null && !Array.isArray(extra[0])
-      ? (extra[0] as Record<string, unknown>)
-      : extra.length > 0
-        ? { data: extra }
-        : {};
-  let line: string;
-  try {
-    line = JSON.stringify({ ...fields, time: date.toISOString(), level, module: scope ?? 'app', msg: message });
-  } catch {
-    line = JSON.stringify({ time: date.toISOString(), level, module: scope ?? 'app', msg: message });
-  }
-  return line.replace(emailPattern, '[EMAIL]').replace(apiKeyPattern, '[REDACTED]');
+  return true;
 }
 
 export function initLogService(): void {
-  if (initialized) return;
-  initialized = true;
-  // The default logger registers renderer IPC on import; renderers report only through the zod-validated channel.
-  ipcMain.removeAllListeners('__ELECTRON_LOG__');
-  ipcMain.removeHandler('__ELECTRON_LOG__');
-
+  if (root) return;
   const parsed = LogLevelSchema.safeParse(process.env.JOBPILOT_LOG_LEVEL);
-  const level = parsed.success ? parsed.data : 'info';
   const directory = logsDirectory();
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   chmodSync(directory, 0o700);
+  const file = join(directory, 'main.log');
+  rotateLog(file);
+  // sync: a fatal line must be on disk before the process can exit.
+  destination = pino.destination({ dest: file, mkdir: true, sync: true, mode: 0o600 });
+  root = pino(
+    {
+      level: parsed.success ? parsed.data : 'info',
+      formatters: { log: scrub },
+      // Redaction already serializes errors; pino would reclassify the plain result as Object.
+      serializers: { err: (error: unknown) => error },
+      base: { app: 'jobpilot' },
+    },
+    destination,
+  );
+  if (!parsed.success) root.warn({ value: process.env.JOBPILOT_LOG_LEVEL }, 'Invalid JOBPILOT_LOG_LEVEL ignored');
+  // In-app size rotation: no library; reopen() makes pino's writer follow the renamed file.
+  setInterval(() => {
+    if (rotateLog(file)) destination?.reopen();
+  }, ROTATION_CHECK_MS).unref();
+}
 
-  log.addLevel('fatal', 0);
-  log.hooks.push((message) => ({ ...message, data: redact(message.data) as unknown[] }));
-  const file = log.transports.file;
-  file.level = level;
-  file.fileName = 'main.log';
-  file.resolvePathFn = () => join(directory, 'main.log');
-  file.maxSize = 10 * 1024 * 1024;
-  file.archiveLogFn = archiveLog;
-  file.writeOptions = { flag: 'a', mode: 0o600, encoding: 'utf8' };
-  // Synchronous writes (the default) put a fatal line on disk before the process can exit.
-  file.sync = true;
-  file.transforms = [({ message }) => formatLine(message)];
-  // Only the file (and dev console) transports run; nothing is sent to renderers or the network.
-  for (const name of ['ipc', 'remote'] as const) {
-    const transport = log.transports[name];
-    if (transport) transport.level = false;
+/** Force buffered lines to disk; used before a fatal exit. */
+export function flushLogs(): void {
+  try {
+    destination?.flushSync();
+  } catch {
+    // Nothing more can be done while exiting.
   }
-  const devServer = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL);
-  log.transports.console.level = devServer ? level : false;
-
-  if (!parsed.success)
-    loggerFor('main').warn({ value: process.env.JOBPILOT_LOG_LEVEL }, 'Invalid JOBPILOT_LOG_LEVEL ignored');
-
-  log.errorHandler.startCatching({
-    showDialog: false,
-    onError: ({ error, errorName }) => {
-      const uncaught = errorName === 'Unhandled';
-      loggerFor('main')[uncaught ? 'fatal' : 'error'](
-        { err: error },
-        uncaught ? 'Uncaught main-process exception' : 'Unhandled main-process rejection',
-      );
-      if (uncaught) app.quit();
-      return false;
-    },
-  });
-
-  log.eventLogger.startLogging({
-    scope: 'electron',
-    level: 'error',
-    events: {
-      app: { 'certificate-error': true, 'child-process-gone': true, 'render-process-gone': true },
-      webContents: {
-        'did-fail-load': true,
-        'did-fail-provisional-load': true,
-        'plugin-crashed': true,
-        'preload-error': true,
-        unresponsive: true,
-        responsive: true,
-      },
-    },
-  });
 }
 
 export function loggerFor(module: string): Logger {
-  if (!initialized) throw new Error('LogService has not been initialized');
-  const scoped = log.scope(module) as unknown as Record<(typeof LEVELS)[number], LevelFn>;
-  const bind =
-    (name: (typeof LEVELS)[number]): Logger['info'] =>
-    (fields, message) =>
-      typeof fields === 'string' ? scoped[name](fields) : scoped[name](message ?? '', fields);
-  return Object.fromEntries(LEVELS.map((name) => [name, bind(name)])) as unknown as Logger;
+  if (!root) throw new Error('LogService has not been initialized');
+  return root.child({ module });
 }

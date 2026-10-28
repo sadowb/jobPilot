@@ -1,10 +1,10 @@
-import { app, BrowserWindow, crashReporter, dialog, shell } from 'electron';
+import { app, BrowserWindow, crashReporter, dialog, shell, type WebContents } from 'electron';
 import { zipSync, strToU8 } from 'fflate';
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { release } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { logsDirectory, loggerFor } from './log.service';
+import { flushLogs, logsDirectory, loggerFor } from './log.service';
 
 const crashDirectory = (): string => join(app.getPath('userData'), 'crashes');
 const markerPath = (): string => join(logsDirectory(), 'session.lock');
@@ -114,4 +114,56 @@ export async function exportDiagnostics(): Promise<void> {
     logger.error({ err: error }, 'Diagnostics export failed');
     await dialog.showMessageBox({ type: 'error', message: 'JobPilot could not export diagnostics.' });
   }
+}
+
+/** Origin and path only; query strings can carry tokens. */
+function safeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return parsed.origin === 'null' ? parsed.protocol : `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return 'unparseable';
+  }
+}
+
+/** Main-process fatal handling and app-level process events. Must run before app ready. */
+export function installCrashHandlers(): void {
+  const logger = loggerFor('electron');
+  process.on('uncaughtException', (error) => {
+    logger.fatal({ err: error }, 'Uncaught main-process exception');
+    flushLogs();
+    app.quit();
+  });
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason instanceof Error ? reason : String(reason) }, 'Unhandled main-process rejection');
+  });
+  app.on('render-process-gone', (_event, contents, details) => {
+    logger.error(
+      { reason: details.reason, exit_code: details.exitCode, url: safeUrl(contents.getURL()) },
+      'Renderer process gone',
+    );
+  });
+  app.on('child-process-gone', (_event, details) => {
+    logger.error(
+      { type: details.type, reason: details.reason, exit_code: details.exitCode, name: details.name },
+      'Child process gone',
+    );
+  });
+  // Logging only: no preventDefault, so Electron keeps rejecting the certificate.
+  app.on('certificate-error', (_event, _contents, url, error) => {
+    logger.error({ error, url: safeUrl(url) }, 'Certificate error');
+  });
+}
+
+/** Per-WebContents diagnostics; called from the existing web-contents-created hook. */
+export function watchContents(contents: WebContents): void {
+  const logger = loggerFor('electron');
+  contents.on('unresponsive', () => logger.warn({ id: contents.id }, 'Renderer unresponsive'));
+  contents.on('responsive', () => logger.info({ id: contents.id }, 'Renderer responsive again'));
+  contents.on('preload-error', (_event, preloadPath, error) =>
+    logger.error({ preload: preloadPath, err: error }, 'Preload script failed'),
+  );
+  contents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+    logger.error({ code, description, url: safeUrl(url), main_frame: isMainFrame }, 'Page failed to load');
+  });
 }
