@@ -1,7 +1,11 @@
 [
   {
+    "channel": "agents:choosePath",
+    "schema": "z.void()"
+  },
+  {
     "channel": "agents:detect",
-    "schema": "DetectAgentSchema"
+    "schema": "z.void()"
   },
   {
     "channel": "agents:get",
@@ -66,6 +70,14 @@
   {
     "channel": "recovery:import",
     "schema": "RecoveryKeySchema"
+  },
+  {
+    "channel": "recovery:restore",
+    "schema": "RestoreBackupSchema"
+  },
+  {
+    "channel": "recovery:state",
+    "schema": "z.void()"
   },
   {
     "channel": "runs:cancel",
