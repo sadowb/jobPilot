@@ -130,3 +130,7 @@ sequenceDiagram
 ## Read models
 
 The screens query `v_application_list`, `v_up_next`, `v_inbox`, and `v_analytics_funnel`. They are read-only views defined in `drizzle/0001_views.sql` and represented by typed Drizzle handles alongside the related entities.
+
+## Shutdown
+
+`src/main/app/shutdown.ts` is the single owner of process exit and the app's only `before-quit` listener. Services register a stop step as they start (`shutdown.register(name, stop)`); the first quit request (menu, ⌘Q, SIGTERM, logout, last window on Windows/Linux) runs the steps once in reverse start order (runs → consolidation → memory → agents → backups), each logged, within a 10 s deadline, then calls `app.exit(code)` (0 clean, 1 if a step failed or the deadline passed). Further quit requests during the drain are absorbed. Nothing calls `app.quit()` from inside the quit dispatch: Electron's `Browser::Quit()` overwrites its quitting state after `before-quit` returns, so a nested quit leaves macOS running with no windows.

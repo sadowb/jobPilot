@@ -42,6 +42,7 @@ import { installAppMenu } from './menu';
 import { registerAppScheme, serveRenderer } from './protocol';
 import { denyPermissionsByDefault, lockDown } from './security';
 import { createWindow } from './window';
+import { Shutdown } from './shutdown';
 
 // Inspector-only journey access follows the exports below; shipped builds disable the inspector.
 export let databaseBackupTimer: NodeJS.Timeout | undefined;
@@ -81,6 +82,8 @@ if (!app.requestSingleInstanceLock()) {
       logger.error({ err: reason instanceof Error ? reason : String(reason) }, 'Unhandled main-process rejection');
     });
 
+    const shutdown = new Shutdown(loggerFor('main'));
+    app.on('before-quit', shutdown.onBeforeQuit);
     serveRenderer();
     installAppMenu();
     denyPermissionsByDefault();
@@ -111,7 +114,7 @@ if (!app.requestSingleInstanceLock()) {
 
     const backups = startDailyBackups(loggerFor('database'));
     databaseBackupTimer = backups.timer;
-    app.once('before-quit', backups.stop);
+    shutdown.register('backups', backups.stop);
 
     // An active Node inspector requires the fuse enabled; shipped apps cannot enter this branch.
     if (process.env.JOBPILOT_E2E_PROVIDER === 'fake' && (!app.isPackaged || inspectorUrl() !== undefined)) {
@@ -144,33 +147,10 @@ if (!app.requestSingleInstanceLock()) {
       memory,
     );
     await runsService.initialize();
-    let stoppingRuns = false;
-    app.on('before-quit', (event) => {
-      if (stoppingRuns) return;
-      event.preventDefault();
-      stoppingRuns = true;
-      agentSettings.stop();
-      const quitLog = loggerFor('main');
-      quitLog.info('Quit: stopping runs, consolidation and memory');
-      // Each step is logged so a quit that never finishes shows which service is stuck.
-      const step = (name: string, work: Promise<void>) =>
-        work.then(
-          () => quitLog.info({ step: name }, 'Quit step done'),
-          (error: unknown) =>
-            quitLog.error(
-              { step: name, error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
-              'Quit step failed',
-            ),
-        );
-      // Re-quit on a later task, never inside this dispatch: Electron's Browser::Quit() assigns
-      // is_quitting_ = HandleBeforeQuit() after this handler returns, so a nested quit() is overwritten
-      // with false and macOS stays alive with no windows (seen when every stop settles in a microtask).
-      void Promise.all([
-        step('runs', runsService.stop()),
-        step('consolidation', consolidation.stop()),
-        step('memory', memory.stop()),
-      ]).finally(() => setImmediate(() => app.quit()));
-    });
+    shutdown.register('agents', () => agentSettings.stop());
+    shutdown.register('memory', () => memory.stop());
+    shutdown.register('consolidation', () => consolidation.stop());
+    shutdown.register('runs', () => runsService.stop());
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
