@@ -1,409 +1,140 @@
 #!/usr/bin/env node
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+// DORA metrics for the weekly digest, from published releases, merged PRs and CI runs on main.
+import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-const execFileAsync = promisify(execFile);
-
-export function formatDuration(ms) {
-  if (ms === null || ms === undefined || isNaN(ms)) return 'n/a';
-  if (ms < 0) return '0s';
-  const sec = ms / 1000;
-  if (sec < 60) return `${Math.round(sec)}s`;
-  const min = sec / 60;
-  if (min < 60) return `${min.toFixed(1)}m`;
-  const hours = min / 60;
-  if (hours < 24) return `${hours.toFixed(1)}h`;
-  const days = hours / 24;
-  return `${days.toFixed(1)}d`;
-}
+const DAY = 86_400_000;
+const WEEK = 7 * DAY;
+const at = (iso) => Date.parse(iso);
 
 export function median(values) {
-  if (!values || values.length === 0) return null;
+  if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 !== 0) {
-    return sorted[mid];
-  }
-  return (sorted[mid - 1] + sorted[mid]) / 2;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-export function computeDeploymentFrequency(releases = [], { now = new Date(), windowDays = 7, trendWeeks = 4 } = {}) {
-  const nowMs = new Date(now).getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const published = releases.filter((r) => r.published_at && !r.draft);
-
-  const buckets = Array.from({ length: trendWeeks }, () => 0);
-  for (const r of published) {
-    const t = new Date(r.published_at).getTime();
-    const diffDays = (nowMs - t) / dayMs;
-    if (diffDays >= 0 && diffDays < trendWeeks * windowDays) {
-      const bucketIdx = Math.floor(diffDays / windowDays);
-      if (bucketIdx >= 0 && bucketIdx < trendWeeks) {
-        buckets[bucketIdx]++;
-      }
-    }
-  }
-
-  const lastWeekCount = buckets[0];
-  const chronoBuckets = [...buckets].reverse();
-  const total = buckets.reduce((a, b) => a + b, 0);
-  const avg = total / trendWeeks;
-
-  return {
-    lastWeekCount,
-    chronoBuckets,
-    total,
-    avg,
-    lastWeekFormatted: `${lastWeekCount}/week`,
-    trendFormatted: `${avg.toFixed(1)}/week (${chronoBuckets.join(', ')})`,
-  };
+export function formatDuration(ms) {
+  if (ms == null) return 'n/a';
+  const units = [
+    ['d', DAY],
+    ['h', 3_600_000],
+    ['m', 60_000],
+  ];
+  for (const [unit, size] of units) if (ms >= size) return `${(ms / size).toFixed(1)}${unit}`;
+  return `${Math.round(ms / 1000)}s`;
 }
 
-export function computeLeadTime(
-  pullRequests = [],
-  releases = [],
-  { now = new Date(), windowDays = 7, trendWeeks = 4 } = {},
-) {
-  const nowMs = new Date(now).getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const weekMs = windowDays * dayMs;
-  const totalMs = trendWeeks * weekMs;
+const semver = (tag) =>
+  tag
+    ?.match(/(\d+)\.(\d+)\.(\d+)/)
+    ?.slice(1)
+    .map(Number);
 
-  const publishedReleases = releases
-    .filter((r) => r.published_at && !r.draft)
-    .map((r) => ({ ...r, publishedMs: new Date(r.published_at).getTime() }))
-    .sort((a, b) => a.publishedMs - b.publishedMs);
+// release-please bumps the patch only when a release holds fixes and no features, so a patch
+// release means the previous release needed fixing. Release notes are not used: every
+// release-please body has a "Bug Fixes" section.
+export function isPatchRelease(release, previous) {
+  const [a, b] = [semver(previous?.tag_name), semver(release.tag_name)];
+  return Boolean(a && b && a[0] === b[0] && a[1] === b[1] && b[2] > a[2]);
+}
 
-  const mergedPRs = pullRequests
-    .filter((p) => p.merged_at)
-    .map((p) => {
-      const createdMs = new Date(p.created_at).getTime();
-      const mergedMs = new Date(p.merged_at).getTime();
-      const openToMergeMs = mergedMs - createdMs;
+export const isRevert = (pr) => /^revert\b/i.test(pr.title);
 
-      const firstRelease = publishedReleases.find((r) => r.publishedMs >= mergedMs);
-      const mergeToReleaseMs = firstRelease ? firstRelease.publishedMs - mergedMs : null;
-
+export function computeDora({ releases, pullRequests, workflowRuns, now = Date.now() }) {
+  const end = new Date(now).getTime();
+  const published = releases
+    .filter((r) => !r.draft && r.published_at)
+    .map((r) => ({ ...r, at: at(r.published_at) }))
+    .sort((a, b) => a.at - b.at);
+  const merged = pullRequests
+    .filter((pr) => pr.merged_at)
+    .map((pr) => {
+      const mergedAt = at(pr.merged_at);
+      const shipped = published.find((r) => r.at >= mergedAt);
       return {
-        ...p,
-        createdMs,
-        mergedMs,
-        openToMergeMs,
-        mergeToReleaseMs,
+        ...pr,
+        at: mergedAt,
+        open: mergedAt - at(pr.created_at),
+        toRelease: shipped ? shipped.at - mergedAt : null,
       };
     });
-
-  const lastWeekPRs = mergedPRs.filter((p) => p.mergedMs >= nowMs - weekMs && p.mergedMs <= nowMs);
-  const medianOpenToMergeLastWeek = median(lastWeekPRs.map((p) => p.openToMergeMs));
-  const medianMergeToReleaseLastWeek = median(lastWeekPRs.map((p) => p.mergeToReleaseMs).filter((v) => v !== null));
-
-  const fourWeekPRs = mergedPRs.filter((p) => p.mergedMs >= nowMs - totalMs && p.mergedMs <= nowMs);
-  const medianOpenToMerge4w = median(fourWeekPRs.map((p) => p.openToMergeMs));
-  const medianMergeToRelease4w = median(fourWeekPRs.map((p) => p.mergeToReleaseMs).filter((v) => v !== null));
-
-  const formatPair = (openMerge, mergeRel) => {
-    return `PR: ${formatDuration(openMerge)}, release: ${formatDuration(mergeRel)}`;
+  // A release failed when a patch release or a revert PR follows it within a week.
+  const failed = (release, index) => {
+    const next = published[index + 1];
+    const within = (t) => t > release.at && t - release.at <= WEEK;
+    return (
+      Boolean(next && within(next.at) && isPatchRelease(next, release)) ||
+      merged.some((pr) => isRevert(pr) && within(pr.at))
+    );
   };
 
-  return {
-    lastWeek: {
-      medianOpenToMergeMs: medianOpenToMergeLastWeek,
-      medianMergeToReleaseMs: medianMergeToReleaseLastWeek,
-      formatted: formatPair(medianOpenToMergeLastWeek, medianMergeToReleaseLastWeek),
-    },
-    trend: {
-      medianOpenToMergeMs: medianOpenToMerge4w,
-      medianMergeToReleaseMs: medianMergeToRelease4w,
-      formatted: formatPair(medianOpenToMerge4w, medianMergeToRelease4w),
-    },
-  };
-}
-
-export function isFixRelease(rel, prevRel) {
-  const text = `${rel.tag_name || ''} ${rel.name || ''} ${rel.body || ''}`;
-  if (/\b(?:bug\s*fix|hotfix|fix|fixes)\b/i.test(text)) return true;
-  if (prevRel?.tag_name && rel.tag_name) {
-    const prevMatch = prevRel.tag_name.match(/v?(\d+)\.(\d+)\.(\d+)/);
-    const currMatch = rel.tag_name.match(/v?(\d+)\.(\d+)\.(\d+)/);
-    if (prevMatch && currMatch) {
-      if (
-        prevMatch[1] === currMatch[1] &&
-        prevMatch[2] === currMatch[2] &&
-        Number(currMatch[3]) > Number(prevMatch[3])
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-export function isRevertPR(pr) {
-  return /\brevert\b/i.test(pr.title || '');
-}
-
-export function computeChangeFailureRate(
-  releases = [],
-  pullRequests = [],
-  { now = new Date(), windowDays = 7, trendWeeks = 4 } = {},
-) {
-  const nowMs = new Date(now).getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const weekMs = windowDays * dayMs;
-  const totalMs = trendWeeks * weekMs;
-  const sevenDaysMs = 7 * dayMs;
-
-  const publishedReleases = releases
-    .filter((r) => r.published_at && !r.draft)
-    .map((r) => ({ ...r, publishedMs: new Date(r.published_at).getTime() }))
-    .sort((a, b) => a.publishedMs - b.publishedMs);
-
-  const mergedPRs = pullRequests
-    .filter((p) => p.merged_at)
-    .map((p) => ({ ...p, mergedMs: new Date(p.merged_at).getTime() }));
-
-  function checkReleaseFailed(rel, idx) {
-    const t = rel.publishedMs;
-    const windowEnd = t + sevenDaysMs;
-
-    for (let j = idx + 1; j < publishedReleases.length; j++) {
-      const nextRel = publishedReleases[j];
-      if (nextRel.publishedMs > windowEnd) break;
-      if (nextRel.publishedMs > t && isFixRelease(nextRel, rel)) {
-        return true;
-      }
-    }
-
-    for (const pr of mergedPRs) {
-      if (pr.mergedMs > t && pr.mergedMs <= windowEnd && isRevertPR(pr)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  const lastWeekReleases = publishedReleases.filter((r) => r.publishedMs >= nowMs - weekMs && r.publishedMs <= nowMs);
-  let lastWeekFailures = 0;
-  for (const r of lastWeekReleases) {
-    const idx = publishedReleases.indexOf(r);
-    if (checkReleaseFailed(r, idx)) lastWeekFailures++;
-  }
-
-  const fourWeekReleases = publishedReleases.filter((r) => r.publishedMs >= nowMs - totalMs && r.publishedMs <= nowMs);
-  let fourWeekFailures = 0;
-  for (const r of fourWeekReleases) {
-    const idx = publishedReleases.indexOf(r);
-    if (checkReleaseFailed(r, idx)) fourWeekFailures++;
-  }
-
-  const formatRate = (failures, total) => {
-    if (total === 0) return 'n/a (no releases)';
-    return `${((failures / total) * 100).toFixed(1)}%`;
-  };
-
-  return {
-    lastWeek: {
-      failures: lastWeekFailures,
-      total: lastWeekReleases.length,
-      formatted: formatRate(lastWeekFailures, lastWeekReleases.length),
-    },
-    trend: {
-      failures: fourWeekFailures,
-      total: fourWeekReleases.length,
-      formatted: formatRate(fourWeekFailures, fourWeekReleases.length),
-    },
-  };
-}
-
-export function computeTimeToRestore(workflowRuns = [], { now = new Date(), windowDays = 7, trendWeeks = 4 } = {}) {
-  const nowMs = new Date(now).getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const weekMs = windowDays * dayMs;
-  const totalMs = trendWeeks * weekMs;
-
-  const sortedRuns = [...workflowRuns]
-    .filter((r) => r.created_at)
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
+  // A red streak on main (failure or timeout) ends at the next green run; cancelled runs are ignored.
   const incidents = [];
-  let incidentStart = null;
-
-  for (const run of sortedRuns) {
-    const t = new Date(run.created_at).getTime();
-    if (run.conclusion === 'failure' || run.conclusion === 'timed_out') {
-      if (incidentStart === null) {
-        incidentStart = t;
-      }
-    } else if (run.conclusion === 'success') {
-      if (incidentStart !== null) {
-        incidents.push({
-          start: incidentStart,
-          end: t,
-          durationMs: t - incidentStart,
-        });
-        incidentStart = null;
-      }
+  let redSince = null;
+  for (const run of [...workflowRuns].sort((a, b) => at(a.created_at) - at(b.created_at))) {
+    const t = at(run.created_at);
+    if (run.conclusion === 'failure' || run.conclusion === 'timed_out') redSince ??= t;
+    else if (run.conclusion === 'success' && redSince !== null) {
+      incidents.push({ at: redSince, duration: t - redSince });
+      redSince = null;
     }
   }
 
-  const lastWeekIncidents = incidents.filter((i) => i.start >= nowMs - weekMs && i.start <= nowMs);
-  const lastWeekDurations = lastWeekIncidents.map((i) => i.durationMs);
-  const medianLastWeek = median(lastWeekDurations);
-
-  const fourWeekIncidents = incidents.filter((i) => i.start >= nowMs - totalMs && i.start <= nowMs);
-  const fourWeekDurations = fourWeekIncidents.map((i) => i.durationMs);
-  const median4w = median(fourWeekDurations);
-
-  const formatTTR = (med) => {
-    if (med === null || med === undefined) return 'n/a (no red runs)';
-    return formatDuration(med);
+  const span = (weeks) => {
+    const inside = (item) => item.at > end - weeks * WEEK && item.at <= end;
+    const releasesIn = published.map((r, i) => [r, i]).filter(([r]) => inside(r));
+    const prsIn = merged.filter(inside);
+    return {
+      deploysPerWeek: releasesIn.length / weeks,
+      leadOpenToMerge: median(prsIn.map((pr) => pr.open)),
+      leadMergeToRelease: median(prsIn.map((pr) => pr.toRelease).filter((v) => v !== null)),
+      failures: releasesIn.filter(([r, i]) => failed(r, i)).length,
+      releases: releasesIn.length,
+      timeToRestore: median(incidents.filter(inside).map((i) => i.duration)),
+    };
   };
-
-  return {
-    lastWeek: {
-      count: lastWeekIncidents.length,
-      medianMs: medianLastWeek,
-      formatted: formatTTR(medianLastWeek),
-    },
-    trend: {
-      count: fourWeekIncidents.length,
-      medianMs: median4w,
-      formatted: formatTTR(median4w),
-    },
-  };
+  return { lastWeek: span(1), trend: span(4) };
 }
 
-export function computeDoraMetrics({ releases = [], pullRequests = [], workflowRuns = [], now = new Date() } = {}) {
-  const depFreq = computeDeploymentFrequency(releases, { now });
-  const leadTime = computeLeadTime(pullRequests, releases, { now });
-  const cfr = computeChangeFailureRate(releases, pullRequests, { now });
-  const ttr = computeTimeToRestore(workflowRuns, { now });
-
-  return {
-    deploymentFrequency: {
-      lastWeek: depFreq.lastWeekFormatted,
-      trend: depFreq.trendFormatted,
-      raw: depFreq,
-    },
-    leadTime: {
-      lastWeek: leadTime.lastWeek.formatted,
-      trend: leadTime.trend.formatted,
-      raw: leadTime,
-    },
-    changeFailureRate: {
-      lastWeek: cfr.lastWeek.formatted,
-      trend: cfr.trend.formatted,
-      raw: cfr,
-    },
-    timeToRestore: {
-      lastWeek: ttr.lastWeek.formatted,
-      trend: ttr.trend.formatted,
-      raw: ttr,
-    },
-  };
-}
-
-export function renderDoraTable(metrics) {
+export function renderDoraTable({ lastWeek, trend }) {
+  const row = (name, show) => `| ${name} | ${show(lastWeek)} | ${show(trend)} |`;
   return [
-    '| Metric | Last week | 4-week trend |',
+    '| Metric | Last week | 4-week average |',
     '| --- | --- | --- |',
-    `| Deployment frequency | ${metrics.deploymentFrequency.lastWeek} | ${metrics.deploymentFrequency.trend} |`,
-    `| Lead time for changes | ${metrics.leadTime.lastWeek} | ${metrics.leadTime.trend} |`,
-    `| Change failure rate | ${metrics.changeFailureRate.lastWeek} | ${metrics.changeFailureRate.trend} |`,
-    `| Time to restore | ${metrics.timeToRestore.lastWeek} | ${metrics.timeToRestore.trend} |`,
+    row('Deployment frequency', (s) => `${s.deploysPerWeek.toFixed(1)}/week`),
+    row('Lead time (open → merge)', (s) => formatDuration(s.leadOpenToMerge)),
+    row('Lead time (merge → release)', (s) => formatDuration(s.leadMergeToRelease)),
+    row('Change failure rate', (s) =>
+      s.releases
+        ? `${((s.failures / s.releases) * 100).toFixed(0)}% (${s.failures}/${s.releases})`
+        : 'n/a (no releases)',
+    ),
+    row('Time to restore', (s) => formatDuration(s.timeToRestore)),
   ].join('\n');
 }
 
-export async function fetchGitHubData(repo, { gh = execFileAsync } = {}) {
-  let releases;
-  try {
-    const { stdout } = await gh('gh', [
-      'api',
-      `repos/${repo}/releases?per_page=100`,
-      '--jq',
-      '[.[] | {id, tag_name, name, body, published_at, draft}]',
-    ]);
-    releases = JSON.parse(stdout);
-  } catch {
-    releases = [];
-  }
+// shortcut: one page of 100 per endpoint covers a 4-week window at the current pace; paginate if it stops.
+// Errors are not caught: a failed gh call must fail the digest job, not render as an empty week.
+const api = (path, jq) => JSON.parse(execFileSync('gh', ['api', path, '--jq', jq], { encoding: 'utf8' }));
 
-  let pullRequests;
-  try {
-    const { stdout } = await gh('gh', [
-      'api',
+export function fetchGitHubData(repo) {
+  return {
+    releases: api(`repos/${repo}/releases?per_page=100`, '[.[] | {tag_name, published_at, draft}]'),
+    pullRequests: api(
       `repos/${repo}/pulls?state=closed&sort=updated&direction=desc&per_page=100`,
-      '--jq',
-      '[.[] | {number, created_at, merged_at, title, merge_commit_sha}]',
-    ]);
-    pullRequests = JSON.parse(stdout);
-  } catch {
-    pullRequests = [];
-  }
-
-  let workflowRuns;
-  try {
-    const { stdout } = await gh('gh', [
-      'api',
+      '[.[] | {title, created_at, merged_at}]',
+    ),
+    workflowRuns: api(
       `repos/${repo}/actions/workflows/ci.yml/runs?branch=main&per_page=100`,
-      '--jq',
-      '[.workflow_runs[] | {id, status, conclusion, created_at, run_started_at}]',
-    ]);
-    workflowRuns = JSON.parse(stdout);
-  } catch {
-    try {
-      const { stdout } = await gh('gh', [
-        'api',
-        `repos/${repo}/actions/runs?branch=main&per_page=100`,
-        '--jq',
-        '[.workflow_runs[] | {id, status, conclusion, created_at, run_started_at}]',
-      ]);
-      workflowRuns = JSON.parse(stdout);
-    } catch {
-      workflowRuns = [];
-    }
-  }
-
-  return { releases, pullRequests, workflowRuns };
+      '[.workflow_runs[] | {conclusion, created_at}]',
+    ),
+  };
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  let repo = process.env.GH_REPO || 'sadowb/jobPilot';
-  let until = new Date();
-  let jsonOutput = false;
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--repo' || args[i] === '-r') {
-      repo = args[++i];
-    } else if (args[i] === '--until') {
-      until = new Date(args[++i]);
-    } else if (args[i] === '--json') {
-      jsonOutput = true;
-    }
-  }
-
-  const data = await fetchGitHubData(repo);
-  const metrics = computeDoraMetrics({
-    releases: data.releases,
-    pullRequests: data.pullRequests,
-    workflowRuns: data.workflowRuns,
-    now: until,
-  });
-
-  if (jsonOutput) {
-    console.log(JSON.stringify(metrics, null, 2));
-  } else {
-    console.log(renderDoraTable(metrics));
-  }
-}
-
-const isEntrypoint = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
-if (isEntrypoint) {
-  main().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  const flag = process.argv.indexOf('--repo');
+  const repo = flag > -1 ? process.argv[flag + 1] : process.env.GH_REPO;
+  if (!repo) throw new Error('usage: dora.mjs --repo owner/name (or set GH_REPO)');
+  console.log(renderDoraTable(computeDora(fetchGitHubData(repo))));
 }
