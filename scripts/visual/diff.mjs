@@ -102,7 +102,7 @@ const md = [
   ``,
   `| Screen | Theme | Changed | Status | Reason |`,
   `| --- | --- | ---: | --- | --- |`,
-  ...rows.map((r) => `| ${r.screen} | ${r.theme} | ${pct(r)} | ${r.status} | ${r.reason.replace(/\|/g, '\\|')} |`),
+  ...rows.map((r) => `| ${r.screen} | ${r.theme} | ${pct(r)} | ${r.status} | ${r.reason.replace(/[\\|]/g, '\\$&')} |`),
   ``,
 ].join('\n');
 writeFileSync(join(outDir, 'report.md'), md);
