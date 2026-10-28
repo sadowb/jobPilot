@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.2.0](https://github.com/sadowb/jobPilot/compare/v0.1.0...v0.2.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **runs:** run table is the queue — drop liteque, native Claude session resume, crew 4 ([#148](https://github.com/sadowb/jobPilot/issues/148))
+
+### Features
+
+* **linux:** ship .deb with AppArmor profile for Ubuntu 24.04 ([#170](https://github.com/sadowb/jobPilot/issues/170)) ([342b206](https://github.com/sadowb/jobPilot/commit/342b206))
+* **observability:** keep pino, drop pino-roll; crash diagnostics and export ([#166](https://github.com/sadowb/jobPilot/issues/166)) ([4b60a4d](https://github.com/sadowb/jobPilot/commit/4b60a4d6af2200efa00cd401713f846ad9926a6a))
+
+
+### Bug Fixes
+
+* **browsers,ats:** keep Neo error codes, narrow snapshot parse, honour Retry-After ([#149](https://github.com/sadowb/jobPilot/issues/149)) ([07f491e](https://github.com/sadowb/jobPilot/commit/07f491eb1c0e5a0c45d27b3193cb17284c9d23a8)), closes [#142](https://github.com/sadowb/jobPilot/issues/142) [#147](https://github.com/sadowb/jobPilot/issues/147) [#143](https://github.com/sadowb/jobPilot/issues/143)
+* **build:** name macOS helper bundles after the app ([#158](https://github.com/sadowb/jobPilot/issues/158)) ([5ce8e3d](https://github.com/sadowb/jobPilot/commit/5ce8e3de77714d0e231e2dd6c9b5320d4818f6ad))
+* **dashboard,postings:** accessible tab switch, search focus ring, posting country ([#156](https://github.com/sadowb/jobPilot/issues/156)) ([27cd181](https://github.com/sadowb/jobPilot/commit/27cd181b74c9c06f2ca0a1ad97307a47c3cde358))
+* **dashboard:** status picker filter input, stat labels, chip wrap, remove sample data ([#150](https://github.com/sadowb/jobPilot/issues/150)) ([1c76a30](https://github.com/sadowb/jobPilot/commit/1c76a30c8e1a7c0f7a1fbce634b40d109fe46b3e)), closes [#133](https://github.com/sadowb/jobPilot/issues/133) [#134](https://github.com/sadowb/jobPilot/issues/134) [#136](https://github.com/sadowb/jobPilot/issues/136) [#139](https://github.com/sadowb/jobPilot/issues/139)
+* **onboarding:** persist completion, keep answers on Back, step 3 copy ([#152](https://github.com/sadowb/jobPilot/issues/152)) ([f3d0094](https://github.com/sadowb/jobPilot/commit/f3d0094a49eabf23c13bc0d665310c005a5b481f)), closes [#135](https://github.com/sadowb/jobPilot/issues/135) [#131](https://github.com/sadowb/jobPilot/issues/131) [#138](https://github.com/sadowb/jobPilot/issues/138)
+* **release:** DMG missing from release assets ([#155](https://github.com/sadowb/jobPilot/issues/155)) ([15ee3ff](https://github.com/sadowb/jobPilot/commit/15ee3ffba5e658867a505ef681da5f1a57efd478))
+* **settings:** persist settings, disable autopilot toggle, read saved crew size ([#151](https://github.com/sadowb/jobPilot/issues/151)) ([477b521](https://github.com/sadowb/jobPilot/commit/477b521131a5c3c77150ebb4e903313f495de302)), closes [#95](https://github.com/sadowb/jobPilot/issues/95) [#130](https://github.com/sadowb/jobPilot/issues/130) [#137](https://github.com/sadowb/jobPilot/issues/137)
+
+
+### Code Refactoring
+
+* **runs:** run table is the queue — drop liteque, native Claude session resume, crew 4 ([#148](https://github.com/sadowb/jobPilot/issues/148)) ([3cb42b2](https://github.com/sadowb/jobPilot/commit/3cb42b2d8cbadcb2966a5bbc032b01167707e08b))
+
 ## 0.1.0 (2026-10-28)
 
 
