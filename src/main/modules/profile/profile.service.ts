@@ -1,7 +1,7 @@
 import type { ProfileData, ProfileSave } from '../../../shared/dto';
 import { db, type JobPilotDb } from '../../platform/db/database';
 import { markProfileMigrated, profileMigrationDone } from '../settings/settings.service';
-import { ProfileRepository } from './profile.repository';
+import { hasOnboardingData, ProfileRepository } from './profile.repository';
 
 export function isProfileMigrated(): boolean {
   return profileMigrationDone(db);
@@ -28,7 +28,11 @@ export function migrateProfile(input: ProfileData): ProfileData {
       const personal = current.personal ?? input.personal;
       const markets = current.markets.length ? current.markets : input.markets;
       const answers = current.answers ?? input.answers;
-      const onboardingCompletedAt = current.onboardingCompletedAt ?? input.onboardingCompletedAt;
+      // Legacy renderer data is imported once here: if it holds onboarding answers, onboarding was finished.
+      const onboardingCompletedAt =
+        current.onboardingCompletedAt ??
+        input.onboardingCompletedAt ??
+        (hasOnboardingData({ personal, markets, answers }) ? Date.now() : null);
       repository.write({
         personal,
         markets,
