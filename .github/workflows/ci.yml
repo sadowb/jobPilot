@@ -261,23 +261,7 @@ jobs:
       - name: Package Linux deb and AppImage
         run: npx electron-builder --linux deb AppImage --x64
       - name: Install and boot-test Linux deb package
-        run: |
-          sudo apt-get install -y ./release/*.deb
-          test -f /etc/apparmor.d/jobpilot
-          echo "=== AppArmor profile ==="
-          cat /etc/apparmor.d/jobpilot
-          sudo apparmor_parser -QT /etc/apparmor.d/jobpilot
-          if sudo aa-status --enabled 2>/dev/null; then
-            sudo aa-status | grep -E "jobpilot"
-          fi
-          xvfb-run -a dbus-run-session -- bash -c '
-            mkdir -p ~/.local/share/keyrings
-            echo "ci" | gnome-keyring-daemon --daemonize --unlock --components=secrets
-            export XDG_CURRENT_DESKTOP=GNOME
-            node scripts/smoke-app.mjs /opt/JobPilot/jobpilot --password-store=gnome-libsecret
-          '
-          sudo apt-get remove -y jobpilot
-          test ! -f /etc/apparmor.d/jobpilot
+        run: scripts/smoke-linux-deb.sh
       - name: Boot packaged Linux AppImage
         run: |
           # Chromium's sandbox needs unprivileged user namespaces; Ubuntu 24.04 runners restrict them via AppArmor.

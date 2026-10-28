@@ -33,13 +33,16 @@ linux:
   artifactName: JobPilot-${version}-x64.${ext}
 deb:
   artifactName: JobPilot-${version}-amd64.${ext}
-  maintainer: sadowb <sadowb@users.noreply.github.com>
-  vendor: sadowb <sadowb@users.noreply.github.com>
+  # Replaces electron-builder's default list, so it repeats it in full and adds ALSA (Electron needs it).
   depends:
-    - libsecret-1-0
-    - libnss3
     - libgtk-3-0
     - libnotify4
+    - libnss3
     - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
     - 'libasound2t64 | libasound2'
 publish: null
