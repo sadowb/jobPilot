@@ -1,5 +1,4 @@
 import type { DashboardAction, DashboardState } from './state';
-import { STATUS_MENU_ORDER } from './status';
 
 export interface KeyLike {
   key: string;
@@ -50,10 +49,6 @@ export function keyToResult(e: KeyLike, state: DashboardState, typing: boolean):
     if (e.key === 'ArrowUp') return handled({ action: { type: 'statusCursor', delta: -1 } });
     if (e.key === 'Enter') return handled({ effect: 'confirmStatus' });
     if (e.key === 'Escape') return handled({ action: { type: 'closeStatus' } });
-    const letter = e.key.toLowerCase();
-    if (letter.length === 1 && /[a-z]/.test(letter) && STATUS_MENU_ORDER.some((s) => s.startsWith(letter))) {
-      return handled({ action: { type: 'statusJump', letter } });
-    }
     return null;
   }
 

@@ -34,7 +34,6 @@ export type DashboardAction =
   | { type: 'openStatus'; id?: string }
   | { type: 'closeStatus' }
   | { type: 'statusCursor'; delta: 1 | -1 }
-  | { type: 'statusJump'; letter: string }
   | { type: 'setStatus'; status: ApplicationStatus; today: string }
   | { type: 'undoStatus' }
   | { type: 'openCv' }
@@ -109,12 +108,6 @@ export function dashboardReducer(s: DashboardState, a: DashboardAction): Dashboa
       if (!s.statusMenu) return s;
       const n = STATUS_MENU_ORDER.length;
       return { ...s, statusMenu: { cursor: (s.statusMenu.cursor + a.delta + n) % n } };
-    }
-    case 'statusJump': {
-      if (!s.statusMenu) return s;
-      const letter = a.letter.toLowerCase();
-      const at = STATUS_MENU_ORDER.findIndex((st) => st.startsWith(letter));
-      return at === -1 ? s : { ...s, statusMenu: { cursor: at } };
     }
     case 'setStatus': {
       const app = selectedApp(s);

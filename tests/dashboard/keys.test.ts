@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { keyToResult, type KeyLike } from '../../src/renderer/src/features/dashboard/keys';
-import { SAMPLE_APPLICATIONS } from '../../src/renderer/src/features/dashboard/sample';
 import { dashboardReducer, initialState } from '../../src/renderer/src/features/dashboard/state';
+import { TEST_APPLICATIONS } from './fixtures';
 
 const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   key: k,
@@ -11,7 +11,7 @@ const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   shiftKey: false,
   ...mods,
 });
-const base = initialState(SAMPLE_APPLICATIONS);
+const base = initialState(TEST_APPLICATIONS);
 
 describe('list keys', () => {
   it.each([
@@ -59,8 +59,8 @@ describe('status menu keys', () => {
     expect(keyToResult(key('Enter'), menu, false)?.effect).toBe('confirmStatus');
     expect(keyToResult(key('Escape'), menu, false)?.action).toEqual({ type: 'closeStatus' });
   });
-  it('a status initial jumps to it; other letters are ignored', () => {
-    expect(keyToResult(key('o'), menu, false)?.action).toEqual({ type: 'statusJump', letter: 'o' });
+  it('other keys return null so typing flows to the filter input', () => {
+    expect(keyToResult(key('o'), menu, false)).toBeNull();
     expect(keyToResult(key('z'), menu, false)).toBeNull();
   });
 });
