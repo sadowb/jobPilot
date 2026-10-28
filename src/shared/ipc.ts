@@ -50,6 +50,8 @@ export const Channels = {
   migrateProfile: 'profile:migrate',
   exportRecoveryKey: 'recovery:export',
   importRecoveryKey: 'recovery:import',
+  getRecoveryState: 'recovery:state',
+  restoreBackup: 'recovery:restore',
   getTheme: 'theme:get',
   saveDocument: 'documents:save',
   setTheme: 'theme:set',
@@ -71,6 +73,19 @@ export const RendererErrorInputSchema = z.object({
 });
 
 export const RecoveryKeySchema = z.string().regex(/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/);
+
+export const RecoveryReasonSchema = z.enum(['unlock', 'empty', 'corrupt', 'missing']);
+export const BackupInfoSchema = z.object({
+  name: z.string().regex(/^jobpilot-\d{4}-\d{2}-\d{2}(-migration-\d+)?\.db$/),
+  modifiedAt: z.string(),
+  size: z.number().int().nonnegative(),
+});
+export const RecoveryStateSchema = z.object({ reason: RecoveryReasonSchema, backups: z.array(BackupInfoSchema) });
+export type RecoveryState = z.infer<typeof RecoveryStateSchema>;
+export const RestoreBackupSchema = z.object({
+  name: BackupInfoSchema.shape.name,
+  recoveryKey: RecoveryKeySchema.optional(),
+});
 
 export interface JobPilotBridge {
   agent: {
@@ -107,6 +122,8 @@ export interface JobPilotBridge {
   recovery: {
     export(): Promise<void>;
     import(key: string): Promise<boolean>;
+    state(): Promise<RecoveryState>;
+    restore(input: z.input<typeof RestoreBackupSchema>): Promise<boolean>;
   };
   platform: string;
   reportRendererError(error: z.input<typeof RendererErrorInputSchema>): Promise<void>;

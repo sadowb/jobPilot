@@ -13,6 +13,7 @@ export const queryClient = new QueryClient({
 export const queryKeys = {
   applications: { all: ['applications'] as const, list: () => [...queryKeys.applications.all, 'list'] as const },
   runs: { all: ['runs'] as const },
+  recovery: { state: () => ['recovery', 'state'] as const },
   agent: { state: () => ['agent', 'state'] as const },
   claudeKey: { status: () => ['claude-key', 'status'] as const },
   settings: { all: ['settings'] as const, current: () => [...queryKeys.settings.all, 'current'] as const },
