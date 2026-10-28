@@ -227,8 +227,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run smoke:native
-      - name: Package Linux AppImage
-        run: npx electron-builder --linux AppImage --x64
+      - name: Package Linux deb and AppImage
+        run: npx electron-builder --linux deb AppImage --x64
+      - name: Install and boot-test Linux deb package
+        run: scripts/smoke-linux-deb.sh
       - name: Boot packaged Linux AppImage
         run: |
           # Chromium's sandbox needs unprivileged user namespaces; Ubuntu 24.04 runners restrict them via AppArmor.
@@ -243,7 +245,9 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-linux
-          path: release/*.AppImage
+          path: |
+            release/*.AppImage
+            release/*.deb
           if-no-files-found: error
 
   publish:
@@ -266,13 +270,14 @@ jobs:
           merge-multiple: true
       - name: Checksum every asset
         working-directory: dist
-        run: sha256sum -- *.dmg *-x64-setup.exe *.AppImage jobpilot.spdx.json > SHA256SUMS
+        run: sha256sum -- *.dmg *-x64-setup.exe *.AppImage *.deb jobpilot.spdx.json > SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             dist/*.dmg
             dist/*-x64-setup.exe
             dist/*.AppImage
+            dist/*.deb
             dist/jobpilot.spdx.json
             dist/SHA256SUMS
       - name: Upload assets to the draft, then publish
@@ -280,5 +285,5 @@ jobs:
         run: |
           set -euo pipefail
           [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true ]
-          gh release upload "$TAG" dist/*.dmg dist/*-x64-setup.exe dist/*.AppImage dist/jobpilot.spdx.json dist/SHA256SUMS
+          gh release upload "$TAG" dist/*.dmg dist/*-x64-setup.exe dist/*.AppImage dist/*.deb dist/jobpilot.spdx.json dist/SHA256SUMS
           gh release edit "$TAG" --draft=false

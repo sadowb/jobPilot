@@ -112,5 +112,11 @@ describe('smoke-app helpers', () => {
       writeFileSync(appImage, '');
       expect(resolveExecutablePath(tempDir)).toBe(appImage);
     });
+
+    it('finds installed Linux binary in specified directory', () => {
+      const bin = join(tempDir, 'jobpilot');
+      writeFileSync(bin, '');
+      expect(resolveExecutablePath(tempDir)).toBe(bin);
+    });
   });
 });

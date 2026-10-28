@@ -258,8 +258,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run smoke:native
-      - name: Package Linux AppImage
-        run: npx electron-builder --linux AppImage --x64
+      - name: Package Linux deb and AppImage
+        run: npx electron-builder --linux deb AppImage --x64
+      - name: Install and boot-test Linux deb package
+        run: scripts/smoke-linux-deb.sh
       - name: Boot packaged Linux AppImage
         run: |
           # Chromium's sandbox needs unprivileged user namespaces; Ubuntu 24.04 runners restrict them via AppArmor.
