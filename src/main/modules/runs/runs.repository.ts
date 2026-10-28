@@ -89,6 +89,15 @@ export class RunsRepository {
       .get()!;
   }
 
+  /** A replaced run's pending approval can never be acted on. */
+  expireApprovals(runId: string) {
+    this.db
+      .update(approval)
+      .set({ status: 'expired', decidedAt: Date.now() })
+      .where(and(eq(approval.runId, runId), eq(approval.status, 'pending')))
+      .run();
+  }
+
   requestApproval(runId: string, cvVersionId: string | null) {
     const row = this.get(runId);
     if (!row.formHash || row.status !== 'awaiting_approval') throw new Error('Run is not ready for approval.');

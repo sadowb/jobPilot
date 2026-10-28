@@ -21,7 +21,7 @@ async function inspect(app: ElectronApplication) {
       runs: main.db.$client
         .prepare('SELECT id, application_id, status, attempt, session_id, form_hash, error, result, tab_id FROM run')
         .all(),
-      approvals: main.db.$client.prepare('SELECT run_id, application_id, form_hash FROM approval').all(),
+      approvals: main.db.$client.prepare('SELECT run_id, application_id, form_hash, status FROM approval').all(),
       events: main.db.$client
         .prepare(
           "SELECT run_id, from_status, to_status, data FROM application_event WHERE type = 'run_transition' ORDER BY rowid",
@@ -239,6 +239,11 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     const retry = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
     expect(retry.id).not.toBe(needsAnswersRun.id);
     const retryState = await inspect(app);
+    // The run that waited on the owner is retired, not left open beside the new attempt.
+    expect(retryState.runs.find((r) => (r as { id: string }).id === needsAnswersRun.id)).toMatchObject({
+      status: 'failed',
+      error: 'Replaced by a new attempt',
+    });
     const retryRow = (retryState.runs as Array<{ id: string; attempt: number; session_id: string | null }>).find(
       (r) => r.id === retry.id,
     );
@@ -257,10 +262,24 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       (a) => a.run_id === retry.id,
     );
     expect(retryApproval?.form_hash).toBe(createHash('sha256').update(`fake-form-${retry.id}`).digest('hex'));
+    expect(retryApproval).toMatchObject({ status: 'pending' });
+    expect((await inspect(app)).tabs).toContain(retry.id);
 
     for (const status of ['blocked', 'submitted']) {
       const next = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
       await expect.poll(async () => (await inspect(app!)).tabs.includes(next.id)).toBe(true);
+      if (status === 'blocked') {
+        // Starting again while an approval is pending expires that approval and closes the replaced run's tab.
+        const replaced = await inspect(app);
+        expect(replaced.runs.find((r) => (r as { id: string }).id === retry.id)).toMatchObject({
+          status: 'failed',
+          error: 'Replaced by a new attempt',
+        });
+        expect(
+          (replaced.approvals as Array<{ run_id: string; status: string }>).find((a) => a.run_id === retry.id),
+        ).toMatchObject({ status: 'expired' });
+        expect(replaced.tabs).not.toContain(retry.id);
+      }
       await complete(app, [next.id], status);
       await expect
         .poll(
@@ -316,9 +335,12 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         data: JSON.stringify({ reason: 'app restarted' }),
       }),
     );
-    // The resumed run already finished (awaiting approval is not active), so starting again opens a new attempt.
+    // The resumed run finished and waits for approval; starting again replaces it instead of leaving two live attempts.
     const replacement = await restarted.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[10]!);
     expect(replacement.id).not.toBe(interrupted.id);
+    expect(
+      (await restarted.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === interrupted.id),
+    ).toMatchObject({ status: 'failed' });
     await expect
       .poll(
         async () =>

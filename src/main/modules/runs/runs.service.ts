@@ -129,7 +129,14 @@ export class RunsService {
     const browser = this.browser.id;
     const previous = this.repository.latest(applicationId);
     const attempt = previous ? previous.attempt + 1 : 1;
+    // A new attempt retires a run still waiting on the owner, so one application never holds two live approvals or tabs.
+    const replaced =
+      previous && (previous.status === 'awaiting_approval' || previous.status === 'needs_you') ? previous : undefined;
     const row = this.db.transaction(() => {
+      if (replaced) {
+        this.transition(replaced.id, 'failed', { error: 'Replaced by a new attempt' });
+        this.repository.expireApprovals(replaced.id);
+      }
       const created = this.repository.create({
         applicationId,
         agent,
@@ -153,6 +160,7 @@ export class RunsService {
       return result;
     });
     emitDataChanged({ entity: 'run', id: row.id });
+    if (replaced) await this.browser.closeTab(replaced.id);
     this.worker.enqueue();
     return RunSummarySchema.parse(row);
   }
@@ -192,7 +200,9 @@ export class RunsService {
           ? ['running', 'cancelled', 'failed']
           : row.status === 'running'
             ? ['awaiting_approval', 'needs_you', 'failed', 'cancelled']
-            : [];
+            : row.status === 'awaiting_approval' || row.status === 'needs_you'
+              ? ['failed'] // docs/architecture.md run state machine
+              : [];
       if (!allowed.includes(status)) throw new Error(`Invalid run transition: ${row.status} -> ${status}`);
       const updated = this.repository.update(runId, {
         status,

@@ -27,7 +27,7 @@ flowchart LR
 
 ## Run state machine
 
-The run row is authoritative. The application service applies validated agent results and owns every transition. A partial unique index permits at most one `queued` or `running` run per application. Submission requires a pending approval bound to the current form hash unless auto mode is explicitly enabled.
+The run row is authoritative. The application service applies validated agent results and owns every transition. A partial unique index permits at most one `queued` or `running` run per application. Starting a new attempt retires a run still in `needs_you` or `awaiting_approval`: it moves to `failed` ("Replaced by a new attempt"), its pending approval to `expired`, and its tab is closed, so an application never holds two live attempts. Submission requires a pending approval bound to the current form hash unless auto mode is explicitly enabled.
 
 ```mermaid
 stateDiagram-v2
