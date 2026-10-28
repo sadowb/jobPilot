@@ -60,10 +60,12 @@ describe('profile input validation', () => {
     expect(save({ email: '<img src=x onerror=alert(1)>@x.com' })).toBe(false);
     expect(save({ email: 'not-an-email' })).toBe(false);
   });
-  it('rejects NUL, ANSI escape and DEL but keeps tab, newline and CR', () => {
-    for (const bad of ['a\0b', 'a\u001b[31mred', 'a\u007f'])
-      expect(PersonalProfileSchema.safeParse({ ...EMPTY_PROFILE, bio: bad }).success).toBe(false);
-    expect(PersonalProfileSchema.safeParse({ ...EMPTY_PROFILE, bio: 'a\tb\r\nc' }).success).toBe(true);
+  it('rejects NUL, ANSI escape and DEL on save but keeps tab, newline and CR', () => {
+    for (const bad of ['a\0b', 'a\u001b[31mred', 'a\u007f']) expect(save({ bio: bad })).toBe(false);
+    expect(save({ bio: 'a\tb\r\nc' })).toBe(true);
+  });
+  it('still reads a profile that 0.2.1 stored with control characters', () => {
+    expect(PersonalProfileSchema.safeParse({ ...EMPTY_PROFILE, bio: 'a\0b' }).success).toBe(true);
   });
 });
 

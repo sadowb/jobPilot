@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 
+const text = z.string().max(10000);
 // C0 controls (NUL, ESC/ANSI...) and DEL are never legitimate profile text; tab, LF and CR are.
-const text = z
-  .string()
-  .max(10000)
-  // eslint-disable-next-line no-control-regex
-  .regex(/^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$/, 'Control characters are not allowed');
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
+const hasControl = (value: unknown): boolean =>
+  typeof value === 'string'
+    ? CONTROL.test(value)
+    : typeof value === 'object' && value !== null && Object.values(value).some(hasControl);
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const country = z
   .string()
@@ -137,14 +139,17 @@ export const ProfileDataSchema = z.object({
   answers: AnswersSchema.nullable(),
   onboardingCompletedAt: z.number().int().positive().nullable().default(null),
 });
-export const ProfileSaveSchema = z.discriminatedUnion('section', [
-  z.object({
-    section: z.literal('personal'),
-    value: PersonalProfileSchema.extend({ email: EmailSchema, phone, alternatePhone: phone }),
-  }),
-  z.object({ section: z.literal('markets'), value: MarketsSchema }),
-  z.object({ section: z.literal('answers'), value: AnswersSchema }),
-  z.object({ section: z.literal('onboardingCompletedAt'), value: z.number().int().positive().nullable() }),
-]);
+export const ProfileSaveSchema = z
+  .discriminatedUnion('section', [
+    z.object({
+      section: z.literal('personal'),
+      value: PersonalProfileSchema.extend({ email: EmailSchema, phone, alternatePhone: phone }),
+    }),
+    z.object({ section: z.literal('markets'), value: MarketsSchema }),
+    z.object({ section: z.literal('answers'), value: AnswersSchema }),
+    z.object({ section: z.literal('onboardingCompletedAt'), value: z.number().int().positive().nullable() }),
+  ])
+  // Saves only: 0.2.1 stored such text, and reads must keep loading it so the owner can fix it.
+  .refine((input) => !hasControl(input.value), 'Control characters are not allowed');
 export type ProfileData = z.infer<typeof ProfileDataSchema>;
 export type ProfileSave = z.infer<typeof ProfileSaveSchema>;
