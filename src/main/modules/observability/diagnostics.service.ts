@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, st
 import { release } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { flushLogs, logsDirectory, loggerFor } from './log.service';
+import { flushLogs, logsDirectory, loggerFor, scrub } from './log.service';
 
 const crashDirectory = (): string => join(app.getPath('userData'), 'crashes');
 const markerPath = (): string => join(logsDirectory(), 'session.lock');
@@ -67,8 +67,21 @@ export function buildDiagnostics(): Uint8Array {
     .map((name) => ({ name, mtime: statSync(join(logs, 'runs', name)).mtimeMs }))
     .sort((a, b) => b.mtime - a.mtime)
     .slice(0, MAX_RUN_TRACES);
-  for (const { name } of runs) files[`logs/runs/${name}`] = readFileSync(join(logs, 'runs', name));
-  const crashStats = readdirSync(crashDirectory(), { recursive: true })
+  let droppedTraceLines = 0;
+  for (const { name } of runs) {
+    // Run traces hold agent prompts and form answers: scrub every line, drop what cannot be parsed.
+    const kept: string[] = [];
+    for (const line of readFileSync(join(logs, 'runs', name), 'utf8').split('\n')) {
+      if (!line) continue;
+      try {
+        kept.push(JSON.stringify(scrub(JSON.parse(line) as object)));
+      } catch {
+        droppedTraceLines++;
+      }
+    }
+    files[`logs/runs/${name}`] = strToU8(kept.map((line) => `${line}\n`).join(''));
+  }
+  const crashStats = (existsSync(crashDirectory()) ? readdirSync(crashDirectory(), { recursive: true }) : [])
     .map(String)
     .filter((name) => name.endsWith('.dmp'))
     .map((name) => ({ name, bytes: statSync(join(crashDirectory(), name)).size }));
@@ -85,6 +98,7 @@ export function buildDiagnostics(): Uint8Array {
         os_release: release(),
         generated_at: new Date().toISOString(),
         crash_dumps: crashStats,
+        dropped_run_trace_lines: droppedTraceLines,
       },
       null,
       2,
@@ -102,6 +116,17 @@ export async function exportDiagnostics(): Promise<void> {
     defaultPath: `jobpilot-diagnostics-${new Date().toISOString().slice(0, 10)}.zip`,
     filters: [{ name: 'Zip archive', extensions: ['zip'] }],
   };
+  const confirm = {
+    type: 'question' as const,
+    buttons: ['Export', 'Cancel'],
+    defaultId: 0,
+    cancelId: 1,
+    message: 'Export diagnostics?',
+    detail:
+      'The diagnostics file contains app logs and agent activity for recent runs (emails and keys removed). It does not contain your database or passwords.',
+  };
+  const { response } = window ? await dialog.showMessageBox(window, confirm) : await dialog.showMessageBox(confirm);
+  if (response !== 0) return;
   const { canceled, filePath } = window
     ? await dialog.showSaveDialog(window, options)
     : await dialog.showSaveDialog(options);

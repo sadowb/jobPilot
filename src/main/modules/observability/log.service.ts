@@ -1,6 +1,6 @@
 import { app } from 'electron';
 import pino, { type Logger } from 'pino';
-import { chmodSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { chmodSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { redact } from './redact';
@@ -10,18 +10,24 @@ export const ARCHIVE_COUNT = 5;
 const ROTATION_CHECK_MS = 5 * 60 * 1000;
 const LogLevelSchema = z.enum(['info', 'debug']).default('info');
 
-const emailPattern = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
-const apiKeyPattern = /\bsk-[A-Za-z0-9_-]{16,}/g;
+const personalPatterns: [RegExp, string][] = [
+  [/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[EMAIL]'],
+  [/\bsk-[A-Za-z0-9_-]{16,}/g, '[REDACTED]'],
+  [/\+\d[\d\s().-]{6,}\d|\(\d{2,4}\)[\s.-]?\d[\d\s.-]{5,}\d|\b\d{3}[\s.-]\d{3}[\s.-]\d{4}\b/g, '[PHONE]'],
+];
 
-/** redact() handles keys and key=value text; this catches emails and sk- keys inside free text. */
+function scrubStrings(value: unknown): unknown {
+  if (typeof value === 'string')
+    return personalPatterns.reduce((text, [pattern, mask]) => text.replace(pattern, mask), value);
+  if (Array.isArray(value)) return value.map(scrubStrings);
+  if (value !== null && typeof value === 'object')
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrubStrings(item)]));
+  return value;
+}
+
+/** redact() handles keys and key=value text; this also masks emails, sk- keys and phone numbers inside strings. */
 export function scrub(object: object): Record<string, unknown> {
-  const redacted = redact(object);
-  try {
-    const text = JSON.stringify(redacted).replace(emailPattern, '[EMAIL]').replace(apiKeyPattern, '[REDACTED]');
-    return JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    return redacted as Record<string, unknown>;
-  }
+  return scrubStrings(redact(object)) as Record<string, unknown>;
 }
 
 let root: Logger | undefined;
@@ -57,6 +63,9 @@ export function initLogService(): void {
   chmodSync(directory, 0o700);
   const file = join(directory, 'main.log');
   rotateLog(file);
+  // pino-roll wrote jobpilot*.log; nothing rotates those any more.
+  for (const name of readdirSync(directory))
+    if (/^jobpilot.*\.log$/.test(name)) rmSync(join(directory, name), { force: true });
   // sync: a fatal line must be on disk before the process can exit.
   destination = pino.destination({ dest: file, mkdir: true, sync: true, mode: 0o600 });
   root = pino(

@@ -4,7 +4,13 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 const userData = vi.hoisted(() => `${process.env.TMPDIR ?? '/tmp'}/jobpilot-log-test-${process.pid}`);
-vi.mock('electron', () => ({ app: { getPath: () => userData } }));
+vi.mock('electron', () => ({
+  app: { getPath: () => userData, getVersion: () => '0.0.0', isPackaged: false },
+  BrowserWindow: {},
+  crashReporter: {},
+  dialog: {},
+  shell: {},
+}));
 
 import { initLogService, loggerFor, rotateLog, ARCHIVE_COUNT } from '../src/main/modules/observability/log.service';
 
@@ -64,5 +70,31 @@ describe('LogService (#165)', () => {
     expect(readFileSync(join(directory, 'main.1.log'), 'utf8')).toMatch(/^generation 7/);
     expect(readFileSync(join(directory, 'main.5.log'), 'utf8')).toMatch(/^generation 3/);
     rmSync(directory, { recursive: true, force: true });
+  });
+});
+
+describe('diagnostics export (#165)', () => {
+  it('scrubs run traces in the zip and drops unparseable lines', async () => {
+    const { mkdirSync } = await import('node:fs');
+    const { unzipSync, strFromU8 } = await import('fflate');
+    const { buildDiagnostics } = await import('../src/main/modules/observability/diagnostics.service');
+    mkdirSync(join(userData, 'logs', 'runs'), { recursive: true });
+    const secret = { email: 'sara.benali@example.com', key: 'sk-ant-FAKEFAKEFAKEFAKEFAKE', phone: '+212 600 000 000' };
+    writeFileSync(
+      join(userData, 'logs', 'runs', 'run-1.jsonl'),
+      [
+        JSON.stringify({
+          type: 'message',
+          at: 1730000000000,
+          payload: { text: `Mail ${secret.email} ${secret.key} call ${secret.phone}` },
+        }),
+        'not json',
+      ].join('\n'),
+    );
+    const zip = unzipSync(buildDiagnostics());
+    const trace = strFromU8(zip['logs/runs/run-1.jsonl']!);
+    for (const value of Object.values(secret)) expect(trace).not.toContain(value);
+    expect(JSON.parse(trace.trim())).toMatchObject({ at: 1730000000000 });
+    expect(JSON.parse(strFromU8(zip['info.json']!))).toMatchObject({ dropped_run_trace_lines: 1 });
   });
 });
