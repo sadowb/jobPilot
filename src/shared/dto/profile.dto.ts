@@ -129,11 +129,13 @@ export const ProfileDataSchema = z.object({
   personal: PersonalProfileSchema.nullable(),
   markets: MarketsSchema,
   answers: AnswersSchema.nullable(),
+  onboardingCompletedAt: z.number().int().positive().nullable().default(null),
 });
 export const ProfileSaveSchema = z.discriminatedUnion('section', [
   z.object({ section: z.literal('personal'), value: PersonalProfileSchema.extend({ phone, alternatePhone: phone }) }),
   z.object({ section: z.literal('markets'), value: MarketsSchema }),
   z.object({ section: z.literal('answers'), value: AnswersSchema }),
+  z.object({ section: z.literal('onboardingCompletedAt'), value: z.number().int().positive().nullable() }),
 ]);
 export type ProfileData = z.infer<typeof ProfileDataSchema>;
 export type ProfileSave = z.infer<typeof ProfileSaveSchema>;

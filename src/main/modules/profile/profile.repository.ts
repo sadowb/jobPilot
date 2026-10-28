@@ -3,12 +3,25 @@ import { ProfileDataSchema, type ProfileData } from '../../../shared/dto';
 import type { JobPilotDb } from '../../platform/db/database';
 import { profile } from './profile.entity';
 
+/** Saved onboarding answers prove onboarding happened (used only for data from before the explicit flag). */
+export function hasOnboardingData(data: Pick<ProfileData, 'personal' | 'answers' | 'markets'>): boolean {
+  return data.personal !== null || data.answers !== null || data.markets.length > 0;
+}
+
 export class ProfileRepository {
   constructor(private readonly db: JobPilotDb) {}
 
   read(): ProfileData {
     const row = this.db.select().from(profile).get();
-    return row ? ProfileDataSchema.parse(row.preferences) : { personal: null, markets: [], answers: null };
+    if (!row) return { personal: null, markets: [], answers: null, onboardingCompletedAt: null };
+    const data = ProfileDataSchema.parse(row.preferences);
+    // Rows saved before the flag existed have no key at all (new rows store null or a time): if they hold
+    // onboarding data, onboarding was finished (#135). A null key means "started, not finished".
+    const legacy = !('onboardingCompletedAt' in (row.preferences as object));
+    if (legacy && hasOnboardingData(data)) {
+      return { ...data, onboardingCompletedAt: row.updatedAt ?? row.createdAt ?? Date.now() };
+    }
+    return data;
   }
 
   write(data: ProfileData): void {

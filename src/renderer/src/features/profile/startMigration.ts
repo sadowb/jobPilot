@@ -78,10 +78,14 @@ export async function initializeProfile(
   const personal = readProfile(store.getItem(PROFILE_KEY));
   const answers = readAnswersV2(store.getItem(ANSWERS_V2_KEY), store.getItem(ANSWERS_KEY));
   const plan = planStartMigration(personal, answers);
+  // Main infers completion for profiles that predate the flag (ProfileRepository.read).
   const data = await bridge.migrate({
     personal: plan.profile ?? (store.getItem(PROFILE_KEY) === null ? null : personal),
     markets: readMarkets(store.getItem(MARKETS_KEY)),
-    answers: plan.answers ?? answers,
+    // Starter answers are defaults, not owner data; sending them would mark a fresh profile onboarded.
+    answers:
+      plan.answers ?? (store.getItem(ANSWERS_V2_KEY) === null && store.getItem(ANSWERS_KEY) === null ? null : answers),
+    onboardingCompletedAt: null,
   });
   for (const key of keys) store.removeItem(key);
   return data;
