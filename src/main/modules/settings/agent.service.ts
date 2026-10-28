@@ -65,8 +65,8 @@ export class AgentSettingsService implements AgentProvider {
     });
   }
 
-  async detect(path?: string | null) {
-    this.detected = await detectClaude(path);
+  private adopt(detected: Awaited<ReturnType<typeof detectClaude>>) {
+    this.detected = detected;
     this.detection = undefined;
     this.login = 'unknown';
     const saved = this.preferences();
@@ -74,11 +74,26 @@ export class AgentSettingsService implements AgentProvider {
     return this.state();
   }
 
+  /** Auto-discovery only: the renderer cannot name a path. */
+  async detect() {
+    return this.adopt(await detectClaude());
+  }
+
+  /** `filePath` comes from the native picker in main; a file that is not Claude Code leaves settings untouched. */
+  async chooseCandidate(filePath: string) {
+    const detected = await detectClaude(filePath);
+    if (!detected) throw new Error('That file is not Claude Code.');
+    return this.adopt(detected);
+  }
+
+  /** Confirms the candidate main already holds (or re-verifies the saved path); the payload carries preferences only. */
   async save(input: z.infer<typeof SaveAgentSchema>) {
     const parsed = SaveAgentSchema.parse(input);
-    const detected = await detectClaude(parsed.path);
-    if (!detected) throw new Error('Choose an executable Claude path that responds to --version.');
-    this.repository.storeAgentPreferences({ ...parsed, ...detected, confirmed: true });
+    const saved = this.preferences();
+    const candidate = this.detected ?? (saved.confirmed && saved.path ? await detectClaude(saved.path) : null);
+    if (!candidate) throw new Error('No Claude candidate to confirm. Find or choose Claude first.');
+    this.detected = candidate;
+    this.repository.storeAgentPreferences({ ...parsed, ...candidate, confirmed: true });
     this.login = 'unknown';
     return this.state();
   }

@@ -28,6 +28,7 @@ export type IpcValidationError = z.infer<typeof IpcValidationErrorSchema>;
 export const Channels = {
   getAgent: 'agents:get',
   detectAgent: 'agents:detect',
+  chooseAgentPath: 'agents:choosePath',
   saveAgent: 'agents:save',
   setClaudeKey: 'secrets:claude:set',
   getClaudeKeyStatus: 'secrets:claude:status',
@@ -90,7 +91,9 @@ export const RestoreBackupSchema = z.object({
 export interface JobPilotBridge {
   agent: {
     get(): Promise<AgentState>;
-    detect(path?: string | null): Promise<AgentState>;
+    detect(): Promise<AgentState>;
+    /** Main opens the native file picker; the renderer never supplies a path. */
+    choosePath(): Promise<AgentState>;
     save(input: z.infer<typeof SaveAgentSchema>): Promise<AgentState>;
   };
   claudeKey: {

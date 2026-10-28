@@ -3,7 +3,7 @@ import { cn } from '../../components/ui';
 import { DOCUMENTS_CHANGED } from '../profile/useDocumentCount';
 import { documentStore, type ProfileDocument } from '../profile/documents';
 import { CvThumb } from '../profile/ProfileDocuments';
-import { documentError } from '../profile/personal';
+import { documentContentError, documentError } from '../profile/personal';
 import { GoButton, S } from '../shared-ui';
 import { AsidePanel, OnboardingFrame, StepHeading } from './OnboardingFrame';
 
@@ -24,10 +24,13 @@ export function CvStep() {
   }, []);
   const upload = async (file: File | undefined) => {
     if (!file || busy) return;
-    const problem = documentError(file);
-    if (problem) return setError(problem);
     setBusy(true);
     setError('');
+    const problem = documentError(file) ?? (await documentContentError(file));
+    if (problem) {
+      setBusy(false);
+      return setError(problem);
+    }
     const doc: ProfileDocument = { id: crypto.randomUUID(), name: file.name, file, uploaded: new Date().toISOString() };
     try {
       await documentStore('put', doc);
@@ -87,7 +90,11 @@ export function CvStep() {
           }}
         />
       </label>
-      <p role={error ? 'alert' : 'status'} className={cn('m-0 min-h-5 text-[13px]', error ? 'text-bad' : S)}>
+      <p
+        role={error ? 'alert' : 'status'}
+        className={cn('m-0 min-h-5 min-w-0 truncate text-[13px]', error ? 'text-bad' : S)}
+        title={error || latest?.name}
+      >
         {error || (latest ? `${latest.name} saved on this device.` : '')}
       </p>
       <div className="flex gap-4">
