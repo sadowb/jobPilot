@@ -15,6 +15,7 @@ import {
   DetectAgentSchema,
   ClaudeKeyStatusSchema,
   ClaudeKeyTestSchema,
+  MemoryStatusSchema,
   RunSummarySchema,
   StartRunSchema,
   CancelRunSchema,
@@ -57,6 +58,17 @@ const bridge: JobPilotBridge = {
     },
     async test() {
       return ClaudeKeyTestSchema.parse(await invoke(Channels.testClaudeKey));
+    },
+  },
+  memory: {
+    async status() {
+      return MemoryStatusSchema.parse(await invoke(Channels.getMemory));
+    },
+    async install() {
+      return MemoryStatusSchema.parse(await invoke(Channels.installMemory));
+    },
+    async remove() {
+      return MemoryStatusSchema.parse(await invoke(Channels.removeMemory));
     },
   },
   runs: {

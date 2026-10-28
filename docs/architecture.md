@@ -17,7 +17,7 @@ flowchart LR
   Agents --> Codex[Codex SDK]
   Agents --> CLI[CLI adapters via execa]
   Agents --> Browser[BrowserProvider: Neo]
-  Agents --> Memory[Mnemosyne MCP via bundled uv]
+  Agents --> Memory[Mnemosyne MCP via on-demand uv (ADR 0015)]
   Modules --> Secrets[Keychain / safeStorage: DB key]
   Agents --> Vault[Bitwarden MCP: dedicated job-site vault]
   Modules --> Logs[LogService + RunTraceService + AuditService]

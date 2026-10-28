@@ -163,7 +163,12 @@ export class ClaudeProvider implements AgentProvider {
             tools: [],
             canUseTool: async (name, input) =>
               name === 'StructuredOutput' ||
-              Object.keys(spec.mcpServers).some((server) => name.startsWith(`mcp__${server}__`))
+              Object.keys(spec.mcpServers).some((server) => {
+                const prefix = `mcp__${server}__`;
+                return (
+                  name.startsWith(prefix) && (spec.toolAllowlist?.[server]?.includes(name.slice(prefix.length)) ?? true)
+                );
+              })
                 ? { behavior: 'allow', updatedInput: input }
                 : { behavior: 'deny', message: 'Only run-scoped MCP tools are allowed.' },
             outputFormat: { type: 'json_schema', schema: z.toJSONSchema(spec.outputSchema, { io: 'input' }) },

@@ -24,6 +24,18 @@
     "schema": "SaveDocumentInputSchema"
   },
   {
+    "channel": "memory:install",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "memory:remove",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "memory:status",
+    "schema": "z.void()"
+  },
+  {
     "channel": "observability:renderer-error",
     "schema": "RendererErrorInputSchema"
   },

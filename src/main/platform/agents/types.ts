@@ -50,6 +50,8 @@ export interface RunSpec {
   prompt: string;
   /** MCP servers attached to the run (browser, memory). */
   mcpServers: Record<string, McpServerConfig>;
+  /** Per-server tool allow-list (bare tool names); a server not listed here allows all its tools. */
+  toolAllowlist?: Record<string, readonly string[]>;
   /** Final structured output the agent must produce. */
   outputSchema: typeof RunResultSchema;
   model?: string;

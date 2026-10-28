@@ -5,6 +5,10 @@ import { AgentSettingsService } from '../modules/settings/agent.service';
 import { NeoBrowserProvider } from '../platform/browsers/neo';
 import { FakeAgentProvider } from '../platform/agents/fake';
 import { FakeBrowserProvider } from '../platform/browsers/fake';
+import { FakeMemoryProvider } from '../platform/memory/fake';
+import { MnemosyneMemory } from '../platform/memory/mnemosyne';
+import type { MemoryProvider } from '../platform/memory/types';
+import { ConsolidationWorker } from '../platform/queue/consolidate';
 import { RunsService } from '../modules/runs/runs.service';
 import { runsHandlers } from '../modules/runs/runs.controller';
 import { chmodSync, existsSync } from 'node:fs';
@@ -18,9 +22,11 @@ import { initLogService, loggerFor } from '../modules/observability/log.service'
 import {
   agentHandlers,
   claudeKeyHandlers,
+  memoryHandlers,
   recoveryHandlers,
   settingsHandlers,
 } from '../modules/settings/settings.controller';
+import { MemorySettingsService } from '../modules/settings/memory.service';
 import { broadcastThemeChanges, claudeKeyService, loadTheme } from '../modules/settings/settings.service';
 import { DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
@@ -38,6 +44,8 @@ let runsService: RunsService;
 export let agentSettings: AgentSettingsService;
 export let fakeAgent: FakeAgentProvider | undefined;
 export let fakeBrowser: FakeBrowserProvider | undefined;
+export let fakeMemory: FakeMemoryProvider | undefined;
+export let consolidation: ConsolidationWorker;
 
 registerAppScheme();
 process.umask(0o077);
@@ -101,15 +109,33 @@ if (!app.requestSingleInstanceLock()) {
 
     // An active Node inspector requires the fuse enabled; shipped apps cannot enter this branch.
     if (process.env.JOBPILOT_E2E_PROVIDER === 'fake' && (!app.isPackaged || inspectorUrl() !== undefined)) {
-      fakeAgent = new FakeAgentProvider();
+      fakeMemory = new FakeMemoryProvider(app.getPath('userData'), () => consolidation.start());
+      fakeAgent = new FakeAgentProvider(fakeMemory);
       fakeBrowser = new FakeBrowserProvider();
     }
+    const memory: MemoryProvider =
+      fakeMemory ??
+      new MnemosyneMemory(app.getPath('userData'), {
+        logger: loggerFor('memory'),
+        onReady: () => consolidation.start(),
+      });
+    consolidation = new ConsolidationWorker(
+      join(app.getPath('userData'), 'memory-queue.db'),
+      (signal) => memory.consolidate(signal),
+      (error) =>
+        loggerFor('memory').error(
+          { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+          'Memory consolidation failed',
+        ),
+    );
+    if (memory.status().state === 'ready') consolidation.start();
     agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);
     runsService = new RunsService(
       db,
       app.getPath('userData'),
       fakeAgent ?? agentSettings,
       fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser')),
+      memory,
     );
     await runsService.initialize();
     let stoppingRuns = false;
@@ -118,7 +144,7 @@ if (!app.requestSingleInstanceLock()) {
       event.preventDefault();
       stoppingRuns = true;
       agentSettings.stop();
-      void runsService.stop().finally(() => app.quit());
+      void Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).finally(() => app.quit());
     });
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
@@ -129,6 +155,7 @@ if (!app.requestSingleInstanceLock()) {
         ...runsHandlers(runsService),
         ...settingsHandlers,
         ...agentHandlers(agentSettings),
+        ...memoryHandlers(new MemorySettingsService(memory)),
         ...claudeKeyHandlers(claudeKeyService(db)),
         ...documentsHandlers,
         ...observabilityHandlers,
