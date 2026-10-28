@@ -310,9 +310,9 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         .filter(Boolean)
         .flatMap((line) => {
           try {
-            const entry = JSON.parse(line) as { level?: number; msg?: string };
+            const entry = JSON.parse(line) as { level?: string; msg?: string };
             if (entry.msg === 'Error redaction fixture') return [];
-            return typeof entry.level === 'number' && entry.level >= 50 ? [line] : [];
+            return entry.level === 'error' || entry.level === 'fatal' ? [line] : [];
           } catch {
             return [];
           }

@@ -18,6 +18,7 @@ import { postingsHandlers } from '../modules/postings/postings.controller';
 import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
+import { initCrashReporting, startSession } from '../modules/observability/diagnostics.service';
 import { initLogService, loggerFor } from '../modules/observability/log.service';
 import {
   agentHandlers,
@@ -47,8 +48,11 @@ export let fakeBrowser: FakeBrowserProvider | undefined;
 export let fakeMemory: FakeMemoryProvider | undefined;
 export let consolidation: ConsolidationWorker;
 
-registerAppScheme();
 process.umask(0o077);
+// Before ready, so startup failures and crashes are on disk.
+initLogService();
+initCrashReporting();
+registerAppScheme();
 
 // One instance only; a second launch focuses the first.
 if (!app.requestSingleInstanceLock()) {
@@ -62,18 +66,11 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 
+  startSession();
   app.on('web-contents-created', (_event, contents) => lockDown(contents));
 
   void app.whenReady().then(async () => {
-    initLogService();
     const logger = loggerFor('main');
-    process.on('uncaughtException', (error) => {
-      logger.fatal({ err: error }, 'Uncaught main-process exception');
-      app.quit();
-    });
-    process.on('unhandledRejection', (reason) => {
-      logger.error({ err: reason instanceof Error ? reason : String(reason) }, 'Unhandled main-process rejection');
-    });
 
     serveRenderer();
     installAppMenu();

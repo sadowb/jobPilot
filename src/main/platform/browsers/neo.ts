@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
-import type { Logger } from 'pino';
+import type { Logger } from '../logging/types';
 import type { McpServerConfig } from '../agents/types';
 import type { BrowserProvider, BrowserTab } from './types';
 import { NeoMcp, allowlistedErrorCode } from './neo-mcp';

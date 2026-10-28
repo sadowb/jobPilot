@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { execa } from 'execa';
-import type { Logger } from 'pino';
+import type { Logger } from '../logging/types';
 import { z } from 'zod';
 import type { MemoryStatus } from '../../../shared/dto';
 import type { McpServerConfig } from '../agents/types';

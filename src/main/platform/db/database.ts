@@ -1,6 +1,6 @@
 import { app } from 'electron';
 import Database from 'better-sqlite3';
-import type { Logger } from 'pino';
+import type { Logger } from '../logging/types';
 import { z } from 'zod';
 import { RecoveryKeySchema } from '../../../shared/ipc';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';

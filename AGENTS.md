@@ -30,7 +30,7 @@ e2e/                     Playwright `_electron` journeys
 
 - **Trust boundaries**: every IPC payload, agent output, ATS/HTTP response and file read is parsed with zod before use. Never trust the renderer.
 - **Database**: SQLite STRICT tables, ULID text ids, integer unix-ms timestamps, `deleted_at` only where soft delete is needed. Change an entity, then `npm run db:generate` (adds STRICT), commit the SQL + `drizzle/meta`, update `shared/dto` and the typed view handles. `npm run db:check` must pass.
-- **Logging**: no `console.*` in `src/main`. Use the module's pino child logger (LogService) with `run_id`, `application_id`, `job_id`, `agent` fields where known. Never log secrets, cookies, passwords, answers' personal data beyond ids.
+- **Logging**: no `console.*` in `src/main`. Use the module's logger from LogService (electron-log scope) with `run_id`, `application_id`, `job_id`, `agent` fields where known. Never log secrets, cookies, passwords, answers' personal data beyond ids.
 - **Secrets**: the DB key only through `platform/secrets` (Keychain / `safeStorage`). Job-site passwords only in the dedicated Bitwarden vault via its MCP (ADR 0013), never in the DB. No secret in env files, logs, run traces or the renderer.
 - **No network listeners.** IPC only; MCP servers run over stdio.
 - **No unit tests** (ADR 0011). Verification = typecheck, lint, build, and Haiku Playwright journeys in `e2e/` against the built app.

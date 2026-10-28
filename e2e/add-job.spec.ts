@@ -23,6 +23,7 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
         }
       : {}),
     args: packaged ? [`--user-data-dir=${userData}`] : ['.', `--user-data-dir=${userData}`],
+    env: { ...process.env, JOBPILOT_LOG_LEVEL: 'debug' },
     timeout: 60_000,
   };
   let app: ElectronApplication | undefined;
@@ -34,18 +35,6 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
     await skipOnboarding(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await expect.poll(() => window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
-    await app.evaluate(({ app }) => {
-      const path = process.getBuiltinModule('node:path')!;
-      const nodeRequire = process
-        .getBuiltinModule('node:module')!
-        .createRequire(path.join(app.getAppPath(), 'package.json'));
-      const { loggerFor } = nodeRequire(
-        path.join(app.getAppPath(), 'out/main/index.js'),
-      ) as typeof import('../src/main/app/main');
-      // Pino children inherit their root logger; enable debug only in this throwaway app.
-      Object.getPrototypeOf(loggerFor('ipc-e2e')).level = 'debug';
-    });
-
     // Mock the HTTP transport in main; the packaged adapters, parsers, IPC, and DB still execute.
     await app.evaluate(({ app }, fixture) => {
       const path = process.getBuiltinModule('node:path')!;
