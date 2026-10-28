@@ -1,5 +1,6 @@
 import { app, Menu, type MenuItemConstructorOptions } from 'electron';
 import { join } from 'node:path';
+import { exportDiagnostics, showLogs } from '../modules/observability/diagnostics.service';
 
 // Replaces Electron's default menu and atom icon. The packaged app gets its icon from build/icon.icns.
 // Must run after app is ready (app.dock and Menu are only usable then).
@@ -25,6 +26,13 @@ export function installAppMenu(): void {
       ? []
       : [{ label: 'View', submenu: [{ role: 'reload' as const }, { role: 'toggleDevTools' as const }] }]),
     { role: 'windowMenu' },
+    {
+      role: 'help',
+      submenu: [
+        { label: 'Show Logs', click: () => void showLogs() },
+        { label: 'Export Diagnostics…', click: () => void exportDiagnostics() },
+      ],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
