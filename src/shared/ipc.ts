@@ -12,6 +12,8 @@ import type {
   ThemeSource,
   ThemeState,
   RunSummaryDto,
+  AppSettings,
+  UpdateSettingsInput,
 } from './dto';
 import { z } from 'zod';
 
@@ -52,6 +54,8 @@ export const Channels = {
   saveDocument: 'documents:save',
   setTheme: 'theme:set',
   themeChanged: 'theme:changed',
+  getSettings: 'settings:get',
+  updateSettings: 'settings:update',
   dataChanged: 'data:changed',
   rendererError: 'observability:renderer-error',
 } as const;
@@ -111,6 +115,10 @@ export interface JobPilotBridge {
     get(): Promise<ThemeState>;
     set(source: ThemeSource): Promise<ThemeState>;
     onChange(listener: (state: ThemeState) => void): () => void;
+  };
+  settings: {
+    get(): Promise<AppSettings>;
+    update(input: UpdateSettingsInput): Promise<AppSettings>;
   };
   onDataChanged(listener: (change: DataChanged) => void): () => void;
 }

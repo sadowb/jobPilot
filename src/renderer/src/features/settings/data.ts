@@ -36,9 +36,10 @@ export const SUBMIT_MODES: readonly { value: SubmitMode; title: string; body: st
 ];
 
 export const DEFAULT_SETTINGS = {
-  autopilot: true,
+  autopilot: false,
   crew: 6,
   submitMode: 'auto' as SubmitMode,
+  sites: {} as Record<string, SiteMode>,
   limits: { openTabs: 8, costPerDay: 5, runSeconds: 540, stuckSeconds: 120 },
 };
 

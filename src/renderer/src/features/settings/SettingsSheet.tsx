@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { KbdKey } from '../../components/KbdKey';
 import { Button, cn, Segmented } from '../../components/ui';
-import { useExportRecoveryKey } from '../../lib/api';
+import { useExportRecoveryKey, useSettings, useUpdateSettings } from '../../lib/api';
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
 import { IT, S, V17N, V17X, shellButton } from '../shared-ui';
@@ -11,7 +11,7 @@ import { CrewSlider } from './CrewSlider';
 import { DEFAULT_SETTINGS, SUBMIT_MODES } from './data';
 import { MemoryCard } from './MemoryCard';
 import { LimitField } from './LimitField';
-import { LIMIT_SPECS, type Limits } from './model';
+import { LIMIT_SPECS } from './model';
 
 const THEMES: readonly { value: ThemeSource; label: string }[] = [
   { value: 'light', label: 'Light' },
@@ -46,15 +46,16 @@ function Section({
   );
 }
 
-/** The V17 Settings sheet: 584px, slides in from the right. State is local sample state (no persistence yet). */
+/** The V17 Settings sheet: 584px, slides in from the right. Persisted via main settings module. */
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { state: theme, setSource, error: themeError } = useTheme();
   const [recoveryError, setRecoveryError] = useState(false);
   const exportRecoveryKey = useExportRecoveryKey();
-  const [autopilot, setAutopilot] = useState(DEFAULT_SETTINGS.autopilot);
-  const [crew, setCrew] = useState(DEFAULT_SETTINGS.crew);
-  const [submitMode, setSubmitMode] = useState(DEFAULT_SETTINGS.submitMode);
-  const [limits, setLimits] = useState<Limits>(DEFAULT_SETTINGS.limits);
+  const { data: settings } = useSettings();
+  const updateSettings = useUpdateSettings();
+  const crew = settings?.crew ?? DEFAULT_SETTINGS.crew;
+  const submitMode = settings?.submitMode ?? DEFAULT_SETTINGS.submitMode;
+  const limits = settings?.limits ?? DEFAULT_SETTINGS.limits;
   const [advancedOpen, setAdvancedOpen] = useState(true);
 
   return (
@@ -101,25 +102,17 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               role="switch"
-              aria-checked={autopilot}
+              disabled
+              aria-checked={false}
               aria-label="Autopilot"
-              onClick={() => setAutopilot((value) => !value)}
-              className={cn(
-                'relative h-[26px] w-11 flex-none cursor-pointer rounded-full border-0 p-0',
-                autopilot ? 'bg-brand' : 'bg-line-2',
-              )}
+              className="relative h-[26px] w-11 flex-none cursor-not-allowed rounded-full border-0 bg-line-2 p-0 opacity-60"
             >
-              <i
-                className={cn(
-                  'absolute top-[3px] block size-5 rounded-full bg-white transition-[left] duration-[120ms]',
-                  autopilot ? 'left-[21px]' : 'left-[3px]',
-                )}
-              />
+              <i className="absolute top-[3px] left-[3px] block size-5 rounded-full bg-white" />
             </button>
           }
         >
           <div className={cn(S, 'flex items-center gap-2 text-[13px]')}>
-            <i className={cn('block size-[7px] rounded-full', autopilot ? 'bg-brand' : 'bg-line-2')} />
+            <i className="block size-[7px] rounded-full bg-line-2" />
             Not available yet.
           </div>
         </Section>
@@ -132,7 +125,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </span>
           }
         >
-          <CrewSlider value={crew} onChange={setCrew} />
+          <CrewSlider value={crew} onChange={(v) => updateSettings.mutate({ crew: v })} />
         </Section>
         <Section title="Submit mode" desc="Who presses the final button on a form.">
           <div className="flex items-stretch gap-2.5" role="radiogroup" aria-label="Submit mode">
@@ -144,9 +137,10 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   role="radio"
                   aria-checked={on}
                   tabIndex={0}
-                  onClick={() => setSubmitMode(m.value)}
+                  onClick={() => updateSettings.mutate({ submitMode: m.value })}
                   onKeyDown={(e) =>
-                    (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), setSubmitMode(m.value))
+                    (e.key === ' ' || e.key === 'Enter') &&
+                    (e.preventDefault(), updateSettings.mutate({ submitMode: m.value }))
                   }
                   className={cn(
                     'flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 rounded-2xl px-[15px] py-[13px]',
@@ -210,7 +204,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   key={spec.key}
                   spec={spec}
                   value={limits[spec.key]}
-                  onChange={(v) => setLimits((l) => ({ ...l, [spec.key]: v }))}
+                  onChange={(v) => updateSettings.mutate({ limits: { ...limits, [spec.key]: v } })}
                 />
               ))}
             </div>
