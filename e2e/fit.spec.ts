@@ -12,7 +12,7 @@ async function bottomOf(window: Page, role: 'button', name: string | RegExp) {
 }
 
 // eslint-disable-next-line no-empty-pattern
-test('primary actions on Profile and Fixes fit the window without scrolling', async ({}, testInfo) => {
+test('Profile primary action fits a short window without scrolling', async ({}, testInfo) => {
   test.setTimeout(90_000);
   const userData = mkdtempSync(join(tmpdir(), 'jobpilot-fit-'));
   const packaged = testInfo.project.name === 'packaged';
@@ -38,21 +38,16 @@ test('primary actions on Profile and Fixes fit the window without scrolling', as
       location.hash = '#/profile';
     });
     expect(await bottomOf(window, 'button', 'Add a CV')).toBeLessThanOrEqual(700);
-    await window.screenshot({ path: testInfo.outputPath('profile-1100x700.png'), animations: 'disabled' });
-
-    // #113: the first row of Fixes cards keeps its actions above the fold at 1280x800.
-    await window.setViewportSize({ width: 1280, height: 800 });
-    await window.evaluate(() => {
-      location.hash = '#/fixes';
-    });
-    await expect(window.getByRole('heading', { level: 1 })).toBeVisible();
-    expect(await bottomOf(window, 'button', /^Undo/)).toBeLessThanOrEqual(800);
+    // The tab bar scrolls sideways only; content taller than the bar would add a stray vertical scrollbar.
+    const tabs = window.getByRole('tablist', { name: 'Profile sections' });
+    expect(await tabs.evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);
     for (const theme of ['light', 'dark'] as const) {
       await window.evaluate(async (source) => {
         await window.jobpilot!.theme.set(source);
       }, theme);
-      await window.screenshot({ path: testInfo.outputPath(`fixes-${theme}.png`), animations: 'disabled' });
+      await window.screenshot({ path: testInfo.outputPath(`profile-1100x700-${theme}.png`), animations: 'disabled' });
     }
+    // #113 (Fixes cards) no longer applies: #80 replaced the Fixes screen with Coming soon.
   } finally {
     await app?.close();
     rmSync(userData, { recursive: true, force: true });

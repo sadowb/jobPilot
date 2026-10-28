@@ -11,11 +11,10 @@ export default defineConfig({
   projects: [
     {
       name: 'dev',
-      testMatch: /(?:launch|first-launch|add-job|diagnostics|runs|live-list|secrets|agents|memory)\.spec\.ts/,
+      testIgnore: /upgrade\.spec\.ts/, // needs a packaged base app
     },
     {
       name: 'packaged',
-      testMatch: /(?:launch|first-launch|upgrade|add-job|diagnostics|runs|live-list|secrets|agents|memory)\.spec\.ts/,
     },
   ],
 });
