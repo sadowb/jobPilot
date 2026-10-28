@@ -1,7 +1,11 @@
 [
   {
+    "channel": "agents:choosePath",
+    "schema": "z.void()"
+  },
+  {
     "channel": "agents:detect",
-    "schema": "DetectAgentSchema"
+    "schema": "z.void()"
   },
   {
     "channel": "agents:get",

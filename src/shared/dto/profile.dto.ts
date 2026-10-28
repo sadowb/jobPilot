@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 
-const text = z.string().max(10000);
+// C0 controls (NUL, ESC/ANSI...) and DEL are never legitimate profile text; tab, LF and CR are.
+const text = z
+  .string()
+  .max(10000)
+  // eslint-disable-next-line no-control-regex
+  .regex(/^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$/, 'Control characters are not allowed');
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const country = z
   .string()
@@ -22,6 +27,7 @@ const careerText = z
 const period = z.enum(['year', 'month']);
 const amount = z.number().int().min(0).max(1_000_000_000);
 const unique = (values: { id: string }[]) => new Set(values.map((value) => value.id)).size === values.length;
+export const EmailSchema = z.union([z.literal(''), z.email().max(254)]);
 const phone = text.refine((value) => !value || isValidPhoneNumber(value), 'Invalid phone number');
 
 export const PersonalProfileSchema = z.object({
@@ -132,7 +138,10 @@ export const ProfileDataSchema = z.object({
   onboardingCompletedAt: z.number().int().positive().nullable().default(null),
 });
 export const ProfileSaveSchema = z.discriminatedUnion('section', [
-  z.object({ section: z.literal('personal'), value: PersonalProfileSchema.extend({ phone, alternatePhone: phone }) }),
+  z.object({
+    section: z.literal('personal'),
+    value: PersonalProfileSchema.extend({ email: EmailSchema, phone, alternatePhone: phone }),
+  }),
   z.object({ section: z.literal('markets'), value: MarketsSchema }),
   z.object({ section: z.literal('answers'), value: AnswersSchema }),
   z.object({ section: z.literal('onboardingCompletedAt'), value: z.number().int().positive().nullable() }),

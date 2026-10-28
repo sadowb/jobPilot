@@ -1,4 +1,4 @@
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -72,6 +72,16 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
       { prompt, node: process.execPath, mcp: resolve('scripts/fixtures/claude/stub-mcp.mjs') },
     );
   }
+  // The renderer cannot name a path: main owns the native picker, so tests stub the dialog in the main process.
+  async function chooseFile(window: Page, path: string) {
+    await app!.evaluate(({ dialog }, filePath) => {
+      dialog.showOpenDialog = (async () => ({
+        canceled: false,
+        filePaths: [filePath],
+      })) as typeof dialog.showOpenDialog;
+    }, path);
+    await window.getByRole('region', { name: 'Agent settings' }).getByRole('button', { name: 'Choose file…' }).click();
+  }
   try {
     let window = await launch();
     if (packaged) {
@@ -92,20 +102,22 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     expect(
       await window.evaluate(async () => {
         try {
-          await window.jobpilot!.agent.save({ path: 'relative', model: 'haiku', auth: 'login' });
+          await window.jobpilot!.agent.save({ model: 'bogus', auth: 'login' } as never);
           return false;
         } catch {
           return true;
         }
       }),
     ).toBe(true);
-    await window.getByLabel('Claude executable path', { exact: true }).fill(join(userData, 'missing'));
-    await card().getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+    await chooseFile(window, join(userData, 'missing'));
+    await expect(card().getByRole('status')).toContainText('not a working copy of Claude');
+    const imposter = join(userData, 'imposter');
+    writeFileSync(imposter, '#!/bin/sh\nprintf "fixture version\\n"\n', { mode: 0o700 });
+    await chooseFile(window, imposter);
     await expect(card().getByRole('status')).toContainText('not a working copy of Claude');
     const removable = join(userData, 'removable-claude');
-    writeFileSync(removable, '#!/bin/sh\nprintf "fixture version\\n"\n', { mode: 0o700 });
-    await window.getByLabel('Claude executable path', { exact: true }).fill(removable);
+    writeFileSync(removable, '#!/bin/sh\nprintf "2.1.303 (Claude Code fixture)\\n"\n', { mode: 0o700 });
+    await chooseFile(window, removable);
     await window.getByLabel('Agent authentication').selectOption('login');
     await card().getByRole('button', { name: 'Save', exact: true }).click();
     await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
@@ -113,9 +125,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     unlinkSync(removable);
     expect((await window.evaluate(() => window.jobpilot!.agent.get())).status).toBe('tool_not_installed');
 
-    await window
-      .getByLabel('Claude executable path', { exact: true })
-      .fill(resolve('scripts/fixtures/claude/fake-claude'));
+    await chooseFile(window, resolve('scripts/fixtures/claude/fake-claude'));
     await window.getByLabel('Agent authentication').selectOption('login');
     await card().getByRole('button', { name: 'Save', exact: true }).click();
     await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
@@ -131,9 +141,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     await app!.close();
     window = await launch();
     await expect(window.getByLabel('Agent model', { exact: true })).toHaveValue('sonnet');
-    await expect(window.getByLabel('Claude executable path', { exact: true })).toHaveValue(
-      resolve('scripts/fixtures/claude/fake-claude'),
-    );
+    await expect(window.getByTitle(resolve('scripts/fixtures/claude/fake-claude'))).toBeVisible();
     const second = await runFixture('Fill the local form');
     expect(second.status, JSON.stringify(second)).toBe('filled');
     expect(second.events).toContainEqual({ type: 'message', role: 'assistant', text: 'model:sonnet' });
@@ -159,9 +167,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     }
     await card().getByRole('button', { name: 'Find again' }).click();
     await expect(card().getByRole('status')).toHaveText('Save once before starting a run.');
-    await window
-      .getByLabel('Claude executable path', { exact: true })
-      .fill(resolve('scripts/fixtures/claude/fake-claude'));
+    await chooseFile(window, resolve('scripts/fixtures/claude/fake-claude'));
     await card().getByRole('button', { name: 'Save', exact: true }).click();
     await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
     await expect(window.getByTestId('agent-status')).toHaveText('Ready');
