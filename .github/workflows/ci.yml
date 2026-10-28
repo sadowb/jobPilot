@@ -262,9 +262,12 @@ jobs:
         run: npx electron-builder --linux AppImage --x64
       - name: Boot packaged Linux AppImage
         run: |
+          # Chromium's sandbox needs unprivileged user namespaces; Ubuntu 24.04 runners restrict them via AppArmor.
+          # Allow them (the kernel default on most distros) so the AppImage boots exactly as shipped, sandbox on.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           xvfb-run -a dbus-run-session -- bash -c '
             mkdir -p ~/.local/share/keyrings
             echo "ci" | gnome-keyring-daemon --daemonize --unlock --components=secrets
             export XDG_CURRENT_DESKTOP=GNOME
-            node scripts/smoke-app.mjs release/*.AppImage --appimage-extract-and-run --no-sandbox --password-store=gnome-libsecret
+            node scripts/smoke-app.mjs release/*.AppImage --appimage-extract-and-run --password-store=gnome-libsecret
           '
