@@ -1,8 +1,7 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { isAbsolute } from 'node:path';
-import { StringDecoder } from 'node:string_decoder';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import type { Logger } from 'pino';
@@ -14,6 +13,7 @@ import {
   type RunEvent,
   type RunSpec,
 } from './types';
+import { redactSecret, STDERR_CAP, stderrDiagnostic } from './redact';
 
 const environmentKeys = ['PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'USER', 'LOGNAME'] as const;
 const contentSchema = z.union([
@@ -88,7 +88,10 @@ export class ClaudeProvider implements AgentProvider {
       const kill = (): void => {
         if (!child?.pid) return;
         try {
-          if (process.platform === 'win32') child.kill('SIGKILL');
+          // Windows has no process groups: taskkill /T kills the whole tree (MCP servers, helpers), synchronously
+          // so it still completes during a shutdown/logoff session-end.
+          if (process.platform === 'win32')
+            spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
           else process.kill(-child.pid, 'SIGKILL');
         } catch {
           /* Already exited. */
@@ -117,11 +120,7 @@ export class ClaudeProvider implements AgentProvider {
       }, spec.timeoutMs);
       spec.signal.addEventListener('abort', abort, { once: true });
       const safeEvent = (event: RunEvent): RunEvent =>
-        RunEventSchema.parse(
-          apiKey
-            ? JSON.parse(JSON.stringify(event).replaceAll(JSON.stringify(apiKey).slice(1, -1), '[REDACTED]'))
-            : event,
-        );
+        RunEventSchema.parse(apiKey ? JSON.parse(redactSecret(JSON.stringify(event), apiKey)) : event);
       try {
         if (!Number.isSafeInteger(spec.timeoutMs) || spec.timeoutMs <= 0 || spec.timeoutMs > 2_147_483_647)
           throw new Error('Invalid timeout.');
@@ -156,7 +155,11 @@ export class ClaudeProvider implements AgentProvider {
             env,
             abortController: controller,
             model: spec.model ?? 'haiku',
-            persistSession: false,
+            // Transcripts are written only under the private config dir (API-key mode); login mode would write
+            // ~/.claude, which ADR 0016 forbids.
+            // shortcut: login-mode runs cannot resume and restart a fresh session, upgrade when the SDK takes a transcript dir.
+            persistSession: apiKey !== '',
+            ...(spec.resume && apiKey ? { resume: spec.sessionId } : { sessionId: spec.sessionId }),
             mcpServers: spec.mcpServers,
             strictMcpConfig: true,
             settingSources: [],
@@ -183,31 +186,23 @@ export class ClaudeProvider implements AgentProvider {
               });
               child = processChild;
               const key = apiKey;
-              // Keep enough lookahead to scrub a key that crosses the diagnostic byte limit.
-              const limit = 200 + Buffer.byteLength(key);
               let stderr = Buffer.alloc(0);
               let spawnFailed = false;
               processChild.stderr.on('data', (chunk: Buffer) => {
-                stderr = Buffer.concat([stderr, chunk.subarray(0, Math.max(0, limit - stderr.length))]);
+                stderr = Buffer.concat([stderr, chunk.subarray(0, Math.max(0, STDERR_CAP - stderr.length))]);
               });
               processChild.once('error', () => {
                 spawnFailed = true;
               });
               processChild.once('close', (code) => {
                 if (code === 0 && !spawnFailed) return;
-                let diagnostic = new StringDecoder('utf8').write(stderr.subarray(0, 200));
-                const keyStart = stderr.toString('utf8').lastIndexOf(key, diagnostic.length);
-                if (key && keyStart >= 0 && keyStart + key.length > diagnostic.length)
-                  diagnostic = diagnostic.slice(0, keyStart) + '[REDACTED]';
-                diagnostic = z
-                  .string()
-                  .parse(options.redact(key ? diagnostic.replaceAll(key, '[REDACTED]') : diagnostic));
+                const diagnostic = z.string().parse(options.redact(stderrDiagnostic(stderr, key)));
                 options.logger.debug({
                   run_id: spec.runId,
                   agent: 'claude',
                   error_class: spawnFailed ? 'ClaudeProcessError' : 'ClaudeProcessExit',
                   exit_code: code,
-                  stderr: new StringDecoder('utf8').write(Buffer.from(diagnostic).subarray(0, 200)),
+                  stderr: diagnostic,
                 });
               });
               return processChild;
@@ -256,7 +251,7 @@ export class ClaudeProvider implements AgentProvider {
             if (message.subtype !== 'success' || message.is_error) throw new Error('Claude result error.');
             failure = 'Claude returned an invalid structured result.';
             output = RunResultSchema.parse(spec.outputSchema.parse(message.structured_output));
-            if (apiKey && JSON.stringify(output).includes(JSON.stringify(apiKey).slice(1, -1))) {
+            if (apiKey && redactSecret(JSON.stringify(output), apiKey) !== JSON.stringify(output)) {
               throw new Error('Claude returned credential material.');
             }
           }

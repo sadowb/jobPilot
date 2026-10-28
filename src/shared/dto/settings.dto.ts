@@ -19,7 +19,7 @@ export type SitesConfig = z.infer<typeof SitesConfigSchema>;
 
 export const AppSettingsSchema = z.object({
   autopilot: z.boolean().default(false),
-  crew: z.number().int().min(1).max(32).default(6),
+  crew: z.number().int().min(1).max(32).default(4),
   submitMode: SubmitModeSchema.default('review'),
   sites: SitesConfigSchema.default({}),
   limits: SettingsLimitsSchema.default({

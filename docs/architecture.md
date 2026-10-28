@@ -11,7 +11,7 @@ flowchart LR
   Preload --> Main[Electron main process]
   Main --> Modules[Feature modules]
   Modules --> DB[(SQLCipher SQLite<br/>Drizzle + migrations)]
-  Modules --> Queue[liteque apply queue]
+  Modules --> Queue[run table + slot scheduler]
   Queue --> Agents[AgentProvider]
   Agents --> Claude[Claude Agent SDK]
   Agents --> Codex[Codex SDK]
@@ -27,7 +27,7 @@ flowchart LR
 
 ## Run state machine
 
-The run row is authoritative. The application service applies validated agent results and owns every transition. A partial unique index permits at most one `queued` or `running` run per application. Submission requires a pending approval bound to the current form hash unless auto mode is explicitly enabled.
+The run row is authoritative. The application service applies validated agent results and owns every transition. A partial unique index permits at most one `queued` or `running` run per application. Starting a new attempt retires a run still in `needs_you` or `awaiting_approval`: it moves to `failed` ("Replaced by a new attempt"), its pending approval to `expired`, and its tab is closed, so an application never holds two live attempts. Submission requires a pending approval bound to the current form hash unless auto mode is explicitly enabled.
 
 ```mermaid
 stateDiagram-v2
@@ -91,7 +91,7 @@ sequenceDiagram
   participant UI as Renderer
   participant IPC as Typed IPC
   participant App as Applications / Runs services
-  participant Q as liteque
+  participant Q as Slot scheduler (run table)
   participant Agent as AgentProvider
   participant Browser as BrowserProvider (Neo)
   participant DB as SQLCipher SQLite
@@ -99,8 +99,8 @@ sequenceDiagram
   UI->>IPC: Validated request
   IPC->>App: Origin-check + zod-parse
   App->>DB: Create application and queued run
-  App->>Q: Enqueue application
-  Q->>App: Claim run
+  App->>Q: Run is queued
+  Q->>App: Atomic claim: queued → running
   App->>DB: queued → running
   App->>Browser: Open run tab
   App->>Agent: RunSpec + MCP config + output schema
@@ -136,3 +136,7 @@ Crashes leave a trace: the logger initialises before `whenReady`; an uncaught ex
 ## Read models
 
 The screens query `v_application_list`, `v_up_next`, `v_inbox`, and `v_analytics_funnel`. They are read-only views defined in `drizzle/0001_views.sql` and represented by typed Drizzle handles alongside the related entities.
+
+## Shutdown
+
+One `before-quit` listener in `src/main/app/main.ts` prevents the first quit, stops owned work (runs, consolidation, memory, agents, backups) within 10 s, then calls `app.exit(0)`, which emits no further quit events. Windows sends no `before-quit` on shutdown/logoff, so each window's `session-end` runs the same cleanup; agent children are killed as a whole tree (`taskkill /T /F` on Windows, process group on macOS/Linux). Never call `app.quit()` from inside `before-quit` handling: Electron's `Browser::Quit()` overwrites its quitting state after the handlers return, so a nested quit leaves macOS running with no windows.

@@ -41,7 +41,10 @@ for await (const line of createInterface({ input: process.stdin })) {
     assert(['fixture-model', 'haiku', 'sonnet', 'opus'].includes(argument('--model')));
     assert(argument('--json-schema'));
     assert(process.argv.includes('--strict-mcp-config'));
-    assert(process.argv.includes('--no-session-persistence'));
+    // API-key mode persists the transcript under the private config dir so a restarted run can resume (ADR 0017).
+    // Login mode would write ~/.claude (ADR 0016), so it must stay non-persistent.
+    assert.equal(process.argv.includes('--no-session-persistence'), !process.env.ANTHROPIC_API_KEY);
+    assert(argument('--session-id') || argument('--resume'));
     assert.equal(argument('--setting-sources'), '');
     assert.equal(argument('--tools'), '');
     assert(!process.argv.includes('--plugin-dir'));

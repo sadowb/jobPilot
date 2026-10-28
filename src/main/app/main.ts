@@ -33,7 +33,13 @@ import {
   settingsHandlers,
 } from '../modules/settings/settings.controller';
 import { MemorySettingsService } from '../modules/settings/memory.service';
-import { broadcastThemeChanges, claudeKeyService, loadTheme } from '../modules/settings/settings.service';
+import {
+  broadcastThemeChanges,
+  claudeKeyService,
+  lastConsolidation,
+  loadTheme,
+  markConsolidated,
+} from '../modules/settings/settings.service';
 import { DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
@@ -42,6 +48,7 @@ import { installAppMenu } from './menu';
 import { registerAppScheme, serveRenderer } from './protocol';
 import { denyPermissionsByDefault, lockDown } from './security';
 import { createWindow } from './window';
+import { setTimeout as delay } from 'node:timers/promises';
 
 // Inspector-only journey access follows the exports below; shipped builds disable the inspector.
 export let databaseBackupTimer: NodeJS.Timeout | undefined;
@@ -111,7 +118,6 @@ if (!app.requestSingleInstanceLock()) {
 
     const backups = startDailyBackups(loggerFor('database'));
     databaseBackupTimer = backups.timer;
-    app.once('before-quit', backups.stop);
 
     // An active Node inspector requires the fuse enabled; shipped apps cannot enter this branch.
     if (process.env.JOBPILOT_E2E_PROVIDER === 'fake' && (!app.isPackaged || inspectorUrl() !== undefined)) {
@@ -126,13 +132,13 @@ if (!app.requestSingleInstanceLock()) {
         onReady: () => consolidation.start(),
       });
     consolidation = new ConsolidationWorker(
-      join(app.getPath('userData'), 'memory-queue.db'),
       (signal) => memory.consolidate(signal),
       (error) =>
         loggerFor('memory').error(
           { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
           'Memory consolidation failed',
         ),
+      { get: () => lastConsolidation(db), set: (at) => markConsolidated(db, at) },
     );
     if (memory.status().state === 'ready') consolidation.start();
     agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);
@@ -144,14 +150,30 @@ if (!app.requestSingleInstanceLock()) {
       memory,
     );
     await runsService.initialize();
-    let stoppingRuns = false;
+    // Stops owned work (agent children, Neo tabs, timers) once, bounded so a stuck stop cannot keep the app alive.
+    let stopping: Promise<void> | undefined;
+    const stopOwnedWork = () =>
+      (stopping ??= (async () => {
+        backups.stop();
+        agentSettings.stop();
+        await Promise.race([
+          Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).then((results) =>
+            results.forEach((result, index) => {
+              if (result.status === 'rejected')
+                logger.error({ step: ['runs', 'consolidation', 'memory'][index] }, 'Quit cleanup failed');
+            }),
+          ),
+          delay(10_000),
+        ]);
+      })());
     app.on('before-quit', (event) => {
-      if (stoppingRuns) return;
       event.preventDefault();
-      stoppingRuns = true;
-      agentSettings.stop();
-      void Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).finally(() => app.quit());
+      // app.exit() emits no further quit events, so the quit is never re-entered.
+      if (!stopping) void stopOwnedWork().finally(() => app.exit(0));
     });
+    // Windows sends no before-quit on shutdown/logoff (Electron app.md); session-end is the last chance to stop
+    // agent children. Aborts and kills run synchronously inside stop(); the OS then ends the process.
+    app.on('browser-window-created', (_event, window) => window.on('session-end', () => void stopOwnedWork()));
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);

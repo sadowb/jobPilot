@@ -137,7 +137,7 @@ describe('settings persistence and queue concurrency reuse', () => {
     const defaults = getSettings(testDb);
     expect(defaults).toEqual({
       autopilot: false,
-      crew: 6,
+      crew: 4,
       submitMode: 'review',
       sites: {},
       limits: { openTabs: 8, costPerDay: 5, runSeconds: 540, stuckSeconds: 120 },

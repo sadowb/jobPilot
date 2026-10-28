@@ -106,7 +106,7 @@ export function UpNextView({
   }, [state, dispatch, remove, hold, modalOpen]);
 
   const { data: settings } = useSettings();
-  const crewSize = settings?.crew ?? 6;
+  const crewSize = settings?.crew ?? 4;
 
   const crew = state.paused
     ? 'QUEUE PAUSED'

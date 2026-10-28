@@ -36,7 +36,10 @@ export function startSession(): void {
     );
   }
   writeFileSync(marker, JSON.stringify({ startedAt: new Date().toISOString(), pid: process.pid }), { mode: 0o600 });
-  app.once('quit', () => rmSync(marker, { force: true }));
+  const endCleanly = () => rmSync(marker, { force: true });
+  app.once('quit', endCleanly);
+  // Windows emits no 'quit' at shutdown/logoff (Electron app.md): a normal logoff must not read as a crash.
+  app.on('browser-window-created', (_event, window) => window.once('session-end', endCleanly));
   logger.info(
     { version: app.getVersion(), electron: process.versions.electron, crash_dumps: app.getPath('crashDumps') },
     'Session started',

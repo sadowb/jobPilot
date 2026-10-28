@@ -46,6 +46,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
           prompt: input.prompt,
           mcpServers: { form: { type: 'stdio', command: input.node, args: [input.mcp] } },
           outputSchema: main.RunResultSchema,
+          sessionId: '00000000-0000-4000-8000-000000000001',
           signal: new AbortController().signal,
           timeoutMs: 10_000,
         });
@@ -87,7 +88,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     await card().screenshot({ path: testInfo.outputPath('agent-card-first-run.png'), animations: 'disabled' });
     await expect(window.getByLabel('Agent model', { exact: true })).toHaveValue('haiku');
     await expect(window.getByLabel('Agent authentication')).toHaveValue('login');
-    await expect(window.getByLabel('Crew size')).toHaveValue('6');
+    await expect(window.getByLabel('Crew size')).toHaveValue('4');
     expect(
       await window.evaluate(async () => {
         try {

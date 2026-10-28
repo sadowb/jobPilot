@@ -21,7 +21,7 @@ async function inspect(app: ElectronApplication) {
       runs: main.db.$client
         .prepare('SELECT id, application_id, status, attempt, session_id, form_hash, error, result, tab_id FROM run')
         .all(),
-      approvals: main.db.$client.prepare('SELECT run_id, application_id, form_hash FROM approval').all(),
+      approvals: main.db.$client.prepare('SELECT run_id, application_id, form_hash, status FROM approval').all(),
       events: main.db.$client
         .prepare(
           "SELECT run_id, from_status, to_status, data FROM application_event WHERE type = 'run_transition' ORDER BY rowid",
@@ -115,7 +115,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     expect(await window.evaluate(() => window.jobpilot!.runs.pause())).toBe(true);
     const first = await window.evaluate(
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
-      applicationIds.slice(0, 7),
+      applicationIds.slice(0, 5),
     );
     expect(first.every((run) => run.status === 'queued')).toBe(true);
     const duplicate = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[0]!);
@@ -127,15 +127,15 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         async () =>
           (await window.evaluate(() => window.jobpilot!.runs.list())).filter((row) => row.status === 'running').length,
       )
-      .toBe(6);
+      .toBe(4);
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[4]!.id)?.status,
     ).toBe('queued');
-    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(6);
+    await expect.poll(async () => (await inspect(app!)).tabs.length).toBe(4);
     await window.evaluate(() => window.jobpilot!.runs.pause());
     await complete(
       app,
-      first.slice(0, 6).map((row) => row.id),
+      first.slice(0, 4).map((row) => row.id),
     );
     await expect
       .poll(
@@ -144,9 +144,9 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
             (row) => row.status === 'awaiting_approval',
           ).length,
       )
-      .toBe(6);
+      .toBe(4);
     const inspectedApprovals = await inspect(app);
-    for (const row of first.slice(0, 6)) {
+    for (const row of first.slice(0, 4)) {
       const approval = (inspectedApprovals.approvals as Array<{ run_id: string; form_hash: string }>).find(
         (a) => a.run_id === row.id,
       );
@@ -156,18 +156,18 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       expect(approval!.form_hash).not.toBe(`fake-${row.id}`);
     }
     expect(
-      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[6]!.id)?.status,
+      (await window.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === first[4]!.id)?.status,
     ).toBe('queued');
     await window.evaluate(() => window.jobpilot!.runs.resume());
-    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[6]!.id)).toBe(true);
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
+    await expect.poll(async () => (await inspect(app!)).tabs.includes(first[4]!.id)).toBe(true);
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[4]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[6]!.id)).toMatchObject({
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), first[4]!.id)).toMatchObject({
       status: 'cancelled',
     });
-    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[6]!.id);
-    expect((await inspect(app)).tabs).not.toContain(first[6]!.id);
+    await expect.poll(async () => (await inspect(app!)).aborted).toContain(first[4]!.id);
+    expect((await inspect(app)).tabs).not.toContain(first[4]!.id);
 
     const invalid = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[7]!);
     await expect.poll(async () => (await inspect(app!)).tabs.includes(invalid.id)).toBe(true);
@@ -239,6 +239,11 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     const retry = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
     expect(retry.id).not.toBe(needsAnswersRun.id);
     const retryState = await inspect(app);
+    // The run that waited on the owner is retired, not left open beside the new attempt.
+    expect(retryState.runs.find((r) => (r as { id: string }).id === needsAnswersRun.id)).toMatchObject({
+      status: 'failed',
+      error: 'Replaced by a new attempt',
+    });
     const retryRow = (retryState.runs as Array<{ id: string; attempt: number; session_id: string | null }>).find(
       (r) => r.id === retry.id,
     );
@@ -257,10 +262,24 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       (a) => a.run_id === retry.id,
     );
     expect(retryApproval?.form_hash).toBe(createHash('sha256').update(`fake-form-${retry.id}`).digest('hex'));
+    expect(retryApproval).toMatchObject({ status: 'pending' });
+    expect((await inspect(app)).tabs).toContain(retry.id);
 
     for (const status of ['blocked', 'submitted']) {
       const next = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
       await expect.poll(async () => (await inspect(app!)).tabs.includes(next.id)).toBe(true);
+      if (status === 'blocked') {
+        // Starting again while an approval is pending expires that approval and closes the replaced run's tab.
+        const replaced = await inspect(app);
+        expect(replaced.runs.find((r) => (r as { id: string }).id === retry.id)).toMatchObject({
+          status: 'failed',
+          error: 'Replaced by a new attempt',
+        });
+        expect(
+          (replaced.approvals as Array<{ run_id: string; status: string }>).find((a) => a.run_id === retry.id),
+        ).toMatchObject({ status: 'expired' });
+        expect(replaced.tabs).not.toContain(retry.id);
+      }
       await complete(app, [next.id], status);
       await expect
         .poll(
@@ -275,7 +294,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     await window.evaluate(() => window.jobpilot!.runs.pause());
     const queued = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[11]!);
     const before = await inspect(app);
-    for (const row of first.slice(0, 6)) {
+    for (const row of first.slice(0, 4)) {
       expect(before.events.filter((event) => (event as { run_id: string }).run_id === row.id)).toMatchObject([
         { from_status: null, to_status: 'queued' },
         { from_status: 'queued', to_status: 'running' },
@@ -283,7 +302,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       ]);
     }
     expect(before.runs.find((row) => (row as { id: string }).id === invalid.id)).toMatchObject({ result: null });
-    // SIGKILL bypasses graceful cleanup and leaves a genuine running row + liteque allocation.
+    // SIGKILL bypasses graceful cleanup and leaves a genuine running row.
     const child = app.process();
     const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
     child.kill('SIGKILL');
@@ -300,20 +319,28 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       )
       .toBe('awaiting_approval');
     const recovered = await inspect(app);
-    expect(recovered.runs.find((row) => (row as { id: string }).id === interrupted.id)).toMatchObject({
-      status: 'failed',
-      error: 'app restarted',
-    });
+    // The interrupted run is requeued and resumed (ADR 0017): same row, second attempt.
+    await expect
+      .poll(
+        async () =>
+          (await restarted.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === interrupted.id)
+            ?.status,
+      )
+      .toBe('awaiting_approval');
     expect(recovered.events).toContainEqual(
       expect.objectContaining({
         run_id: interrupted.id,
         from_status: 'running',
-        to_status: 'failed',
+        to_status: 'queued',
         data: JSON.stringify({ reason: 'app restarted' }),
       }),
     );
+    // The resumed run finished and waits for approval; starting again replaces it instead of leaving two live attempts.
     const replacement = await restarted.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[10]!);
     expect(replacement.id).not.toBe(interrupted.id);
+    expect(
+      (await restarted.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === interrupted.id),
+    ).toMatchObject({ status: 'failed' });
     await expect
       .poll(
         async () =>

@@ -1,85 +1,92 @@
-import { chmodSync } from 'node:fs';
-import { buildDBClient, Runner, SqliteQueue } from 'liteque';
-import { z } from 'zod';
-
-const PayloadSchema = z.object({ runId: z.ulid() }).strict();
-type Payload = z.infer<typeof PayloadSchema>;
-
-// Gate dequeue itself: Runner.stop() can still claim a job while waiting for a slot.
-class ApplyQueue extends SqliteQueue<Payload> {
-  paused = true;
-
-  override async attemptDequeue(options: { timeoutSecs: number }) {
-    return this.paused ? null : super.attemptDequeue(options);
-  }
+export interface ApplyHooks {
+  /** Slots to fill right now; read live so a crew-size change applies to the next start. */
+  crew: () => number;
+  /** Atomically move the oldest queued run to running and return its id (the run table is the queue, ADR 0017). */
+  claim: () => string | undefined;
+  execute: (runId: string, signal: AbortSignal) => Promise<void>;
+  closeTab: (runId: string) => Promise<void>;
+  onError: (error: unknown, runId?: string) => void;
+  stuck: {
+    afterMs: () => number;
+    progressAt: (runId: string) => number | undefined;
+    /** Called before the run is aborted so the owner-facing status is set first. */
+    onStuck: (runId: string) => void;
+  };
 }
 
+const WATCHDOG_MS = 5_000;
+
+/** Slot scheduler: at most `crew()` claimed runs execute at once. Holds no queue of its own. */
 export class ApplyWorker {
-  private readonly database: ReturnType<typeof buildDBClient>;
-  private readonly queue: ApplyQueue;
-  private readonly runner: Runner<Payload>;
   private readonly active = new Map<string, AbortController>();
-  private loop?: Promise<void>;
+  private readonly running = new Set<Promise<void>>();
+  private paused = true;
+  private stopping = false;
+  private watchdog?: NodeJS.Timeout;
 
-  constructor(
-    file: string,
-    concurrency: number,
-    execute: (runId: string, signal: AbortSignal) => Promise<void>,
-    private readonly closeTab: (runId: string) => Promise<void>,
-    private readonly onError: (error: unknown, runId?: string) => void,
-    timeoutMs = 900_000,
-  ) {
-    this.database = buildDBClient(file, { runMigrations: true });
-    chmodSync(file, 0o600);
-    this.queue = new ApplyQueue('apply', this.database, {
-      defaultJobArgs: { numRetries: 0 },
-      keepFailedJobs: false,
-    });
-    // The run rows are authoritative. Startup re-enqueues queued rows after failing interrupted runs.
-    this.database.$client.prepare('DELETE FROM tasks WHERE queue = ?').run('apply');
-    this.runner = new Runner(
-      this.queue,
-      {
-        run: async ({ data, abortSignal }) => {
-          const controller = new AbortController();
-          this.active.set(data.runId, controller);
-          try {
-            await execute(data.runId, AbortSignal.any([controller.signal, abortSignal]));
-          } finally {
-            this.active.delete(data.runId);
-          }
-        },
-        onError: async ({ error, data }) => this.onError(error, data?.runId),
-      },
-      { concurrency, pollIntervalMs: 25, timeoutSecs: Math.ceil(timeoutMs / 1000) + 60, validator: PayloadSchema },
-    );
-  }
+  constructor(private readonly hooks: ApplyHooks) {}
 
-  async enqueue(runId: string): Promise<void> {
-    await this.queue.enqueue(PayloadSchema.parse({ runId }), { idempotencyKey: runId });
+  /** A run row was set to `queued`; fill any free slot. */
+  enqueue(): void {
+    this.pump();
   }
 
   pause(): boolean {
-    this.queue.paused = true;
+    this.paused = true;
     return true;
   }
 
   resume(): boolean {
-    this.queue.paused = false;
-    this.loop ??= this.runner.run().catch((error) => this.onError(error));
+    this.paused = false;
+    this.watchdog ??= setInterval(() => this.checkStuck(), WATCHDOG_MS).unref();
+    this.pump();
     return false;
   }
 
   async cancel(runId: string): Promise<void> {
     this.active.get(runId)?.abort();
-    await this.closeTab(runId);
+    await this.hooks.closeTab(runId);
   }
 
   async stop(): Promise<void> {
-    this.pause();
-    this.runner.stop();
+    this.stopping = true;
+    clearInterval(this.watchdog);
     await Promise.all([...this.active.keys()].map((id) => this.cancel(id)));
-    await this.loop;
-    this.database.$client.close();
+    await Promise.allSettled(this.running);
+  }
+
+  private pump(): void {
+    while (!this.paused && !this.stopping && this.active.size < this.hooks.crew()) {
+      let runId: string | undefined;
+      try {
+        runId = this.hooks.claim();
+      } catch (error) {
+        this.hooks.onError(error);
+        return;
+      }
+      if (!runId) return;
+      const id = runId;
+      const controller = new AbortController();
+      this.active.set(id, controller);
+      const run: Promise<void> = this.hooks
+        .execute(id, controller.signal)
+        .catch((error: unknown) => this.hooks.onError(error, id))
+        .finally(() => {
+          this.active.delete(id);
+          this.running.delete(run);
+          this.pump();
+        });
+      this.running.add(run);
+    }
+  }
+
+  private checkStuck(): void {
+    const limit = this.hooks.stuck.afterMs();
+    for (const [id, controller] of this.active) {
+      const at = this.hooks.stuck.progressAt(id);
+      if (controller.signal.aborted || at === undefined || Date.now() - at <= limit) continue;
+      this.hooks.stuck.onStuck(id);
+      controller.abort();
+    }
   }
 }
