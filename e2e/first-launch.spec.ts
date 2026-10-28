@@ -73,6 +73,11 @@ test('fresh profile opens onboarding and contains only real empty states', async
       if (step === 4) {
         await window.getByRole('radio', { name: 'No, I don’t' }).click();
         await window.getByRole('radio', { name: '$90k' }).click();
+        await window.getByRole('button', { name: '← Back' }).click();
+        await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/3');
+        await window.getByRole('button', { name: 'Continue' }).click();
+        await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/4');
+        await expect(window.getByText('2 of 3')).toBeVisible();
         await capture('onboarding-4-answered');
         await window.getByRole('button', { name: 'Continue' }).click();
         await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/5');
@@ -92,6 +97,8 @@ test('fresh profile opens onboarding and contains only real empty states', async
     }
     await window.getByRole('button', { name: 'Open dashboard' }).click();
     await expect(window.getByText('No applications yet', { exact: true })).toBeVisible();
+    const completed = await window.evaluate(() => window.jobpilot!.profile.get());
+    expect(typeof completed.onboardingCompletedAt).toBe('number');
     await expect(window.getByRole('button', { name: 'All 0', exact: true })).toBeVisible();
     await expect(window.locator('body')).not.toContainText('No jobs match “');
     await expect(window.getByRole('link', { name: 'Inbox', exact: true })).toBeVisible();

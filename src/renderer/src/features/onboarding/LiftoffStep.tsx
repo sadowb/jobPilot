@@ -1,7 +1,9 @@
-import { cn } from '../../components/ui';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button, cn } from '../../components/ui';
 import { useApplications } from '../../lib/api';
 import { ANSWERS_V2_KEY, readAnswersV2 } from '../profile/answers';
-import { readProfileData } from '../profile/profileStorage';
+import { readProfileData, saveProfileData } from '../profile/profileStorage';
 import { useDocumentCount } from '../profile/useDocumentCount';
 import { GoButton, S } from '../shared-ui';
 import { FACT_QUESTIONS } from './data';
@@ -45,6 +47,17 @@ export function LiftoffStep() {
   const cvs = useDocumentCount();
   const facts = answeredFacts();
   const jobs = useApplications().data?.length ?? null;
+  const navigate = useNavigate();
+  const [opening, setOpening] = useState(false);
+  const openDashboard = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      await saveProfileData('onboardingCompletedAt', Date.now());
+    } finally {
+      void navigate('/');
+    }
+  };
   return (
     <OnboardingFrame step={5} minHeight={682}>
       <StepHeading
@@ -64,9 +77,9 @@ export function LiftoffStep() {
         />
       </ul>
       <div className="flex gap-4">
-        <GoButton to="/" variant="primary">
+        <Button variant="primary" disabled={opening} onClick={() => void openDashboard()}>
           Open dashboard
-        </GoButton>
+        </Button>
       </div>
     </OnboardingFrame>
   );

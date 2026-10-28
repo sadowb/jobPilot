@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { FACT_QUESTIONS } from '../src/renderer/src/features/onboarding/data';
 import { activeQuestion, answer, answeredCount, emptyAnswers } from '../src/renderer/src/features/onboarding/facts';
 import { dotState, nextPath, parseStep, stepPath } from '../src/renderer/src/features/onboarding/steps';
+import { EMPTY_PROFILE } from '../src/renderer/src/features/profile/personal';
+import { ProfileRepository } from '../src/main/modules/profile/profile.repository';
+import { ProfileDataSchema, ProfileSaveSchema } from '../src/shared/dto';
 
 describe('onboarding steps', () => {
   it('parses only 1..5', () => {
@@ -56,5 +59,94 @@ describe('fact answers', () => {
     a = answer(a, 1, q2.options[0]!);
     a = answer(a, 0, q1.options[1]!);
     expect(a).toEqual([q1.options[1], q2.options[0], null]);
+  });
+});
+
+describe('onboarding completion persistence and migration (#135)', () => {
+  it('defaults onboardingCompletedAt to null for fresh profiles in ProfileDataSchema', () => {
+    const fresh = ProfileDataSchema.parse({ personal: null, markets: [], answers: null });
+    expect(fresh.onboardingCompletedAt).toBeNull();
+  });
+
+  it('accepts integer timestamps and rejects invalid values in ProfileDataSchema', () => {
+    const timestamp = Date.now();
+    const completed = ProfileDataSchema.parse({
+      personal: null,
+      markets: [],
+      answers: null,
+      onboardingCompletedAt: timestamp,
+    });
+    expect(completed.onboardingCompletedAt).toBe(timestamp);
+
+    expect(() =>
+      ProfileDataSchema.parse({
+        personal: null,
+        markets: [],
+        answers: null,
+        onboardingCompletedAt: -1,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      ProfileDataSchema.parse({
+        personal: null,
+        markets: [],
+        answers: null,
+        onboardingCompletedAt: 'done',
+      }),
+    ).toThrow();
+  });
+
+  it('validates onboardingCompletedAt saves via ProfileSaveSchema', () => {
+    const timestamp = 1740000000000;
+    const savePayload = ProfileSaveSchema.parse({
+      section: 'onboardingCompletedAt',
+      value: timestamp,
+    });
+    expect(savePayload).toEqual({ section: 'onboardingCompletedAt', value: timestamp });
+
+    const nullPayload = ProfileSaveSchema.parse({
+      section: 'onboardingCompletedAt',
+      value: null,
+    });
+    expect(nullPayload).toEqual({ section: 'onboardingCompletedAt', value: null });
+  });
+
+  it('treats existing row with non-empty personal profile as completed in ProfileRepository', () => {
+    type Db = ConstructorParameters<typeof ProfileRepository>[0];
+    const emptyRepo = new ProfileRepository({
+      select: () => ({ from: () => ({ get: () => undefined }) }),
+    } as unknown as Db);
+    expect(emptyRepo.read()).toEqual({
+      personal: null,
+      markets: [],
+      answers: null,
+      onboardingCompletedAt: null,
+    });
+
+    const uncompletedRepo = new ProfileRepository({
+      select: () => ({
+        from: () => ({
+          get: () => ({ preferences: { personal: null, markets: [], answers: null } }),
+        }),
+      }),
+    } as unknown as Db);
+    expect(uncompletedRepo.read().onboardingCompletedAt).toBeNull();
+
+    const existingRepo = new ProfileRepository({
+      select: () => ({
+        from: () => ({
+          get: () => ({
+            updatedAt: 1740000000000,
+            preferences: {
+              personal: { ...EMPTY_PROFILE, firstName: 'Sara', lastName: 'Benali' },
+              markets: [],
+              answers: null,
+            },
+          }),
+        }),
+      }),
+    } as unknown as Db);
+    expect(existingRepo.read().onboardingCompletedAt).toBe(1740000000000);
   });
 });

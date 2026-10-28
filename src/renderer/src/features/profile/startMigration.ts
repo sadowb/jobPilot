@@ -64,6 +64,65 @@ export function migrateStartAnswer(store: KeyValueStore = localStorage): void {
   }
 }
 
+interface IDBDatabaseShim {
+  objectStoreNames: { contains(name: string): boolean };
+  transaction(
+    name: string,
+    mode: string,
+  ): {
+    objectStore(name: string): {
+      count(): { onsuccess: (() => void) | null; onerror: (() => void) | null; result: number };
+    };
+  };
+  close(): void;
+}
+
+interface IDBFactoryShim {
+  open(
+    name: string,
+    version: number,
+  ): {
+    result: IDBDatabaseShim;
+    onsuccess: (() => void) | null;
+    onerror: (() => void) | null;
+  };
+}
+
+async function hasStoredDocuments(): Promise<boolean> {
+  const idb = (globalThis as Record<string, unknown>).indexedDB as IDBFactoryShim | undefined;
+  if (!idb) return false;
+  return new Promise((resolve) => {
+    try {
+      const req = idb.open('jobpilot-profile', 1);
+      req.onerror = () => resolve(false);
+      req.onsuccess = () => {
+        const db = req.result;
+        try {
+          if (!db.objectStoreNames.contains('documents')) {
+            db.close();
+            return resolve(false);
+          }
+          const tx = db.transaction('documents', 'readonly');
+          const countReq = tx.objectStore('documents').count();
+          countReq.onsuccess = () => {
+            db.close();
+            resolve(countReq.result > 0);
+          };
+          countReq.onerror = () => {
+            db.close();
+            resolve(false);
+          };
+        } catch {
+          db.close();
+          resolve(false);
+        }
+      };
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
 /** Only remove legacy values after the main-process transaction has committed. */
 export async function initializeProfile(
   bridge: JobPilotBridge['profile'],
@@ -71,17 +130,24 @@ export async function initializeProfile(
 ): Promise<ProfileData> {
   const keys = [PROFILE_KEY, MARKETS_KEY, ANSWERS_KEY, ANSWERS_V2_KEY];
   if (await bridge.migrationDone()) {
-    const data = await bridge.get();
+    let data = await bridge.get();
+    if (data.onboardingCompletedAt === null && data.personal !== null) {
+      data = await bridge.save({ section: 'onboardingCompletedAt', value: Date.now() });
+    }
     for (const key of keys) store.removeItem(key);
     return data;
   }
   const personal = readProfile(store.getItem(PROFILE_KEY));
   const answers = readAnswersV2(store.getItem(ANSWERS_V2_KEY), store.getItem(ANSWERS_KEY));
   const plan = planStartMigration(personal, answers);
+  const resolvedPersonal = plan.profile ?? (store.getItem(PROFILE_KEY) === null ? null : personal);
+  const hasDocs = await hasStoredDocuments();
+  const completed = resolvedPersonal !== null || hasDocs;
   const data = await bridge.migrate({
-    personal: plan.profile ?? (store.getItem(PROFILE_KEY) === null ? null : personal),
+    personal: resolvedPersonal,
     markets: readMarkets(store.getItem(MARKETS_KEY)),
     answers: plan.answers ?? answers,
+    onboardingCompletedAt: completed ? Date.now() : null,
   });
   for (const key of keys) store.removeItem(key);
   return data;

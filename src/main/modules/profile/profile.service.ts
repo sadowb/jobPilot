@@ -25,10 +25,16 @@ export function migrateProfile(input: ProfileData): ProfileData {
     const repository = new ProfileRepository(tx);
     if (!profileMigrationDone(tx)) {
       const current = repository.read();
+      const personal = current.personal ?? input.personal;
+      const markets = current.markets.length ? current.markets : input.markets;
+      const answers = current.answers ?? input.answers;
+      const onboardingCompletedAt =
+        current.onboardingCompletedAt ?? input.onboardingCompletedAt ?? (personal !== null ? Date.now() : null);
       repository.write({
-        personal: current.personal ?? input.personal,
-        markets: current.markets.length ? current.markets : input.markets,
-        answers: current.answers ?? input.answers,
+        personal,
+        markets,
+        answers,
+        onboardingCompletedAt,
       });
       markProfileMigrated(tx);
     }

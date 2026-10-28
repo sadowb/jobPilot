@@ -8,7 +8,12 @@ export class ProfileRepository {
 
   read(): ProfileData {
     const row = this.db.select().from(profile).get();
-    return row ? ProfileDataSchema.parse(row.preferences) : { personal: null, markets: [], answers: null };
+    if (!row) return { personal: null, markets: [], answers: null, onboardingCompletedAt: null };
+    const data = ProfileDataSchema.parse(row.preferences);
+    if (data.onboardingCompletedAt === null && data.personal !== null) {
+      return { ...data, onboardingCompletedAt: row.updatedAt ?? row.createdAt ?? Date.now() };
+    }
+    return data;
   }
 
   write(data: ProfileData): void {

@@ -4,7 +4,7 @@ import { ANSWERS_V2_KEY } from './answers';
 import { MARKETS_KEY } from './markets';
 import { PROFILE_KEY } from './personal';
 
-let data: ProfileData = { personal: null, markets: [], answers: null };
+let data: ProfileData = { personal: null, markets: [], answers: null, onboardingCompletedAt: null };
 
 export function setProfileData(next: ProfileData): void {
   data = next;
@@ -18,7 +18,15 @@ export function readProfileData(key: string): string | null {
 
 export async function saveProfileData(key: string, value: unknown): Promise<void> {
   const section =
-    key === PROFILE_KEY ? 'personal' : key === MARKETS_KEY ? 'markets' : key === ANSWERS_V2_KEY ? 'answers' : null;
+    key === PROFILE_KEY
+      ? 'personal'
+      : key === MARKETS_KEY
+        ? 'markets'
+        : key === ANSWERS_V2_KEY
+          ? 'answers'
+          : key === 'onboardingCompletedAt'
+            ? 'onboardingCompletedAt'
+            : null;
   if (!section) throw new Error('Unknown profile section');
   setProfileData(await saveProfile(ProfileSaveSchema.parse({ section, value })));
 }

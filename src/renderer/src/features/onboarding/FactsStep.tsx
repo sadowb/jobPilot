@@ -41,6 +41,11 @@ export function FactsStep() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const count = FACT_QUESTIONS.filter((q) => choices[q.id]).length;
+  const onPick = (id: string, value: string) => {
+    const nextChoices = { ...choices, [id]: value };
+    setChoices(nextChoices);
+    void saveChoices(nextChoices).catch(() => setError('Could not save your answers. Please try again.'));
+  };
   // Navigate only after the save succeeds, so a failed write never looks saved.
   const next = async () => {
     if (count) {
@@ -95,7 +100,7 @@ export function FactsStep() {
               label={q.prompt}
               options={q.options.map((o) => ({ value: o, label: o }))}
               value={choices[q.id] ?? ''}
-              onChange={(v) => setChoices((c) => ({ ...c, [q.id]: v }))}
+              onChange={(v) => onPick(q.id, v)}
             />
           </div>
         ))}
