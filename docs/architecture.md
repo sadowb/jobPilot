@@ -133,4 +133,4 @@ The screens query `v_application_list`, `v_up_next`, `v_inbox`, and `v_analytics
 
 ## Shutdown
 
-One `before-quit` listener in `src/main/app/main.ts` prevents the first quit, stops owned work (runs, consolidation, memory, agents, backups) within 10 s, then calls `app.exit(0)`, which emits no further quit events. Never call `app.quit()` from inside `before-quit` handling: Electron's `Browser::Quit()` overwrites its quitting state after the handlers return, so a nested quit leaves macOS running with no windows.
+One `before-quit` listener in `src/main/app/main.ts` prevents the first quit, stops owned work (runs, consolidation, memory, agents, backups) within 10 s, then calls `app.exit(0)`, which emits no further quit events. Windows sends no `before-quit` on shutdown/logoff, so each window's `session-end` runs the same cleanup; agent children are killed as a whole tree (`taskkill /T /F` on Windows, process group on macOS/Linux). Never call `app.quit()` from inside `before-quit` handling: Electron's `Browser::Quit()` overwrites its quitting state after the handlers return, so a nested quit leaves macOS running with no windows.

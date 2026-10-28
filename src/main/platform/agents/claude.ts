@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { isAbsolute } from 'node:path';
@@ -88,7 +88,10 @@ export class ClaudeProvider implements AgentProvider {
       const kill = (): void => {
         if (!child?.pid) return;
         try {
-          if (process.platform === 'win32') child.kill('SIGKILL');
+          // Windows has no process groups: taskkill /T kills the whole tree (MCP servers, helpers), synchronously
+          // so it still completes during a shutdown/logoff session-end.
+          if (process.platform === 'win32')
+            spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
           else process.kill(-child.pid, 'SIGKILL');
         } catch {
           /* Already exited. */

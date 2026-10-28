@@ -144,25 +144,30 @@ if (!app.requestSingleInstanceLock()) {
       memory,
     );
     await runsService.initialize();
-    let quitting = false;
+    // Stops owned work (agent children, Neo tabs, timers) once, bounded so a stuck stop cannot keep the app alive.
+    let stopping: Promise<void> | undefined;
+    const stopOwnedWork = () =>
+      (stopping ??= (async () => {
+        backups.stop();
+        agentSettings.stop();
+        await Promise.race([
+          Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).then((results) =>
+            results.forEach((result, index) => {
+              if (result.status === 'rejected')
+                logger.error({ step: ['runs', 'consolidation', 'memory'][index] }, 'Quit cleanup failed');
+            }),
+          ),
+          delay(10_000),
+        ]);
+      })());
     app.on('before-quit', (event) => {
       event.preventDefault();
-      if (quitting) return;
-      quitting = true;
-      backups.stop();
-      agentSettings.stop();
-      // Stop owned work (agent children, Neo tabs), then app.exit(): unlike app.quit() it emits no quit events,
-      // so the quit is never re-entered. Bounded so a stuck stop cannot keep the app alive.
-      void Promise.race([
-        Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).then((results) =>
-          results.forEach((result, index) => {
-            if (result.status === 'rejected')
-              logger.error({ step: ['runs', 'consolidation', 'memory'][index] }, 'Quit cleanup failed');
-          }),
-        ),
-        delay(10_000),
-      ]).finally(() => app.exit(0));
+      // app.exit() emits no further quit events, so the quit is never re-entered.
+      if (!stopping) void stopOwnedWork().finally(() => app.exit(0));
     });
+    // Windows sends no before-quit on shutdown/logoff (Electron app.md); session-end is the last chance to stop
+    // agent children. Aborts and kills run synchronously inside stop(); the OS then ends the process.
+    app.on('browser-window-created', (_event, window) => window.on('session-end', () => void stopOwnedWork()));
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
