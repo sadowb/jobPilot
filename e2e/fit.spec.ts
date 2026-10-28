@@ -38,6 +38,9 @@ test('Profile primary action fits a short window without scrolling', async ({}, 
       location.hash = '#/profile';
     });
     expect(await bottomOf(window, 'button', 'Add a CV')).toBeLessThanOrEqual(700);
+    // The tab bar scrolls sideways only; content taller than the bar would add a stray vertical scrollbar.
+    const tabs = window.getByRole('tablist', { name: 'Profile sections' });
+    expect(await tabs.evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(0);
     for (const theme of ['light', 'dark'] as const) {
       await window.evaluate(async (source) => {
         await window.jobpilot!.theme.set(source);

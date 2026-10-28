@@ -95,7 +95,7 @@ export function ProfileTabs({
   };
   return (
     <div
-      className="mb-6 flex gap-7 overflow-x-auto border-b border-line [@media(height<=760px)]:mb-4"
+      className="mb-6 flex gap-7 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-line)] [@media(height<=760px)]:mb-4"
       role="tablist"
       aria-label="Profile sections"
     >
@@ -113,7 +113,7 @@ export function ProfileTabs({
             aria-selected={tab === item.id}
             aria-controls={panelId(item.id)}
             tabIndex={tab === item.id ? 0 : -1}
-            className="-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 border-b-transparent bg-transparent p-0 whitespace-nowrap aria-selected:border-b-ink aria-selected:font-[650]! aria-selected:text-ink!"
+            className="inline-flex min-h-11 items-center gap-2 border-b-2 border-b-transparent bg-transparent p-0 whitespace-nowrap aria-selected:border-b-ink aria-selected:font-[650]! aria-selected:text-ink!"
             onClick={() => onTab(item.id)}
             onKeyDown={(e) => move(e, i)}
           >
