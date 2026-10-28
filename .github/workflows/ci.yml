@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: # release.yml dispatches this on the release PR branch (#129)
 permissions:
   contents: read
   pull-requests: read

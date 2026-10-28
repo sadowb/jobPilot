@@ -6,6 +6,8 @@ Builds are published on the [Releases page](https://github.com/sadowb/jobPilot/r
 | --------------------- | ------------------------------ |
 | macOS (Apple silicon) | `JobPilot-X.Y.Z-arm64.dmg`     |
 | Windows (x64)         | `JobPilot-X.Y.Z-x64-setup.exe` |
+| Ubuntu / Debian (x64) | `JobPilot-X.Y.Z-amd64.deb`     |
+| Other Linux (x64)     | `JobPilot-X.Y.Z-x64.AppImage`  |
 
 Every release is marked **pre-release** while the app is unfinished. Expect missing features and rough edges; your data stays in a local, encrypted database either way.
 
@@ -28,4 +30,4 @@ gh attestation verify JobPilot-X.Y.Z-arm64.dmg -R sadowb/jobPilot
 
 ## How releases are made
 
-Commits to `main` follow Conventional Commits. [release-please](https://github.com/googleapis/release-please) keeps one "Release vX.Y.Z" pull request open with the version bump and changelog. When a maintainer merges it, the same workflow ([`release.yml`](../.github/workflows/release.yml)) runs all checks and end-to-end journeys, builds and signs the macOS app with the project's code-signing identity ([ADR 0014](adr/0014-stable-self-signed-code-signing.md)), builds the Windows installer, attests every file and publishes the release.
+Commits to `main` follow Conventional Commits. [release-please](https://github.com/googleapis/release-please) keeps one "Release vX.Y.Z" pull request open with the version bump and changelog. GitHub starts no workflows for that PR (it is opened with `GITHUB_TOKEN`), so `release.yml` dispatches `ci.yml` on its branch after every update; the checks appear on the PR. The PR-only upgrade journey is skipped there, since the release PR only bumps versions. When a maintainer merges it, the same workflow ([`release.yml`](../.github/workflows/release.yml)) runs all checks and end-to-end journeys, builds and signs the macOS app with the project's code-signing identity ([ADR 0014](adr/0014-stable-self-signed-code-signing.md)), builds the Windows installer, attests every file and publishes the release.
