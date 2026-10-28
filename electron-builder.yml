@@ -28,5 +28,18 @@ nsis:
 linux:
   target: [AppImage, deb]
   category: Office
+  maintainer: sadowb <sadowb@users.noreply.github.com>
+  vendor: sadowb <sadowb@users.noreply.github.com>
   artifactName: JobPilot-${version}-x64.${ext}
+deb:
+  artifactName: JobPilot-${version}-amd64.${ext}
+  maintainer: sadowb <sadowb@users.noreply.github.com>
+  vendor: sadowb <sadowb@users.noreply.github.com>
+  depends:
+    - libsecret-1-0
+    - libnss3
+    - libgtk-3-0
+    - libnotify4
+    - libxss1
+    - 'libasound2t64 | libasound2'
 publish: null

@@ -55,7 +55,14 @@ Everything stays on your computer: an encrypted local database, no account, no s
 
 ## Download
 
-Get the latest build from [Releases](https://github.com/sadowb/jobPilot/releases): a DMG for macOS (Apple silicon) or an installer for Windows (x64). Builds are pre-releases while the app is unfinished and are not notarized, so each OS asks you to confirm the first open. Steps and how to verify a download (`gh attestation verify`) are in [docs/RELEASE.md](docs/RELEASE.md).
+Get the latest build from [Releases](https://github.com/sadowb/jobPilot/releases):
+
+- **macOS (Apple silicon)**: DMG (`JobPilot-<version>-arm64.dmg`)
+- **Windows (x64)**: installer (`JobPilot-<version>-x64-setup.exe`)
+- **Ubuntu / Debian**: `.deb` (`sudo apt install ./JobPilot-<version>-amd64.deb`)
+- **Other Linux distros**: AppImage (`JobPilot-<version>-x64.AppImage`; note it needs `libfuse2` and unprivileged user namespaces)
+
+Builds are pre-releases while the app is unfinished and are not notarized, so each OS asks you to confirm the first open. Steps and how to verify a download (`gh attestation verify`) are in [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Status
 

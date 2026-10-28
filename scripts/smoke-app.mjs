@@ -37,6 +37,8 @@ export function resolveExecutablePath(inputPath) {
     if (appImage) return join(dir, appImage);
     const exe = files.find((f) => f.endsWith('.exe') && !f.toLowerCase().startsWith('uninstall'));
     if (exe) return join(dir, exe);
+    const linuxBin = files.find((f) => f === 'jobpilot' || f === 'JobPilot');
+    if (linuxBin) return join(dir, linuxBin);
   }
   return inputPath;
 }
