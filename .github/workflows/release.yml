@@ -155,18 +155,18 @@ jobs:
           security list-keychains -d user -s "$RUNNER_TEMP/shipped.keychain"
           security default-keychain -s "$RUNNER_TEMP/shipped.keychain"
           node scripts/verify-shipped.mjs
+      - name: Build arm64 DMG from the tested .app
+        run: npx electron-builder --mac dmg --arm64 --prepackaged release/mac-arm64/JobPilot.app
       - name: Download SPDX dependency SBOM
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" --jq '.sbom' > jobpilot.spdx.json
-      - name: Build arm64 DMG from the tested .app
-        run: npx electron-builder --mac dmg --arm64 --prepackaged release/mac-arm64/JobPilot.app
+        run: gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" --jq '.sbom' > release/jobpilot.spdx.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-mac
           path: |
             release/*.dmg
-            jobpilot.spdx.json
+            release/jobpilot.spdx.json
           if-no-files-found: error
       - name: Delete release signing identity
         if: always()

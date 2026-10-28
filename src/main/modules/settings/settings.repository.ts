@@ -7,16 +7,24 @@ const key = 'profile.localStorageMigration.v1';
 export class SettingsRepository {
   constructor(private readonly db: JobPilotDb) {}
 
+  getSetting(key: string): unknown {
+    return this.db.select().from(settings).where(eq(settings.key, key)).get()?.value;
+  }
+
+  setSetting(key: string, value: unknown): void {
+    this.db
+      .insert(settings)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: Date.now() } })
+      .run();
+  }
+
   anthropicKey(): unknown {
-    return this.db.select().from(settings).where(eq(settings.key, 'secrets.anthropic')).get()?.value;
+    return this.getSetting('secrets.anthropic');
   }
 
   storeAnthropicKey(encrypted: string): void {
-    this.db
-      .insert(settings)
-      .values({ key: 'secrets.anthropic', value: encrypted })
-      .onConflictDoUpdate({ target: settings.key, set: { value: encrypted, updatedAt: Date.now() } })
-      .run();
+    this.setSetting('secrets.anthropic', encrypted);
   }
 
   removeAnthropicKey(): void {
@@ -24,15 +32,11 @@ export class SettingsRepository {
   }
 
   agentPreferences(): unknown {
-    return this.db.select().from(settings).where(eq(settings.key, 'agents.claude')).get()?.value;
+    return this.getSetting('agents.claude');
   }
 
   storeAgentPreferences(value: unknown): void {
-    this.db
-      .insert(settings)
-      .values({ key: 'agents.claude', value })
-      .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: Date.now() } })
-      .run();
+    this.setSetting('agents.claude', value);
   }
 
   hasAnthropicKey(): boolean {
@@ -40,15 +44,51 @@ export class SettingsRepository {
   }
 
   applyConcurrency(): unknown {
-    return this.db.select().from(settings).where(eq(settings.key, 'runs.concurrency')).get()?.value;
+    return this.getSetting('runs.concurrency');
+  }
+
+  storeApplyConcurrency(value: number): void {
+    this.setSetting('runs.concurrency', value);
+  }
+
+  autopilot(): unknown {
+    return this.getSetting('runs.autopilot');
+  }
+
+  storeAutopilot(value: boolean): void {
+    this.setSetting('runs.autopilot', value);
+  }
+
+  submitMode(): unknown {
+    return this.getSetting('runs.submitMode');
+  }
+
+  storeSubmitMode(value: string): void {
+    this.setSetting('runs.submitMode', value);
+  }
+
+  sites(): unknown {
+    return this.getSetting('runs.sites');
+  }
+
+  storeSites(value: unknown): void {
+    this.setSetting('runs.sites', value);
+  }
+
+  limits(): unknown {
+    return this.getSetting('runs.limits');
+  }
+
+  storeLimits(value: unknown): void {
+    this.setSetting('runs.limits', value);
   }
 
   runTimeoutMs(): unknown {
-    return this.db.select().from(settings).where(eq(settings.key, 'runs.timeoutMs')).get()?.value;
+    return this.getSetting('runs.timeoutMs');
   }
 
   profileMigrationValue(): unknown {
-    return this.db.select().from(settings).where(eq(settings.key, key)).get()?.value;
+    return this.getSetting(key);
   }
 
   markProfileMigrated(): void {

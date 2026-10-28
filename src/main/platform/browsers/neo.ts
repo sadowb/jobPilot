@@ -7,7 +7,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { Logger } from 'pino';
 import type { McpServerConfig } from '../agents/types';
 import type { BrowserProvider, BrowserTab } from './types';
-import { NeoMcp } from './neo-mcp';
+import { NeoMcp, allowlistedErrorCode } from './neo-mcp';
 
 const HttpsUrl = z.url({ protocol: /^https$/ }).refine((value) => {
   const url = new URL(value);
@@ -21,7 +21,7 @@ export interface FormField {
   value: string;
 }
 
-export function extractFormFields(snapshot: unknown): FormField[] {
+export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn'>): FormField[] {
   const fields: FormField[] = [];
 
   function visitObject(obj: Record<string, unknown>) {
@@ -93,15 +93,34 @@ export function extractFormFields(snapshot: unknown): FormField[] {
     }
   }
 
-  if (typeof snapshot === 'string') {
+  function safeVisit(obj: Record<string, unknown>) {
     try {
-      const parsed = JSON.parse(snapshot);
+      visitObject(obj);
+    } catch (error) {
+      logger?.warn(
+        { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+        'Neo snapshot traversal failed',
+      );
+      throw error;
+    }
+  }
+
+  if (typeof snapshot === 'string') {
+    let parsed: unknown;
+    let isJson = false;
+    try {
+      parsed = JSON.parse(snapshot);
+      isJson = true;
+    } catch {
+      // Non-JSON plain text snapshot.
+    }
+    if (isJson) {
       if (parsed && typeof parsed === 'object') {
-        visitObject(parsed as Record<string, unknown>);
+        safeVisit(parsed as Record<string, unknown>);
       } else {
         parseText(snapshot);
       }
-    } catch {
+    } else {
       parseText(snapshot);
     }
   } else if (snapshot && typeof snapshot === 'object') {
@@ -114,18 +133,18 @@ export function extractFormFields(snapshot: unknown): FormField[] {
       }
     }
     if (snapObj.structuredContent && typeof snapObj.structuredContent === 'object') {
-      visitObject(snapObj.structuredContent as Record<string, unknown>);
+      safeVisit(snapObj.structuredContent as Record<string, unknown>);
     }
     if (fields.length === 0 && !snapObj.content && !snapObj.structuredContent) {
-      visitObject(snapObj);
+      safeVisit(snapObj);
     }
   }
 
   return fields;
 }
 
-export function computeFormHash(snapshot: unknown): string {
-  const fields = extractFormFields(snapshot);
+export function computeFormHash(snapshot: unknown, logger?: Pick<Logger, 'warn'>): string {
+  const fields = extractFormFields(snapshot, logger);
   fields.sort((a, b) => {
     const c = a.field.localeCompare(b.field);
     return c !== 0 ? c : a.value.localeCompare(b.value);
@@ -181,8 +200,12 @@ export class NeoBrowserProvider implements BrowserProvider {
         if (!tools.some(({ name }) => name === 'tabs')) throw new Error('Neo tabs tool unavailable');
         return 'installed';
       } catch (error) {
+        const neoErrorCode = allowlistedErrorCode(error);
         this.logger.debug(
-          { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+          {
+            error_class: error instanceof Error ? error.constructor.name : 'Unknown',
+            ...(neoErrorCode !== undefined ? { neo_error_code: neoErrorCode } : {}),
+          },
           'Neo MCP availability check failed',
         );
         // shortcut: standard platform app locations only; add discovery when custom installs are supported.
@@ -302,8 +325,13 @@ export class NeoBrowserProvider implements BrowserProvider {
       } catch (error) {
         const message = error instanceof Error ? error.message : '';
         if (!/not found/i.test(message)) {
+          const neoErrorCode = allowlistedErrorCode(error);
           this.logger.warn(
-            { run_id: runId, error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+            {
+              run_id: runId,
+              error_class: error instanceof Error ? error.constructor.name : 'Unknown',
+              ...(neoErrorCode !== undefined ? { neo_error_code: neoErrorCode } : {}),
+            },
             'Failed to close Neo tab',
           );
         }
@@ -322,7 +350,7 @@ export class NeoBrowserProvider implements BrowserProvider {
     const result = await this.runSerial(runId, () =>
       this.mcp.call('tools/call', { name: 'snapshot', arguments: { page, mode: 'interactive', depth: 30 } }),
     );
-    return computeFormHash(result);
+    return computeFormHash(result, this.logger);
   }
 
   private async tabsTool(args: Record<string, unknown>): Promise<unknown> {

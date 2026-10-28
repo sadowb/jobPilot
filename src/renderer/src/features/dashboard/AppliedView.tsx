@@ -93,8 +93,8 @@ export function AppliedView({
         <MetricRow
           stats={[
             { label: 'APPLIED', value: String(state.apps.length), sub: 'Applications sent' },
-            { label: 'INTERVIEWS', value: String(unfiltered.interview), sub: 'Current status' },
-            { label: 'OFFERS', value: String(unfiltered.offer), sub: 'Current status' },
+            { label: 'INTERVIEWS', value: String(unfiltered.interview), sub: 'Scheduled' },
+            { label: 'OFFERS', value: String(unfiltered.offer), sub: 'Received' },
           ]}
         />
         <div className="flex min-w-0 flex-nowrap items-center justify-between gap-3 [@media(width<=1194px)]:flex-wrap [@media(width<=1194px)]:items-stretch [@media(width<=1194px)]:[&>[role=group]]:w-full">

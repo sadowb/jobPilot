@@ -24,6 +24,8 @@ import {
   ProfileDataSchema,
   ProfileSaveSchema,
   ThemeStateSchema,
+  AppSettingsSchema,
+  UpdateSettingsSchema,
 } from '../shared/dto';
 
 async function invoke(channel: string, ...args: unknown[]): Promise<unknown> {
@@ -143,6 +145,14 @@ const bridge: JobPilotBridge = {
       const handler = (_event: Electron.IpcRendererEvent, state: unknown) => listener(ThemeStateSchema.parse(state));
       ipcRenderer.on(Channels.themeChanged, handler);
       return () => ipcRenderer.removeListener(Channels.themeChanged, handler);
+    },
+  },
+  settings: {
+    async get() {
+      return AppSettingsSchema.parse(await invoke(Channels.getSettings));
+    },
+    async update(input) {
+      return AppSettingsSchema.parse(await invoke(Channels.updateSettings, UpdateSettingsSchema.parse(input)));
     },
   },
   onDataChanged(listener) {

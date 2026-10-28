@@ -25,7 +25,6 @@ export interface QueueItem {
   heldAt?: string;
 }
 
-export const CREW_SIZE = 4;
 /** How long a removal can be undone. The toast shows the seconds left. */
 export const UNDO_WINDOW_MS = 8000;
 

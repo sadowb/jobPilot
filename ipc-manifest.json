@@ -104,6 +104,14 @@
     "schema": "z.void()"
   },
   {
+    "channel": "settings:get",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "settings:update",
+    "schema": "UpdateSettingsSchema"
+  },
+  {
     "channel": "theme:get",
     "schema": "z.void()"
   },

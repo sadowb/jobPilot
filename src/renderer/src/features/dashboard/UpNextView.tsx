@@ -8,8 +8,8 @@ import { SearchField } from './components/SearchField';
 import { TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { clockTime } from './format';
 import { BulkBar } from './upnext/BulkBar';
+import { useSettings } from '../../lib/api';
 import {
-  CREW_SIZE,
   formatCrewTime,
   minutesLeft,
   queueFilterCounts,
@@ -105,11 +105,14 @@ export function UpNextView({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [state, dispatch, remove, hold, modalOpen]);
 
+  const { data: settings } = useSettings();
+  const crewSize = settings?.crew ?? 6;
+
   const crew = state.paused
     ? 'QUEUE PAUSED'
     : running === 0
-      ? `CREW IDLE · 0 / ${CREW_SIZE} RUNNING`
-      : `CREW ${running} / ${CREW_SIZE} BUSY · ${formatCrewTime(minutes)} LEFT`.toUpperCase();
+      ? `CREW IDLE · 0 / ${crewSize} RUNNING`
+      : `CREW ${running} / ${crewSize} BUSY · ${formatCrewTime(minutes)} LEFT`.toUpperCase();
 
   return (
     <div className="relative flex h-[calc(100vh-var(--app-toolbar-height))]">
