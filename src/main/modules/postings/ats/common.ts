@@ -1,5 +1,6 @@
 import { lookup } from 'node:dns/promises';
 import { BlockList, isIP } from 'node:net';
+import { getCountries } from 'libphonenumber-js';
 import { Agent, fetch } from 'undici';
 import { z } from 'zod';
 import { PostingFormSchema, type PostingFormDto, type PostingQuestionDto } from '../../../../shared/dto';
@@ -41,6 +42,35 @@ export const countryName = (value: string | null): string | null => {
   } catch {
     return value;
   }
+};
+const countryNameMap: Map<string, string> = (() => {
+  const map = new Map<string, string>();
+  try {
+    for (const code of getCountries()) {
+      const name = regionNames.of(code);
+      if (name) map.set(name.toLowerCase(), code);
+    }
+  } catch {
+    /* fallback */
+  }
+  return map;
+})();
+/** Converts an ISO 3166-1 alpha-2 code or structured country name to uppercase alpha-2. */
+export const toCountryCode = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^[A-Za-z]{2}$/.test(trimmed)) {
+    const upper = trimmed.toUpperCase();
+    if (upper === 'ZZ') return null;
+    try {
+      const name = regionNames.of(upper);
+      return name && name !== upper ? upper : null;
+    } catch {
+      return null;
+    }
+  }
+  return countryNameMap.get(trimmed.toLowerCase()) ?? null;
 };
 /** Drops board-name suffixes like " - Career's Page", " Careers", " Jobs" from a company name. */
 export const cleanCompany = (value: string | null): string | null =>

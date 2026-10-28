@@ -2,6 +2,7 @@ import { forwardRef, useState } from 'react';
 import { V17Icon } from '../../../components/V17Icon';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { cn } from '../../../components/ui';
+import { controlFocus } from '../../../components/ui/controlStyles';
 
 /** Search box (`/` focuses it). Looks like the board's `.inp`, with `.f` while focused or non-empty. */
 export const SearchField = forwardRef<
@@ -43,7 +44,10 @@ export const SearchField = forwardRef<
       )}
       <input
         ref={ref}
-        className="min-w-0 flex-1 border-0 bg-transparent p-0 text-ink outline-0 placeholder:text-muted placeholder:opacity-100 focus-visible:outline-0"
+        className={cn(
+          'min-w-0 flex-1 rounded-sm border-0 bg-transparent p-0 text-ink placeholder:text-muted placeholder:opacity-100',
+          controlFocus,
+        )}
         type="text"
         role="searchbox"
         aria-label="Search applications"
