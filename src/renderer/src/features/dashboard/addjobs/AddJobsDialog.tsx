@@ -333,6 +333,7 @@ export function AddJobsDialog({
                                       ? URL.parse(posting.canonical_url)?.host
                                       : atsNames[posting.ats],
                                     posting.location,
+                                    posting.country,
                                     posting.salary,
                                     posting.questions.length
                                       ? `${posting.questions.length} question${posting.questions.length === 1 ? '' : 's'}`

@@ -123,6 +123,12 @@ sequenceDiagram
 - The SQLCipher key lives in Keychain via Electron `safeStorage`; builds are signed with one stable self-signed certificate so updates keep Keychain access (ADR 0014). Job-site passwords live in a dedicated Bitwarden account reached through the official Bitwarden MCP (ADR 0013). Logs and run traces are redacted.
 - Every state change is auditable. Agent events are stored in `run_event` and mirrored to per-run JSONL logs.
 
+## Logging and diagnostics
+
+LogService (`modules/observability/log.service.ts`) is pino writing through `pino.destination({ sync: true })` (sonic-boom) to `userData/logs/main.log`: one JSON object per line, one child logger per module with `run_id`/`application_id`/`job_id`/`agent` fields. The path is inside `userData` (ADR 0016), the directory is mode 0700, the file 0600. Every record passes `redact()`, plus a pass that masks emails and `sk-` keys in free text. Rotation is in-app, without a library: at startup and every 5 minutes, a log over 10 MB is renamed `main.1.log` … `main.5.log` (oldest deleted) and the destination is `reopen()`ed. Level is `info`, or `debug` when `JOBPILOT_LOG_LEVEL=debug` (zod-validated, no UI).
+
+Crashes leave a trace: the logger initialises before `whenReady`; an uncaught exception logs `fatal`, calls `flushSync()` and quits; the app and each WebContents log `render-process-gone`, `child-process-gone`, `unresponsive`/`responsive`, `preload-error`, `did-fail-load` and `certificate-error` with reason and exit code; `crashReporter` keeps minidumps in `userData/crashes` with `uploadToServer: false`. `logs/session.lock` exists only while a session runs, so finding it at launch logs a `warn` "Previous session ended unexpectedly". Renderers report only through the zod-validated `reportRendererError` IPC. Help → Show Logs opens the folder; Help → Export Diagnostics… saves a zip (via `fflate`, the only writer-capable zip library installed) of the redacted logs, run traces, crash dump names and versions (no database, no dump contents).
+
 ## Package-by-feature layout
 
 `src/main/modules/<feature>/` owns feature controllers, services, repositories, entities, and DTOs. Controllers parse and dispatch; services own rules and transactions; repositories access Drizzle; entities declare tables. `src/main/platform/` holds cross-cutting adapters and cannot import feature modules. `src/shared/` holds IPC and zod contracts shared with preload and renderer. The renderer stays a presentation layer.
