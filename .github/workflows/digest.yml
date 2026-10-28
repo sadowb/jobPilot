@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   actions: read
+  contents: read
   issues: write
   pull-requests: read
 concurrency:
@@ -15,6 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
       - name: Create this week's digest once
         env:
           GH_TOKEN: ${{ github.token }}
@@ -27,7 +34,9 @@ jobs:
           week_ago=$(date -u -d '7 days ago' +%FT%TZ)
           three_days_ago=$(date -u -d '3 days ago' +%FT%TZ)
           body="$RUNNER_TEMP/digest.md"
-          printf '## PRs merged in the last 7 days\n\n' > "$body"
+          printf '## DORA metrics\n\n' > "$body"
+          node scripts/dora.mjs --repo "$GH_REPO" >> "$body"
+          printf '\n\n## PRs merged in the last 7 days\n\n' >> "$body"
           gh api --paginate "repos/$GH_REPO/pulls?state=closed&sort=updated&direction=desc&per_page=100" |
             jq -r --arg since "$week_ago" '.[] | select(.merged_at != null and .merged_at >= $since) | "- [#\(.number)](\(.html_url)) \(.title)"' >> "$body"
           printf '\n## Open PRs older than 3 days\n\n' >> "$body"
