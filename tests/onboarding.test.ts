@@ -148,5 +148,36 @@ describe('onboarding completion persistence and migration (#135)', () => {
       }),
     } as unknown as Db);
     expect(existingRepo.read().onboardingCompletedAt).toBe(1740000000000);
+
+    // The #135 users: onboarding never saved `personal`, but their markets/answers prove they finished it.
+    const marketsOnlyRepo = new ProfileRepository({
+      select: () => ({
+        from: () => ({
+          get: () => ({
+            updatedAt: 1740000000001,
+            preferences: { personal: null, markets: [{ code: 'MA', workAuth: 'authorized' }], answers: null },
+          }),
+        }),
+      }),
+    } as unknown as Db);
+    expect(marketsOnlyRepo.read().onboardingCompletedAt).toBe(1740000000001);
+
+    // Quit midway through onboarding on the new version: answers are saved, the flag is an explicit null.
+    const midOnboardingRepo = new ProfileRepository({
+      select: () => ({
+        from: () => ({
+          get: () => ({
+            updatedAt: 1740000000002,
+            preferences: {
+              personal: null,
+              markets: [{ code: 'MA', workAuth: 'authorized' }],
+              answers: null,
+              onboardingCompletedAt: null,
+            },
+          }),
+        }),
+      }),
+    } as unknown as Db);
+    expect(midOnboardingRepo.read().onboardingCompletedAt).toBeNull();
   });
 });

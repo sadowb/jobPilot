@@ -82,7 +82,7 @@ describe('step 4 answers persistence on pick (#131)', () => {
 });
 
 describe('initializeProfile migration (#135)', () => {
-  it('migrates fresh profile as uncompleted and existing profile with personal data as completed', async () => {
+  it('leaves completion inference to main: migrates with a null onboardingCompletedAt', async () => {
     const mockBridge = (migrated: boolean, initialProfile: ProfileData) => {
       let current = initialProfile;
       let isMigrated = migrated;
@@ -127,6 +127,7 @@ describe('initializeProfile migration (#135)', () => {
       onboardingCompletedAt: null,
     });
     const existingResult = await initializeProfile(bridgeExisting, existingStore);
-    expect(typeof existingResult.onboardingCompletedAt).toBe('number');
+    expect(existingResult.personal?.firstName).toBe('Sara');
+    expect(existingResult.onboardingCompletedAt).toBeNull();
   });
 });

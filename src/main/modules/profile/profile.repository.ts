@@ -10,7 +10,10 @@ export class ProfileRepository {
     const row = this.db.select().from(profile).get();
     if (!row) return { personal: null, markets: [], answers: null, onboardingCompletedAt: null };
     const data = ProfileDataSchema.parse(row.preferences);
-    if (data.onboardingCompletedAt === null && data.personal !== null) {
+    // Rows saved before the flag existed have no key at all (new rows store null or a time): if they hold
+    // onboarding data, onboarding was finished (#135). A null key means "started, not finished".
+    const legacy = !('onboardingCompletedAt' in (row.preferences as object));
+    if (legacy && (data.personal !== null || data.answers !== null || data.markets.length > 0)) {
       return { ...data, onboardingCompletedAt: row.updatedAt ?? row.createdAt ?? Date.now() };
     }
     return data;
