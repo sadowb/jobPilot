@@ -1,6 +1,18 @@
 import { z } from 'zod';
 import { AtsKind, QuestionType } from './enums';
 
+export const IsoCountryCodeSchema = z
+  .string()
+  .regex(/^[A-Z]{2}$/, 'Country must be a 2-letter uppercase ISO 3166-1 alpha-2 code')
+  .refine((code) => {
+    try {
+      const name = new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' }).of(code);
+      return Boolean(name && name !== code && code !== 'ZZ');
+    } catch {
+      return false;
+    }
+  }, 'Invalid ISO 3166-1 alpha-2 country code');
+
 export const PostingQuestionSchema = z.object({
   external_id: z.string().min(1),
   label: z.string().min(1).max(400),
@@ -16,6 +28,7 @@ export const PostingFormSchema = z.object({
   company: z.string().min(1).max(400),
   title: z.string().min(1).max(400),
   location: z.string().max(1000).nullable(),
+  country: IsoCountryCodeSchema.nullable().optional(),
   salary: z.string().max(500).nullable(),
   salary_min: z.number().int().nullable().default(null),
   salary_max: z.number().int().nullable().default(null),

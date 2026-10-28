@@ -15,6 +15,7 @@ import {
   salaryRange,
   str,
   titleFrom,
+  toCountryCode,
   type Dict,
 } from './common';
 
@@ -150,6 +151,7 @@ const lever: Adapter = {
       company: titleFrom(m.tenant!),
       title: str(d.text, 400)!,
       location: str(cats.location, 1000),
+      country: toCountryCode(cats.country ?? d.country) ?? undefined,
       ...salary,
       description:
         [str(d.descriptionPlain), str(d.additionalPlain)].filter(Boolean).join('\n\n').slice(0, 30000) || null,
@@ -257,6 +259,7 @@ const workable: Adapter = {
       location:
         [str(loc.city, 100), str(loc.region, 100), countryName(str(loc.country, 100))].filter(Boolean).join(', ') ||
         null,
+      country: toCountryCode(loc.countryCode ?? loc.country_code ?? loc.country) ?? undefined,
       salary: str(job.salary, 500),
       salary_min: null,
       salary_max: null,
@@ -293,6 +296,7 @@ const smartRecruiters: Adapter = {
       location:
         [str(loc.city, 100), str(loc.region, 100), countryName(str(loc.country, 100))].filter(Boolean).join(', ') ||
         null,
+      country: toCountryCode(loc.countryCode ?? loc.country_code ?? loc.country) ?? undefined,
       salary: null,
       salary_min: null,
       salary_max: null,
@@ -363,6 +367,7 @@ const bamboo: Adapter = {
         [str(loc.city, 100), str(loc.state, 100), countryName(str(loc.addressCountry, 100))]
           .filter(Boolean)
           .join(', ') || null,
+      country: toCountryCode(loc.countryCode ?? loc.addressCountry ?? loc.country) ?? undefined,
       salary: str(opening.compensation, 500),
       salary_min: null,
       salary_max: null,
@@ -506,6 +511,7 @@ async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
       [str(location.addressLocality, 100), str(location.addressRegion, 100), str(location.addressCountry, 100)]
         .filter(Boolean)
         .join(', ') || str(ld.jobLocation, 1000),
+    country: toCountryCode(location.addressCountry) ?? undefined,
     ...range,
     description: str(ld.description ?? document.querySelector('meta[name="description"]')?.getAttribute('content')),
     canonical_url: canonicalHref,
