@@ -109,6 +109,13 @@ jobs:
         run: |
           npx electron-builder --dir --mac --arm64
           node scripts/sign-app.mjs release/mac-arm64/JobPilot.app "$JOBPILOT_SIGN_IDENTITY"
+      - name: Check helper bundle names (#121)
+        run: |
+          for plist in release/mac-arm64/JobPilot.app/Contents/Frameworks/*Helper*.app/Contents/Info.plist; do
+            name=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$plist")
+            echo "$name"
+            case "$name" in JobPilot\ Helper*) ;; *) echo "::error::$plist CFBundleName is $name"; exit 1 ;; esac
+          done
       - name: Prepare PR base for upgrade journey
         id: base
         if: github.event_name == 'pull_request'
