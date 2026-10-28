@@ -28,4 +28,5 @@ nsis:
 linux:
   target: [AppImage, deb]
   category: Office
+  artifactName: JobPilot-${version}-x64.${ext}
 publish: null

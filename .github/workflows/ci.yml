@@ -212,7 +212,7 @@ jobs:
   windows:
     needs: static
     runs-on: windows-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     permissions:
       contents: read
     defaults:
@@ -231,64 +231,43 @@ jobs:
       - run: npm config set script-shell bash
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder --win --x64 --dir
       - run: npm run smoke:native
-      - name: Boot packaged Windows app
+      - run: npx electron-builder --win nsis --x64
+      - name: Boot-test Windows installer
+        run: node scripts/smoke-windows-installer.mjs
+
+  linux:
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Linux keyring and display dependencies
         run: |
-          node --input-type=module -e '
-          import { spawn } from "node:child_process";
-          import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
-          import { tmpdir } from "node:os";
-          import { join } from "node:path";
-          import { setTimeout as sleep } from "node:timers/promises";
-
-          const dir = join(tmpdir(), `jobpilot-smoke-${Date.now()}`);
-          mkdirSync(dir, { recursive: true });
-          const exe = join(process.cwd(), "release", "win-unpacked", "JobPilot.exe");
-          if (!existsSync(exe)) {
-            console.error(`Executable not found: ${exe}`);
-            process.exit(1);
-          }
-
-          const child = spawn(exe, [`--user-data-dir=${dir}`], { stdio: ["ignore", "pipe", "pipe"] });
-          let stderr = "";
-          child.stderr?.on("data", (d) => { stderr += d; });
-          let stdout = "";
-          child.stdout?.on("data", (d) => { stdout += d; });
-
-          let booted = false;
-          for (let i = 0; i < 60; i++) {
-            if (child.exitCode !== null) break;
-            if (existsSync(join(dir, "jobpilot.db")) && existsSync(join(dir, "db-key.enc"))) {
-              booted = true;
-              break;
-            }
-            await sleep(500);
-          }
-
-          try {
-            child.kill();
-            if (process.platform === "win32" && child.pid) {
-              spawn("taskkill", ["/pid", String(child.pid), "/f", "/t"], { stdio: "ignore" });
-            }
-          } catch {}
-          await sleep(1000);
-
-          if (!booted) {
-            console.error("App failed to boot or create database.");
-            console.error(`exitCode: ${child.exitCode}`);
-            console.error(`stdout: ${stdout}`);
-            console.error(`stderr: ${stderr}`);
-            const logsDir = join(dir, "logs");
-            if (existsSync(logsDir)) {
-              for (const f of readdirSync(logsDir)) {
-                console.error(`log file ${f}:`, readFileSync(join(logsDir, f), "utf8"));
-              }
-            }
-            try { rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 }); } catch {}
-            process.exit(1);
-          }
-
-          console.log("Windows app booted successfully, encrypted database and db-key.enc created.");
-          try { rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 }); } catch {}
+          sudo apt-get update
+          sudo apt-get install -y dbus-x11 gnome-keyring libsecret-1-0 libsecret-tools xvfb
+      - run: npm ci
+      - run: npm run build
+      - run: npm run smoke:native
+      - name: Package Linux AppImage
+        run: npx electron-builder --linux AppImage --x64
+      - name: Boot packaged Linux AppImage
+        run: |
+          # Chromium's sandbox needs unprivileged user namespaces; Ubuntu 24.04 runners restrict them via AppArmor.
+          # Allow them (the kernel default on most distros) so the AppImage boots exactly as shipped, sandbox on.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          xvfb-run -a dbus-run-session -- bash -c '
+            mkdir -p ~/.local/share/keyrings
+            echo "ci" | gnome-keyring-daemon --daemonize --unlock --components=secrets
+            export XDG_CURRENT_DESKTOP=GNOME
+            node scripts/smoke-app.mjs release/*.AppImage --appimage-extract-and-run --password-store=gnome-libsecret
           '
