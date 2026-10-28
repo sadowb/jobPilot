@@ -1,85 +1,47 @@
-import { chmodSync } from 'node:fs';
-import { buildDBClient, Runner, SqliteQueue } from 'liteque';
-import { z } from 'zod';
+import PQueue from 'p-queue';
 
-const PayloadSchema = z.object({ runId: z.ulid() }).strict();
-type Payload = z.infer<typeof PayloadSchema>;
-
-// Gate dequeue itself: liteque 0.10.0 Runner.runImpl checks `stopping` only before `await semaphore.waitForUnlock()`,
-// so stop() while all slots are busy still claims one job. Upstream: karakeep-app/liteque (not yet filed/fixed), tracked in
-// sadowb/jobPilot#145.
-// shortcut: dequeue override is a monkey-patch of a library method, delete it once liteque re-checks `stopping` after the wait.
-class ApplyQueue extends SqliteQueue<Payload> {
-  paused = true;
-
-  override async attemptDequeue(options: { timeoutSecs: number }) {
-    return this.paused ? null : super.attemptDequeue(options);
-  }
-}
-
+/**
+ * In-memory apply queue (ADR 0017). The run table is authoritative: RunsService re-enqueues `queued` rows at startup,
+ * so nothing here is persisted and a crashed `running` run is failed, never silently re-run.
+ */
 export class ApplyWorker {
-  private readonly database: ReturnType<typeof buildDBClient>;
-  private readonly queue: ApplyQueue;
-  private readonly runner: Runner<Payload>;
+  private readonly queue: PQueue;
+  /** Queued or running runs; one AbortController each, also the dedupe key. */
   private readonly active = new Map<string, AbortController>();
-  private loop?: Promise<void>;
-  /** Startup cleanup of stale non-running tasks; enqueue waits so it cannot be deleted. */
-  private readonly cleaned: Promise<number>;
+  private readonly running = new Set<Promise<void>>();
 
   constructor(
-    file: string,
     concurrency: number,
-    execute: (runId: string, signal: AbortSignal) => Promise<void>,
+    private readonly execute: (runId: string, signal: AbortSignal) => Promise<void>,
     private readonly closeTab: (runId: string) => Promise<void>,
     private readonly onError: (error: unknown, runId?: string) => void,
-    timeoutMs = 900_000,
   ) {
-    this.database = buildDBClient(file, { runMigrations: true });
-    chmodSync(file, 0o600);
-    this.queue = new ApplyQueue('apply', this.database, {
-      defaultJobArgs: { numRetries: 0 },
-      keepFailedJobs: false,
-    });
-    // The run rows are authoritative. Startup re-enqueues queued rows after failing interrupted runs.
-    this.cleaned = this.queue.cancelAllNonRunning();
-    this.purgeOrphanedRunning();
-    this.runner = new Runner(
-      this.queue,
-      {
-        run: async ({ data, abortSignal }) => {
-          const controller = new AbortController();
-          this.active.set(data.runId, controller);
-          try {
-            await execute(data.runId, AbortSignal.any([controller.signal, abortSignal]));
-          } finally {
-            this.active.delete(data.runId);
-          }
-        },
-        onError: async ({ error, data }) => this.onError(error, data?.runId),
-      },
-      { concurrency, pollIntervalMs: 25, timeoutSecs: Math.ceil(timeoutMs / 1000) + 60, validator: PayloadSchema },
-    );
-  }
-
-  /** A `running` task at construction belongs to a crashed process (this one has not started), so drop it. */
-  private purgeOrphanedRunning(): void {
-    // shortcut: raw SQL on liteque's `tasks` table, it has no public API for running rows. Replace if one ships.
-    this.database.$client.prepare("DELETE FROM tasks WHERE queue = ? AND status = 'running'").run('apply');
+    this.queue = new PQueue({ concurrency, autoStart: false });
   }
 
   async enqueue(runId: string): Promise<void> {
-    await this.cleaned;
-    await this.queue.enqueue(PayloadSchema.parse({ runId }), { idempotencyKey: runId });
+    if (this.active.has(runId)) return;
+    const controller = new AbortController();
+    this.active.set(runId, controller);
+    void this.queue
+      .add(async () => {
+        if (controller.signal.aborted) return;
+        const run = this.execute(runId, controller.signal).catch((error: unknown) => this.onError(error, runId));
+        this.running.add(run);
+        await run;
+        this.running.delete(run);
+      })
+      .catch(() => undefined) // clear() on stop rejects queued tasks; execute errors are reported above
+      .finally(() => this.active.delete(runId));
   }
 
   pause(): boolean {
-    this.queue.paused = true;
+    this.queue.pause();
     return true;
   }
 
   resume(): boolean {
-    this.queue.paused = false;
-    this.loop ??= this.cleaned.then(() => this.runner.run()).catch((error) => this.onError(error));
+    this.queue.start();
     return false;
   }
 
@@ -89,10 +51,9 @@ export class ApplyWorker {
   }
 
   async stop(): Promise<void> {
-    this.pause();
-    this.runner.stop();
+    this.queue.pause();
+    this.queue.clear();
     await Promise.all([...this.active.keys()].map((id) => this.cancel(id)));
-    await this.loop;
-    this.database.$client.close();
+    await Promise.allSettled(this.running);
   }
 }

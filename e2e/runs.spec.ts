@@ -283,7 +283,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       ]);
     }
     expect(before.runs.find((row) => (row as { id: string }).id === invalid.id)).toMatchObject({ result: null });
-    // SIGKILL bypasses graceful cleanup and leaves a genuine running row + liteque allocation.
+    // SIGKILL bypasses graceful cleanup and leaves a genuine running row.
     const child = app.process();
     const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
     child.kill('SIGKILL');

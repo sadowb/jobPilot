@@ -27,7 +27,13 @@ import {
   settingsHandlers,
 } from '../modules/settings/settings.controller';
 import { MemorySettingsService } from '../modules/settings/memory.service';
-import { broadcastThemeChanges, claudeKeyService, loadTheme } from '../modules/settings/settings.service';
+import {
+  broadcastThemeChanges,
+  claudeKeyService,
+  lastConsolidation,
+  loadTheme,
+  markConsolidated,
+} from '../modules/settings/settings.service';
 import { DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
@@ -120,13 +126,13 @@ if (!app.requestSingleInstanceLock()) {
         onReady: () => consolidation.start(),
       });
     consolidation = new ConsolidationWorker(
-      join(app.getPath('userData'), 'memory-queue.db'),
       (signal) => memory.consolidate(signal),
       (error) =>
         loggerFor('memory').error(
           { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
           'Memory consolidation failed',
         ),
+      { get: () => lastConsolidation(db), set: (at) => markConsolidated(db, at) },
     );
     if (memory.status().state === 'ready') consolidation.start();
     agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);

@@ -147,7 +147,7 @@ test('memory: install on request, a second run on the same site recalls the firs
     expect(third.recalled).toEqual([`careers.memory.invalid: ${QUIRK}`]);
     expect(readFileSync(join(userData, 'mnemosyne', 'notes.json'), 'utf8')).toContain(QUIRK);
 
-    // 4. Consolidation runs through the same liteque path as the nightly job.
+    // 4. Consolidation runs through the same code path as the nightly job.
     await probe('consolidate-now');
     await expect.poll(() => probe('consolidations'), { timeout: 15_000 }).toBe(1);
 

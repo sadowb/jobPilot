@@ -1,3 +1,4 @@
+import { readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { JobPilotDb } from '../../platform/db/database';
@@ -22,7 +23,7 @@ export class RunsService {
 
   constructor(
     private readonly db: JobPilotDb,
-    userData: string,
+    private readonly userData: string,
     private readonly agent?: AgentProvider,
     private readonly browser?: BrowserProvider,
     private readonly memory?: MemoryProvider,
@@ -30,7 +31,6 @@ export class RunsService {
     this.repository = new RunsRepository(db);
     this.timeoutMs = runPreferences(db).timeoutMs;
     this.worker = new ApplyWorker(
-      join(userData, 'apply-queue.db'),
       applyConcurrency(db),
       (id, signal) => this.execute(id, signal),
       async (id) => this.browser?.closeTab(id),
@@ -39,11 +39,13 @@ export class RunsService {
           { run_id: runId, error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
           'Apply queue worker failed',
         ),
-      this.timeoutMs,
     );
   }
 
   async initialize(): Promise<void> {
+    // Retired liteque queue files (ADR 0017); they held an unencrypted copy of queued run ids.
+    for (const name of readdirSync(this.userData))
+      if (/^(apply|memory)-queue\.db/.test(name)) rmSync(join(this.userData, name), { force: true });
     for (const row of this.repository.list()) {
       if (row.status === 'running') this.transition(row.id, 'failed', { error: 'app restarted' });
       if (row.status === 'queued') await this.worker.enqueue(row.id);

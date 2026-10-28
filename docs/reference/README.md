@@ -36,7 +36,6 @@ These are local snapshots for implementation work. Source links below identify t
 
 | Saved page | Source | Fetched |
 |---|---|---|
-| [liteque README](liteque/README.md) | [liteque on GitHub](https://github.com/hoarder-app/liteque) | 2026-10-23 |
 | [Claude Agent SDK overview](agent-sdk/overview.md) | [Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview) | 2026-10-23 |
 | [Claude Agent SDK TypeScript](agent-sdk/typescript.md) | [TypeScript SDK](https://code.claude.com/docs/en/agent-sdk/typescript) | 2026-10-23 |
 | [Codex SDK](codex-sdk/README.md) | [Codex SDK](https://developers.openai.com/codex/sdk/) | 2026-10-23 |

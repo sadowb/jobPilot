@@ -54,4 +54,16 @@ export class SettingsRepository {
   markProfileMigrated(): void {
     this.db.insert(settings).values({ key, value: true }).onConflictDoNothing().run();
   }
+
+  lastConsolidation(): unknown {
+    return this.db.select().from(settings).where(eq(settings.key, 'memory.lastConsolidatedAt')).get()?.value;
+  }
+
+  markConsolidated(at: number): void {
+    this.db
+      .insert(settings)
+      .values({ key: 'memory.lastConsolidatedAt', value: at })
+      .onConflictDoUpdate({ target: settings.key, set: { value: at, updatedAt: Date.now() } })
+      .run();
+  }
 }

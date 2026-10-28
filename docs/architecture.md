@@ -11,7 +11,7 @@ flowchart LR
   Preload --> Main[Electron main process]
   Main --> Modules[Feature modules]
   Modules --> DB[(SQLCipher SQLite<br/>Drizzle + migrations)]
-  Modules --> Queue[liteque apply queue]
+  Modules --> Queue[in-memory apply queue]
   Queue --> Agents[AgentProvider]
   Agents --> Claude[Claude Agent SDK]
   Agents --> Codex[Codex SDK]
@@ -91,7 +91,7 @@ sequenceDiagram
   participant UI as Renderer
   participant IPC as Typed IPC
   participant App as Applications / Runs services
-  participant Q as liteque
+  participant Q as p-queue (in memory)
   participant Agent as AgentProvider
   participant Browser as BrowserProvider (Neo)
   participant DB as SQLCipher SQLite

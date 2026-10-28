@@ -61,3 +61,11 @@ export function runPreferences(database: JobPilotDb) {
 export function claudeKeyService(database: JobPilotDb): AnthropicKeyStore {
   return new AnthropicKeyStore(new SettingsRepository(database));
 }
+
+export function lastConsolidation(database: JobPilotDb): number | undefined {
+  return z.number().int().optional().parse(new SettingsRepository(database).lastConsolidation());
+}
+
+export function markConsolidated(database: JobPilotDb, at: number): void {
+  new SettingsRepository(database).markConsolidated(at);
+}
