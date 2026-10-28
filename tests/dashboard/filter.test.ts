@@ -6,9 +6,9 @@ import {
   matchesQuery,
   tokenize,
 } from '../../src/renderer/src/features/dashboard/filter';
-import { SAMPLE_APPLICATIONS } from '../../src/renderer/src/features/dashboard/sample';
+import { TEST_APPLICATIONS } from './fixtures';
 
-const byId = (id: string) => SAMPLE_APPLICATIONS.find((a) => a.id === id)!;
+const byId = (id: string) => TEST_APPLICATIONS.find((a) => a.id === id)!;
 
 describe('tokenize', () => {
   it('lowercases and splits on any whitespace, dropping empties', () => {
@@ -39,25 +39,25 @@ describe('matchesQuery', () => {
 
 describe('filtering and counts', () => {
   it('counts every row under "all" and each row under exactly one chip', () => {
-    const c = countByFilter(SAMPLE_APPLICATIONS, '');
-    expect(c.all).toBe(SAMPLE_APPLICATIONS.length);
+    const c = countByFilter(TEST_APPLICATIONS, '');
+    expect(c.all).toBe(TEST_APPLICATIONS.length);
     const chips = c.submitted + c.screening + c.interview + c.offer + c.rejected + c.withdrawn;
     expect(chips).toBe(c.all);
   });
   it('counts "closed" rows under the Withdrawn chip', () => {
-    const closed = SAMPLE_APPLICATIONS.map((a, i) => (i === 0 ? { ...a, status: 'closed' as const } : a));
-    const before = countByFilter(SAMPLE_APPLICATIONS, '');
+    const closed = TEST_APPLICATIONS.map((a, i) => (i === 0 ? { ...a, status: 'closed' as const } : a));
+    const before = countByFilter(TEST_APPLICATIONS, '');
     const after = countByFilter(closed, '');
     expect(after.withdrawn).toBe(before.withdrawn + 1);
     expect(filterApplications(closed, '', 'withdrawn').map((a) => a.id)).toContain(closed[0]!.id);
   });
   it('narrows chip counts by the search text but ignores the active chip', () => {
-    const c = countByFilter(SAMPLE_APPLICATIONS, 'ramp');
+    const c = countByFilter(TEST_APPLICATIONS, 'ramp');
     expect(c.all).toBe(1);
     expect(c.screening).toBe(1);
   });
   it('combines search and chip', () => {
-    const rows = filterApplications(SAMPLE_APPLICATIONS, 'new york', 'rejected');
+    const rows = filterApplications(TEST_APPLICATIONS, 'new york', 'rejected');
     expect(rows.every((a) => a.status === 'rejected' && /new york/i.test(a.location + a.role + a.company))).toBe(true);
   });
 });
