@@ -162,7 +162,8 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
           return mock.dispatch(options, handler);
         }
       };
-      const html = '<html><head><title>Custom role</title></head><body><label>Name<input name="name" required></label>';
+      const html =
+        '<html><head><title>Custom role</title><script type="application/ld+json">{"@type":"JobPosting","title":"Custom role"}</script></head><body><label>Name<input name="name" required></label>';
       mock
         .get('https://custom.example')
         .intercept({ path: '/poison' })
@@ -545,7 +546,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
         .intercept({ path: '/retry' })
         .reply(
           200,
-          '<html><head><title>Retry role</title></head><body><label>Name<input name="name" required></label></body></html>',
+          '<html><head><title>Retry role</title><script type="application/ld+json">{"@type":"JobPosting","title":"Retry role"}</script></head><body><label>Name<input name="name" required></label></body></html>',
         )
         .persist();
       undici.Agent = class extends undici.Agent {
@@ -682,6 +683,10 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(rows.nth(0)).toContainText('example.com');
     await expect(rows.nth(0)).not.toContainText('custom');
     await window.getByRole('button', { name: 'Remove link', exact: true }).click();
+    await expect(rows).toHaveCount(0);
+    // A removed link must not resurrect when the paste box is edited.
+    await window.getByLabel('Job links', { exact: true }).press('End');
+    await window.getByLabel('Job links', { exact: true }).pressSequentially(' ');
     await expect(rows).toHaveCount(0);
     await window
       .getByLabel('Job links', { exact: true })

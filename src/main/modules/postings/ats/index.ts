@@ -82,7 +82,7 @@ const greenhouse: Adapter = {
         url: new URL(`https://boards.greenhouse.io/${encodeURIComponent(tenant)}/jobs/${encodeURIComponent(jobId)}`),
       };
     }
-    const m = url.pathname.match(/^\/([A-Za-z0-9][A-Za-z0-9_.-]{0,80})\/jobs\/(\d+)/);
+    const m = url.pathname.match(/^\/([A-Za-z0-9][A-Za-z0-9_.-]{0,80})\/jobs\/(\d+)\/?$/);
     if (!m) return null;
     const canonical = new URL(url);
     canonical.search = '';
@@ -169,7 +169,7 @@ const ASHBY_QUERY =
 const ashby: Adapter = {
   match(url) {
     if (!['jobs.ashbyhq.com', 'jobs.eu.ashbyhq.com'].includes(url.hostname.toLowerCase())) return null;
-    const m = url.pathname.match(/^\/([A-Za-z0-9_.-]{1,80})\/([0-9a-f-]{32,36})/i);
+    const m = url.pathname.match(/^\/([A-Za-z0-9_.-]{1,80})\/([0-9a-f-]{32,36})(?:\/application)?\/?$/i);
     return m ? { ats: 'ashby', tenant: m[1]!, jobId: m[2]!, url } : null;
   },
   async fetch(m) {
@@ -470,6 +470,11 @@ function jsonLdPosting(document: LinkedomDocument): Dict | null {
   return null;
 }
 
+/** A custom page that carries no schema.org JobPosting data: search forms, articles and listing pages land here. */
+export class NotAJobPageError extends Error {
+  override readonly name = 'NotAJobPageError';
+}
+
 async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
   const response = await (
     await import('./common')
@@ -479,7 +484,11 @@ async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
   });
   url = response.url;
   const { document } = parseHTML(response.text);
-  const ld = jsonLdPosting(document) ?? {};
+  // Posting evidence rule: a non-ATS page is a posting only if it embeds schema.org JobPosting JSON-LD.
+  // Form inputs alone prove nothing (any site search box is an <input name>).
+  // shortcut: career pages with a bare apply form and no JSON-LD are rejected, extend with ATS-embed detection if reported.
+  const ld = jsonLdPosting(document);
+  if (!ld) throw new NotAJobPageError('Page has no JobPosting data');
   const org = asObject(ld.hiringOrganization);
   const location = asObject(asObject(ld.jobLocation).address);
   const salary = asObject(ld.baseSalary);

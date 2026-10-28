@@ -124,7 +124,8 @@ export function question(
 }
 
 export function canonicalUrl(input: string): URL {
-  const u = new URL(input);
+  // Pasted text often carries zero-width/format chars (\p{Cf}) and whitespace that the URL parser would percent-encode into the path.
+  const u = new URL(input.replace(/[\p{Cf}\s]/gu, ''));
   if (u.protocol !== 'https:' || u.username || u.password || u.port)
     throw new Error('Only public HTTPS posting URLs without credentials or custom ports are supported');
   u.hostname = u.hostname.replace(/\.$/, '');

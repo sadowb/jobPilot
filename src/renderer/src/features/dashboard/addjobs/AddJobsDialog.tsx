@@ -9,11 +9,7 @@ import { V17StatusChip } from '../../../components/V17StatusChip';
 import { AppButton } from '../components/AppButton';
 import { useCreateApplication, useIngestPosting } from '../../../lib/api';
 
-function candidates(text: string) {
-  return [...new Set((text.match(/https?:\/\/[^\s,<>"'“”]+/gi) ?? []).map((url) => url.replace(/[.!?;:)}\]]+$/, '')))];
-}
-
-type Row = { id: number; url: string; result?: IngestResult; added?: boolean; addError?: string };
+import { candidateUrls, nextRowId, reconcileRows, type Row } from './rows';
 
 const atsNames = {
   greenhouse: 'Greenhouse',
@@ -35,12 +31,9 @@ export function AddJobsDialog({
 }) {
   const inputId = useId();
   const [text, setText] = useState(initialText);
-  const nextId = useRef(50);
-  const [rows, setRows] = useState<Row[]>(() =>
-    candidates(initialText)
-      .slice(0, 50)
-      .map((url, id) => ({ id, url })),
-  );
+  // Links the user removed, keyed by pasted URL; survives textarea edits until the URL leaves the text.
+  const dismissed = useRef(new Set<string>());
+  const [rows, setRows] = useState<Row[]>(() => reconcileRows(initialText, [], new Set()).rows);
   const { mutateAsync: ingest } = useIngestPosting();
   const createApplication = useCreateApplication();
   const active = useRef(new Set<number>());
@@ -86,6 +79,9 @@ export function AddJobsDialog({
 
   const remove = (index: number) => {
     if (busy) return;
+    const source = rows[index]?.source;
+    if (source === undefined) return;
+    dismissed.current.add(source);
     setRows((current) => current.filter((_, i) => i !== index));
     requestAnimationFrame(() => {
       const remaining = list.current?.querySelectorAll<HTMLElement>(':scope > li');
@@ -94,7 +90,9 @@ export function AddJobsDialog({
   };
   const retry = (row: Row, url = row.url) => {
     setEditing(null);
-    setRows((current) => current.map((item) => (item.id === row.id ? { id: nextId.current++, url } : item)));
+    setRows((current) =>
+      current.map((item) => (item.id === row.id ? { id: nextRowId(), source: item.source, url } : item)),
+    );
   };
 
   const submit = async () => {
@@ -194,11 +192,11 @@ export function AddJobsDialog({
               onChange={(event) => {
                 const value = event.target.value;
                 setText(value);
-                setRows((current) =>
-                  candidates(value)
-                    .slice(0, 50)
-                    .map((url) => current.find((row) => row.url === url) ?? { id: nextId.current++, url }),
-                );
+                setRows((current) => {
+                  const next = reconcileRows(value, current, dismissed.current);
+                  dismissed.current = next.dismissed;
+                  return next.rows;
+                });
               }}
             />
           </Field>
@@ -208,7 +206,7 @@ export function AddJobsDialog({
               Paste job links — one or fifty <V17Kbd>⌘V</V17Kbd>
             </p>
           )}
-          {candidates(text).length >= 50 && (
+          {candidateUrls(text).length >= 50 && (
             <p role="status" className="mt-2 text-xs text-muted">
               50-link limit reached. Only the first 50 unique links are included.
             </p>
@@ -262,7 +260,7 @@ export function AddJobsDialog({
                       event.preventDefault();
                       const next = Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
                       list.current?.querySelectorAll<HTMLElement>(':scope > li')[next]?.focus();
-                    } else if (event.key === 'Backspace') {
+                    } else if (event.key === 'Backspace' && event.target === event.currentTarget) {
                       event.preventDefault();
                       remove(index);
                     }
@@ -413,8 +411,8 @@ export function AddJobsDialog({
         )}
         {rows.some((row) => row.result && !row.result.ok && row.result.code === 'UNSUPPORTED_ATS') && (
           <p className="shrink-0 text-xs text-muted">
-            Supported: Greenhouse, Lever, Ashby, Workable, SmartRecruiters, BambooHR, and pages with a job description
-            or application form.
+            Supported: Greenhouse, Lever, Ashby, Workable, SmartRecruiters, BambooHR, and pages with schema.org
+            JobPosting data.
           </p>
         )}
         {error && (

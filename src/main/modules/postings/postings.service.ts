@@ -1,5 +1,5 @@
 import { PostingFormSchema, type FillPlanDto, type IngestResult } from '../../../shared/dto';
-import { fetchPosting } from './ats';
+import { fetchPosting, NotAJobPageError } from './ats';
 import { ApplicationsService } from '../applications/applications.service';
 import { PostingsRepository, type PostingsDb } from './postings.repository';
 
@@ -34,6 +34,8 @@ export class PostingService {
         alreadyTracked: new ApplicationsService(this.db).hasPosting(postingId),
       };
     } catch (error) {
+      if (error instanceof NotAJobPageError)
+        return { ok: false, code: 'UNSUPPORTED_ATS', message: 'This page does not look like a job posting.' };
       const host = (() => {
         try {
           return new URL(url).hostname;
