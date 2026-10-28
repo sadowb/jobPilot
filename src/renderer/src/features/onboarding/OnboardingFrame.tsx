@@ -5,6 +5,7 @@ import { Logo } from '../../components/Logo';
 import { Eyebrow, cn } from '../../components/ui';
 import { hostPlatform } from '../../lib/api';
 import { A_BOB, BUBBLE, GoButton, H1, IT, REDUCE_ALL, S, SPEC } from '../shared-ui';
+import { saveProfileData } from '../profile/profileStorage';
 import { ONBOARDING_STEPS, STEP_NAMES, dotState, stepPath, type OnboardingStep } from './steps';
 
 /**
@@ -64,8 +65,10 @@ export function OnboardingFrame({
         <div className={cn('flex items-center gap-2 justify-self-end', PLACE_COL_3)}>
           <AppearanceControl />
           {/* `.btn.ghost` never had a hover fill, unlike the primitive's ghost variant. */}
+          {/* Skipping is a choice, not a crash: don't show onboarding again on the next launch (#135). */}
           <GoButton
             to="/"
+            onClick={() => void saveProfileData('onboardingCompletedAt', Date.now())}
             variant="ghost"
             size="sm"
             className="hover:bg-transparent! text-ink-2! font-semibold! text-[13.5px]! in-[html[data-platform=darwin]]:h-8 in-[html[data-platform=darwin]]:min-h-8"

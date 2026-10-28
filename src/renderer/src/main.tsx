@@ -47,7 +47,8 @@ async function start(): Promise<void> {
     if (window.jobpilot && !location.hash.includes('/recovery')) {
       const profile = await initializeProfile(window.jobpilot.profile, localStorage);
       setProfileData(profile);
-      if (profile.personal === null && (!location.hash || location.hash === '#/')) location.replace('#/welcome/1');
+      if (profile.onboardingCompletedAt === null && (!location.hash || location.hash === '#/'))
+        location.replace('#/welcome/1');
     }
     reactRoot.render(
       <StrictMode>
