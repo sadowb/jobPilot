@@ -144,6 +144,57 @@ const DnsAddresses = z
   .min(1);
 const atsDomains = ['greenhouse.io', 'lever.co', 'ashbyhq.com', 'workable.com', 'smartrecruiters.com', 'bamboohr.com'];
 
+export function isNetworkError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  if ('name' in error && (error.name === 'TimeoutError' || error.name === 'AbortError')) return true;
+  const candidate = error as { code?: unknown; cause?: unknown; message?: unknown };
+  const code =
+    typeof candidate.code === 'string'
+      ? candidate.code
+      : candidate.cause &&
+          typeof candidate.cause === 'object' &&
+          'code' in candidate.cause &&
+          typeof candidate.cause.code === 'string'
+        ? candidate.cause.code
+        : undefined;
+  if (code && /^(?:ECONN|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|UND_ERR)/.test(code)) return true;
+  if (error instanceof TypeError && typeof candidate.message === 'string' && candidate.message.includes('fetch failed'))
+    return true;
+  return false;
+}
+
+export function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 429 || (status >= 500 && status <= 599);
+}
+
+export function retryDelayMs(
+  response?: { headers?: Headers | { get(name: string): string | null } },
+  attempt = 0,
+  options?: { now?: number; random?: () => number },
+): number {
+  let baseMs: number | undefined;
+  const header = response?.headers?.get?.('retry-after')?.trim();
+  if (header) {
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      baseMs = seconds * 1000;
+    } else {
+      const parsedDate = Date.parse(header);
+      if (!Number.isNaN(parsedDate)) {
+        const now = options?.now ?? Date.now();
+        baseMs = Math.max(0, parsedDate - now);
+      }
+    }
+  }
+  if (baseMs === undefined) {
+    baseMs = 250 * 2 ** attempt;
+  }
+  const capped = Math.min(baseMs, 30_000);
+  const rand = options?.random ? options.random() : Math.random();
+  const jitter = 0.8 + rand * 0.4;
+  return Math.round(capped * jitter);
+}
+
 export async function request(
   url: string,
   init: {
@@ -183,7 +234,7 @@ export async function request(
       },
     });
     try {
-      let response;
+      let response: Awaited<ReturnType<typeof fetch>>;
       for (let attempt = 0; ; attempt++) {
         try {
           response = await fetch(target, {
@@ -198,12 +249,12 @@ export async function request(
             signal: AbortSignal.timeout(9000),
             redirect: 'manual',
           });
-          if (![408, 429, 500, 502, 503, 504].includes(response.status) || attempt >= 2) break;
+          if (!isRetryableStatus(response.status) || attempt >= 2) break;
           await response.body?.cancel();
-          await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs(response, attempt)));
         } catch (error) {
-          if (attempt >= 2) throw error;
-          await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+          if (!isNetworkError(error) || attempt >= 2) throw error;
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs(undefined, attempt)));
         }
       }
       if ([301, 302, 303, 307, 308].includes(response.status)) {
