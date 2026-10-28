@@ -145,6 +145,11 @@ export function startDailyBackups(logger: Pick<Logger, 'error'>): { timer: NodeJ
   };
 }
 
+/** Releases the SQLite handle (and WAL) before the data directory is deleted. */
+export function closeDatabase(): void {
+  db?.$client.close();
+}
+
 export class DatabaseUnlockError extends Error {}
 
 export async function recoverDatabaseKey(encoded: string): Promise<void> {

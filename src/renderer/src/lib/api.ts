@@ -68,6 +68,9 @@ export const useSaveDocument = () =>
 
 export const useExportRecoveryKey = () => useMutation({ mutationFn: () => bridge().recovery.export() });
 
+export const useRemoveAllData = () =>
+  useMutation({ mutationFn: () => bridge().settings.removeAllData({ confirm: 'DELETE' }) });
+
 export const useSettings = () =>
   useQuery({
     queryKey: queryKeys.settings.current(),

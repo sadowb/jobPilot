@@ -8,6 +8,7 @@ import {
   DetectAgentSchema,
   SaveAgentSchema,
   UpdateSettingsSchema,
+  RemoveAllDataSchema,
 } from '../../../shared/dto';
 import { defineHandler } from '../../platform/ipc/registry';
 import { exportRecoveryKey, importRecoveryKey } from './recovery.service';
@@ -48,4 +49,8 @@ export function memoryHandlers(service: MemorySettingsService) {
     defineHandler(Channels.installMemory, z.void(), () => service.install()),
     defineHandler(Channels.removeMemory, z.void(), () => service.remove()),
   ];
+}
+
+export function dataHandlers(removeAll: () => Promise<void>) {
+  return [defineHandler(Channels.removeAllData, RemoveAllDataSchema, () => removeAll())];
 }
