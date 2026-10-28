@@ -42,7 +42,7 @@ import { installAppMenu } from './menu';
 import { registerAppScheme, serveRenderer } from './protocol';
 import { denyPermissionsByDefault, lockDown } from './security';
 import { createWindow } from './window';
-import { Shutdown } from './shutdown';
+import { setTimeout as delay } from 'node:timers/promises';
 
 // Inspector-only journey access follows the exports below; shipped builds disable the inspector.
 export let databaseBackupTimer: NodeJS.Timeout | undefined;
@@ -82,8 +82,6 @@ if (!app.requestSingleInstanceLock()) {
       logger.error({ err: reason instanceof Error ? reason : String(reason) }, 'Unhandled main-process rejection');
     });
 
-    const shutdown = new Shutdown(loggerFor('main'));
-    app.on('before-quit', shutdown.onBeforeQuit);
     serveRenderer();
     installAppMenu();
     denyPermissionsByDefault();
@@ -114,7 +112,6 @@ if (!app.requestSingleInstanceLock()) {
 
     const backups = startDailyBackups(loggerFor('database'));
     databaseBackupTimer = backups.timer;
-    shutdown.register('backups', backups.stop);
 
     // An active Node inspector requires the fuse enabled; shipped apps cannot enter this branch.
     if (process.env.JOBPILOT_E2E_PROVIDER === 'fake' && (!app.isPackaged || inspectorUrl() !== undefined)) {
@@ -147,10 +144,25 @@ if (!app.requestSingleInstanceLock()) {
       memory,
     );
     await runsService.initialize();
-    shutdown.register('agents', () => agentSettings.stop());
-    shutdown.register('memory', () => memory.stop());
-    shutdown.register('consolidation', () => consolidation.stop());
-    shutdown.register('runs', () => runsService.stop());
+    let quitting = false;
+    app.on('before-quit', (event) => {
+      event.preventDefault();
+      if (quitting) return;
+      quitting = true;
+      backups.stop();
+      agentSettings.stop();
+      // Stop owned work (agent children, Neo tabs), then app.exit(): unlike app.quit() it emits no quit events,
+      // so the quit is never re-entered. Bounded so a stuck stop cannot keep the app alive.
+      void Promise.race([
+        Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).then((results) =>
+          results.forEach((result, index) => {
+            if (result.status === 'rejected')
+              logger.error({ step: ['runs', 'consolidation', 'memory'][index] }, 'Quit cleanup failed');
+          }),
+        ),
+        delay(10_000),
+      ]).finally(() => app.exit(0));
+    });
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
     if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
