@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error plain ESM module without type declarations
 // prettier-ignore
-import { checkDatabaseEncryption, checkLogErrors, hasFirstLogLine, resolveExecutablePath } from '../scripts/smoke-app.mjs';
+import { checkDatabaseEncryption, checkLogErrors, hasFirstLogLine, hasLogsDir, resolveExecutablePath } from '../scripts/smoke-app.mjs';
 
 describe('smoke-app helpers', () => {
   let tempDir: string;
@@ -15,6 +15,24 @@ describe('smoke-app helpers', () => {
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  describe('hasLogsDir', () => {
+    it('returns false when logs directory does not exist', () => {
+      expect(hasLogsDir(tempDir)).toBe(false);
+    });
+
+    it('returns false when logs directory is empty', () => {
+      mkdirSync(join(tempDir, 'logs'), { recursive: true });
+      expect(hasLogsDir(tempDir)).toBe(false);
+    });
+
+    it('returns true when a log file exists', () => {
+      const logs = join(tempDir, 'logs');
+      mkdirSync(logs, { recursive: true });
+      writeFileSync(join(logs, 'jobpilot.log'), '');
+      expect(hasLogsDir(tempDir)).toBe(true);
+    });
   });
 
   describe('hasFirstLogLine', () => {

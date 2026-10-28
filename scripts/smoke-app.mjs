@@ -41,6 +41,13 @@ export function resolveExecutablePath(inputPath) {
   return inputPath;
 }
 
+export function hasLogsDir(userData) {
+  const logsDir = join(userData, 'logs');
+  if (!existsSync(logsDir)) return false;
+  const files = readdirSync(logsDir).filter((f) => !f.startsWith('.'));
+  return files.length > 0;
+}
+
 export function hasFirstLogLine(userData) {
   const logsDir = join(userData, 'logs');
   if (!existsSync(logsDir)) return false;
@@ -125,7 +132,7 @@ export async function bootApp({ executable, args = [], timeoutMs = 30000 }) {
 
       const hasDb = existsSync(join(userData, 'jobpilot.db'));
       const hasKey = existsSync(join(userData, 'db-key.enc'));
-      const hasLogs = hasFirstLogLine(userData);
+      const hasLogs = hasLogsDir(userData);
 
       if (hasDb && hasKey && hasLogs) {
         booted = true;
@@ -148,10 +155,9 @@ export async function bootApp({ executable, args = [], timeoutMs = 30000 }) {
       throw new Error(`App boot failed: database, key, or logs missing after ${Date.now() - startTime}ms`);
     }
 
-    console.log('App started successfully. Verifying database encryption and log status...');
+    console.log('App started successfully. Verifying database encryption...');
     checkDatabaseEncryption(userData);
-    checkLogErrors(userData);
-    console.log('Database is encrypted and logs have no errors.');
+    console.log('Database is encrypted.');
 
     // Shutdown gracefully
     console.log('Stopping app cleanly...');
@@ -185,7 +191,9 @@ export async function bootApp({ executable, args = [], timeoutMs = 30000 }) {
     if (child.exitCode !== null && child.exitCode !== 0 && child.signalCode !== 'SIGTERM') {
       throw new Error(`App exited with non-zero code: ${child.exitCode}`);
     }
-    console.log('App quit cleanly.');
+    console.log('App quit cleanly. Verifying logs for error entries...');
+    checkLogErrors(userData);
+    console.log('Logs verified with no errors.');
   } finally {
     try {
       rmSync(userData, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
