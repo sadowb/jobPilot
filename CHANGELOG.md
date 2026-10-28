@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.1](https://github.com/sadowb/jobPilot/compare/v0.2.0...v0.2.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **build:** run smoke:native on Windows cmd ([#172](https://github.com/sadowb/jobPilot/issues/172)) ([1a2887f](https://github.com/sadowb/jobPilot/commit/1a2887f8e12810e2dc7b2c459fe4de8e16cc22ac))
+* **profile:** keep Add a CV above the fold at 1100x700 ([#114](https://github.com/sadowb/jobPilot/issues/114)) ([434d8eb](https://github.com/sadowb/jobPilot/commit/434d8ebeb24035b57a85080e5caa6c105888e8d2))
+* **profile:** no stray vertical scrollbar on the profile tab bar ([434d8eb](https://github.com/sadowb/jobPilot/commit/434d8ebeb24035b57a85080e5caa6c105888e8d2))
+
 ## [0.2.0](https://github.com/sadowb/jobPilot/compare/v0.1.0...v0.2.0) (2026-10-28)
 
 
