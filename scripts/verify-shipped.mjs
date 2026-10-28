@@ -86,8 +86,21 @@ try {
         .filter((line) => /"level":\s*(5\d|6\d)/.test(line))
     : [];
   if (errors.length) fail(`error-level log entries:\n${errors.slice(0, 5).join('\n')}`);
-  console.log(`verify-shipped: OK (${app})`);
+  // 4. A shipped app must quit on SIGTERM (logout, shutdown, installers) within a bounded time.
+  child.kill('SIGTERM');
+  const deadline = Date.now() + 20_000;
+  while (!exited && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 200));
+  if (!exited) {
+    const tail = existsSync(logs)
+      ? readdirSync(logs)
+          .map((name) => readFileSync(join(logs, name), 'utf8').split('\n').slice(-30).join('\n'))
+          .join('\n')
+      : '(no logs dir)';
+    child.kill('SIGKILL');
+    fail(`app did not quit within 20 s of SIGTERM.\nlogs:\n${tail}\nstderr:\n${stderr.slice(-3000)}`);
+  }
+  console.log(`verify-shipped: OK (${app}, quit ${JSON.stringify(exited)})`);
 } finally {
-  if (!exited) child.kill('SIGTERM');
+  if (!exited) child.kill('SIGKILL');
   rmSync(userData, { recursive: true, force: true });
 }

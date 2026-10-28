@@ -150,7 +150,23 @@ if (!app.requestSingleInstanceLock()) {
       event.preventDefault();
       stoppingRuns = true;
       agentSettings.stop();
-      void Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).finally(() => app.quit());
+      const quitLog = loggerFor('main');
+      quitLog.info('Quit: stopping runs, consolidation and memory');
+      // Each step is logged so a quit that never finishes shows which service is stuck.
+      const step = (name: string, work: Promise<void>) =>
+        work.then(
+          () => quitLog.info({ step: name }, 'Quit step done'),
+          (error: unknown) =>
+            quitLog.error(
+              { step: name, error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+              'Quit step failed',
+            ),
+        );
+      void Promise.all([
+        step('runs', runsService.stop()),
+        step('consolidation', consolidation.stop()),
+        step('memory', memory.stop()),
+      ]).finally(() => app.quit());
     });
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
