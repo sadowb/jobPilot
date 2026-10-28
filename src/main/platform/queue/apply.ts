@@ -5,7 +5,10 @@ import { z } from 'zod';
 const PayloadSchema = z.object({ runId: z.ulid() }).strict();
 type Payload = z.infer<typeof PayloadSchema>;
 
-// Gate dequeue itself: Runner.stop() can still claim a job while waiting for a slot.
+// Gate dequeue itself: liteque 0.10.0 Runner.runImpl checks `stopping` only before `await semaphore.waitForUnlock()`,
+// so stop() while all slots are busy still claims one job. Upstream: karakeep-app/liteque (not yet filed/fixed), tracked in
+// sadowb/jobPilot#145.
+// shortcut: dequeue override is a monkey-patch of a library method, delete it once liteque re-checks `stopping` after the wait.
 class ApplyQueue extends SqliteQueue<Payload> {
   paused = true;
 
@@ -20,6 +23,8 @@ export class ApplyWorker {
   private readonly runner: Runner<Payload>;
   private readonly active = new Map<string, AbortController>();
   private loop?: Promise<void>;
+  /** Startup cleanup of stale non-running tasks; enqueue waits so it cannot be deleted. */
+  private readonly cleaned: Promise<number>;
 
   constructor(
     file: string,
@@ -36,7 +41,8 @@ export class ApplyWorker {
       keepFailedJobs: false,
     });
     // The run rows are authoritative. Startup re-enqueues queued rows after failing interrupted runs.
-    this.database.$client.prepare('DELETE FROM tasks WHERE queue = ?').run('apply');
+    this.cleaned = this.queue.cancelAllNonRunning();
+    this.purgeOrphanedRunning();
     this.runner = new Runner(
       this.queue,
       {
@@ -55,7 +61,14 @@ export class ApplyWorker {
     );
   }
 
+  /** A `running` task at construction belongs to a crashed process (this one has not started), so drop it. */
+  private purgeOrphanedRunning(): void {
+    // shortcut: raw SQL on liteque's `tasks` table, it has no public API for running rows. Replace if one ships.
+    this.database.$client.prepare("DELETE FROM tasks WHERE queue = ? AND status = 'running'").run('apply');
+  }
+
   async enqueue(runId: string): Promise<void> {
+    await this.cleaned;
     await this.queue.enqueue(PayloadSchema.parse({ runId }), { idempotencyKey: runId });
   }
 
@@ -66,7 +79,7 @@ export class ApplyWorker {
 
   resume(): boolean {
     this.queue.paused = false;
-    this.loop ??= this.runner.run().catch((error) => this.onError(error));
+    this.loop ??= this.cleaned.then(() => this.runner.run()).catch((error) => this.onError(error));
     return false;
   }
 
