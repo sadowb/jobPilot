@@ -138,7 +138,7 @@ describe('settings persistence and queue concurrency reuse', () => {
     expect(defaults).toEqual({
       autopilot: false,
       crew: 6,
-      submitMode: 'auto',
+      submitMode: 'review',
       sites: {},
       limits: { openTabs: 8, costPerDay: 5, runSeconds: 540, stuckSeconds: 120 },
     });
@@ -156,11 +156,11 @@ describe('settings persistence and queue concurrency reuse', () => {
       stuckSeconds: 120,
     });
 
-    updateSettings({ submitMode: 'review', autopilot: true }, testDb);
+    updateSettings({ submitMode: 'auto', autopilot: true }, testDb);
 
     const fresh = getSettings(testDb);
     expect(fresh.crew).toBe(30);
-    expect(fresh.submitMode).toBe('review');
+    expect(fresh.submitMode).toBe('auto');
     expect(fresh.autopilot).toBe(true);
     expect(fresh.limits.costPerDay).toBe(50);
     expect(fresh.limits.openTabs).toBe(8);
