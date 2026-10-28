@@ -43,7 +43,7 @@ jobs:
         run: pipx run semgrep==1.182.1 scan --config .semgrep/ --error --metrics=off
       - name: Run Electronegativity (Electron misconfigurations)
         run: |
-          npx --yes @doyensec/electronegativity@1.10.3 -i src --parser-plugins typescript,jsx -o "$RUNNER_TEMP/electronegativity.sarif" || true
+          npx --yes @doyensec/electronegativity@1.10.3 -i src --parser-plugins typescript,jsx -e "$(node -p "require('electron/package.json').version")" -o "$RUNNER_TEMP/electronegativity.sarif" || true
           node scripts/check-electronegativity.mjs "$RUNNER_TEMP/electronegativity.sarif"
       - name: Run OSV-Scanner on package-lock.json (fail on high)
         run: |
@@ -103,6 +103,7 @@ jobs:
           echo "JOBPILOT_SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
           echo "JOBPILOT_SIGN_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
       - run: npm ci
+      - run: npx vitest run tests/after-pack.test.ts # macOS-only (PlistBuddy); skipped in static
       - run: npm run build
       - run: npm run smoke:native
       - name: Package PR app
