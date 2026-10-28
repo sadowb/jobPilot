@@ -162,11 +162,14 @@ if (!app.requestSingleInstanceLock()) {
               'Quit step failed',
             ),
         );
+      // Re-quit on a later task, never inside this dispatch: Electron's Browser::Quit() assigns
+      // is_quitting_ = HandleBeforeQuit() after this handler returns, so a nested quit() is overwritten
+      // with false and macOS stays alive with no windows (seen when every stop settles in a microtask).
       void Promise.all([
         step('runs', runsService.stop()),
         step('consolidation', consolidation.stop()),
         step('memory', memory.stop()),
-      ]).finally(() => app.quit());
+      ]).finally(() => setImmediate(() => app.quit()));
     });
 
     const themePreference = join(app.getPath('userData'), 'theme-preference');
