@@ -321,6 +321,7 @@ export function AddJobsDialog({
                                 (failed || unsupported) && 'font-mono',
                               )}
                             >
+                              {posting && !posting.verified && 'Apply form found, no job data · '}
                               {failed || unsupported
                                 ? link
                                   ? `${link.host}${link.pathname}`
@@ -369,6 +370,13 @@ export function AddJobsDialog({
                           Edit
                         </AppButton>
                       </>
+                    )}
+                    {posting && !posting.verified && (
+                      <V17StatusChip className="bg-[var(--st-amber-bg)] text-[var(--st-amber-fg)]">
+                        <span title="Looks like an apply form, not a confirmed job posting. You confirm it before a run starts.">
+                          Unverified page
+                        </span>
+                      </V17StatusChip>
                     )}
                     <V17StatusChip
                       className={cn(

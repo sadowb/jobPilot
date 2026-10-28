@@ -173,7 +173,14 @@ blockedV6.addSubnet('3fff::', 20, 'ipv6');
 const DnsAddresses = z
   .array(z.object({ address: z.union([z.ipv4(), z.ipv6()]), family: z.union([z.literal(4), z.literal(6)]) }))
   .min(1);
-const atsDomains = ['greenhouse.io', 'lever.co', 'ashbyhq.com', 'workable.com', 'smartrecruiters.com', 'bamboohr.com'];
+export const atsDomains = [
+  'greenhouse.io',
+  'lever.co',
+  'ashbyhq.com',
+  'workable.com',
+  'smartrecruiters.com',
+  'bamboohr.com',
+];
 
 export function isNetworkError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
@@ -348,7 +355,9 @@ export async function jsonValue(
   return schema.parse(raw);
 }
 
-export function form(input: Omit<PostingFormDto, 'questions'> & { questions?: PostingQuestionDto[] }): PostingFormDto {
+export function form(
+  input: Omit<PostingFormDto, 'questions' | 'verified'> & { questions?: PostingQuestionDto[]; verified?: boolean },
+): PostingFormDto {
   return PostingFormSchema.parse({ ...input, questions: input.questions ?? [] });
 }
 

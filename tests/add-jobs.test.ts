@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+
+const page = vi.hoisted(() => ({ html: '' }));
+vi.mock('../src/main/modules/postings/ats/common', async (orig) => ({
+  ...(await orig<typeof import('../src/main/modules/postings/ats/common')>()),
+  request: async (url: string) => ({ url: new URL(url), text: page.html }),
+}));
 import { candidateUrls, reconcileRows } from '../src/renderer/src/features/dashboard/addjobs/rows';
-import { matchPostingUrl } from '../src/main/modules/postings/ats';
+import { fetchPosting, matchPostingUrl, NotAJobPageError } from '../src/main/modules/postings/ats';
 import { canonicalUrl } from '../src/main/modules/postings/ats/common';
 
 const GH = 'https://job-boards.greenhouse.io/acme/jobs/4076934007';
@@ -58,18 +64,34 @@ describe('URL cleaning and ATS anchoring', () => {
   it.each(junk)('rejects trailing junk: %s', (u) => expect(matchPostingUrl(new URL(u))).toBeNull());
 });
 
-describe('non-job pages', () => {
-  it('are rejected when there is no JobPosting JSON-LD', async () => {
-    vi.resetModules();
-    vi.doMock('../src/main/modules/postings/ats/common', async (orig) => ({
-      ...(await orig<typeof import('../src/main/modules/postings/ats/common')>()),
-      request: async (url: string) => ({
-        url: new URL(url),
-        text: '<html><title>Job</title><form><input name="q"></form></html>',
-      }),
-    }));
-    const { fetchPosting, NotAJobPageError } = await import('../src/main/modules/postings/ats');
-    await expect(fetchPosting('https://en.example.org/wiki/Job')).rejects.toBeInstanceOf(NotAJobPageError);
-    vi.doUnmock('../src/main/modules/postings/ats/common');
+describe('custom page classification', () => {
+  const read = (html: string) => {
+    page.html = `<html><head><title>Role</title></head><body>${html}</body></html>`;
+    return fetchPosting('https://careers.example.org/role');
+  };
+  const ld = '<script type="application/ld+json">{"@type":"JobPosting","title":"Engineer"}</script>';
+
+  it('JobPosting JSON-LD is a verified posting', async () => {
+    expect(await read(ld)).toMatchObject({ ats: 'custom', verified: true, title: 'Engineer' });
+  });
+  it.each([
+    ['a CV upload form', '<form><input type="file" name="cv"></form>'],
+    ['an email + name form', '<form><input name="full_name"><input type="email" name="email"></form>'],
+    ['an ATS iframe', '<iframe src="https://boards.greenhouse.io/embed/job_app?for=acme"></iframe>'],
+    ['an ATS script', '<script src="https://jobs.lever.co/widget.js"></script>'],
+  ])('%s is accepted as unverified', async (_name, html) => {
+    expect(await read(html)).toMatchObject({ ats: 'custom', verified: false });
+  });
+  it.each([
+    ['a search-only page', '<form action="/search"><input type="search" name="q"></form>'],
+    ['an article', '<article><h1>Job</h1><p>A job is a role.</p></article>'],
+    [
+      'a login form',
+      '<form><input name="username"><input type="email" name="email"><input type="password" name="p"></form>',
+    ],
+    ['an email-only newsletter form', '<form><input type="email" name="email"></form>'],
+    ['a non-ATS iframe', '<iframe src="https://www.youtube.com/embed/x"></iframe>'],
+  ])('%s is rejected as not a job page', async (_name, html) => {
+    await expect(read(html)).rejects.toBeInstanceOf(NotAJobPageError);
   });
 });

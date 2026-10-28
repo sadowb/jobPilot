@@ -546,7 +546,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
         .intercept({ path: '/retry' })
         .reply(
           200,
-          '<html><head><title>Retry role</title><script type="application/ld+json">{"@type":"JobPosting","title":"Retry role"}</script></head><body><label>Name<input name="name" required></label></body></html>',
+          '<html><head><title>Retry role</title></head><body><label>Name<input name="name" required></label><label>Email<input type="email" name="email"></label></body></html>',
         )
         .persist();
       undici.Agent = class extends undici.Agent {
@@ -680,6 +680,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await rows.nth(0).getByRole('button', { name: 'Retry', exact: true }).click();
     await expect(rows.nth(0)).toContainText('Ready');
     await expect(rows.nth(0)).toContainText('Retry role');
+    await expect(rows.nth(0)).toContainText('Unverified page');
     await expect(rows.nth(0)).toContainText('example.com');
     await expect(rows.nth(0)).not.toContainText('custom');
     await window.getByRole('button', { name: 'Remove link', exact: true }).click();

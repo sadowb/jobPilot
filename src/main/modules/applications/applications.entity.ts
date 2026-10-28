@@ -95,6 +95,7 @@ const applicationListColumns = {
   title: text('title').notNull(),
   location: text('location'),
   url: text('url').notNull(),
+  verified: integer('verified', { mode: 'boolean' }).notNull(),
   companyId: text('company_id').notNull(),
   companyName: text('company_name').notNull(),
   latestRunId: text('latest_run_id'),

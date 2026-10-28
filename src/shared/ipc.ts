@@ -43,6 +43,7 @@ export const Channels = {
   resumeRuns: 'runs:resume',
   listRuns: 'runs:list',
   ingestPosting: 'postings:ingest',
+  confirmPosting: 'postings:confirm',
   listApplications: 'applications:list',
   createApplication: 'applications:create',
   getProfile: 'profile:get',
@@ -114,7 +115,7 @@ export interface JobPilotBridge {
     resume(): Promise<boolean>;
     list(): Promise<RunSummaryDto[]>;
   };
-  postings: { ingest(url: string): Promise<IngestResult> };
+  postings: { ingest(url: string): Promise<IngestResult>; confirm(postingId: string): Promise<boolean> };
   applications: { list(): Promise<ApplicationListItem[]>; create(postingId: string): Promise<ApplicationListItem> };
   profile: {
     get(): Promise<ProfileData>;

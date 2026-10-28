@@ -29,6 +29,13 @@
       "when": 1793158196176,
       "tag": "0003_opposite_earthquake",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793231769873,
+      "tag": "0004_third_mole_man",
+      "breakpoints": true
     }
   ]
 }

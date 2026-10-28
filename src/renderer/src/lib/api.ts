@@ -29,6 +29,14 @@ export const useCreateApplication = () =>
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
   });
 
+export const useConfirmPosting = () => {
+  const { mutate } = useMutation({
+    mutationFn: (postingId: string) => bridge().postings.confirm(postingId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+  });
+  return mutate;
+};
+
 export const useIngestPosting = () => useMutation({ mutationFn: (url: string) => bridge().postings.ingest(url) });
 
 export const useAgent = () =>

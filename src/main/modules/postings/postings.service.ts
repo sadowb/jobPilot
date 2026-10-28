@@ -20,7 +20,7 @@ export class PostingService {
   async ingest(url: string): Promise<IngestResult> {
     try {
       const parsed = PostingFormSchema.parse(await fetchPosting(url));
-      if (parsed.ats === 'custom' && !parsed.description && !parsed.questions.length) {
+      if (parsed.ats === 'custom' && parsed.verified && !parsed.description && !parsed.questions.length) {
         return {
           ok: false,
           code: 'UNSUPPORTED_ATS',
@@ -53,6 +53,10 @@ export class PostingService {
 
   resolveFillPlan(applicationId: string): FillPlanDto {
     return this.repository.resolveFillPlan(applicationId);
+  }
+
+  confirm(postingId: string) {
+    this.repository.confirm(postingId);
   }
 
   get(postingId: string) {
