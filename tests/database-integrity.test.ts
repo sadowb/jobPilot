@@ -55,13 +55,6 @@ async function createHealthyDatabase(): Promise<void> {
   db.$client.close();
 }
 
-// A first-run backup predates migrations (empty schema), so drop it and let the second open back up real data.
-async function createBackedUpDatabase(): Promise<void> {
-  await createHealthyDatabase();
-  rmSync(backups(), { recursive: true });
-  await createHealthyDatabase();
-}
-
 function overwrite(path: string, offset: number, bytes: Buffer): void {
   const fd = openSync(path, 'r+');
   writeSync(fd, bytes, 0, bytes.length, offset);
@@ -127,8 +120,15 @@ describe('pruneBackups temp files (F4)', () => {
 });
 
 describe('restoreBackup', () => {
+  it('backs up a brand-new profile after migrating, so day one is restorable', async () => {
+    await createHealthyDatabase();
+    const all = listBackups();
+    expect(all.map((b) => b.name)).toEqual([expect.stringMatching(/^jobpilot-\d{4}-\d{2}-\d{2}\.db$/)]);
+    await expect(restoreBackup(all[0]!.name)).resolves.toBeUndefined();
+  });
+
   it('keeps the damaged file aside and installs the backup', async () => {
-    await createBackedUpDatabase();
+    await createHealthyDatabase();
     const backup = listBackups()[0]!;
     expect(backup).toBeDefined();
     overwrite(file(), 8192, randomBytes(512));
@@ -144,7 +144,7 @@ describe('restoreBackup', () => {
   });
 
   it('refuses a backup that does not open with the key, changing nothing', async () => {
-    await createBackedUpDatabase();
+    await createHealthyDatabase();
     const backup = listBackups()[0]!;
     const before = readFileSync(file());
     const wrongKey = randomBytes(32).toString('base64');

@@ -301,11 +301,13 @@ export async function openDatabase(logger: Pick<Logger, 'error'>): Promise<void>
       const migrationFolder = migrationsPath();
       const pending = pendingMigrations(sqlite, migrationFolder);
       const today = backupDay();
-      if (pending) await createBackup(sqlite, key, `${today}-migration-${Date.now()}`, logger);
-      await backupToday(sqlite, key, today, logger);
+      // A brand-new file has nothing to roll back to; restore refuses schema-less backups anyway.
+      if (pending && existed) await createBackup(sqlite, key, `${today}-migration-${Date.now()}`, logger);
 
       db = drizzle(sqlite, { schema });
       if (pending) migrate(db, { migrationsFolder: migrationFolder });
+      // After migrating, so even a first-day backup has the current schema and stays restorable.
+      await backupToday(sqlite, key, today, logger);
     } catch (error) {
       sqlite.close();
       throw error;
