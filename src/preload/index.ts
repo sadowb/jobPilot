@@ -6,6 +6,8 @@ import {
   type ThemeSource,
   RendererErrorInputSchema,
   RecoveryKeySchema,
+  RecoveryStateSchema,
+  RestoreBackupSchema,
   IpcValidationErrorSchema,
   DataChangedSchema,
 } from '../shared/ipc';
@@ -125,7 +127,18 @@ const bridge: JobPilotBridge = {
       await invoke(Channels.exportRecoveryKey);
     },
     async import(key) {
-      return z.boolean().parse(await invoke(Channels.importRecoveryKey, RecoveryKeySchema.parse(key)));
+      // Short message only: a zod issue would leak the key regex and echo the (possibly huge) input.
+      const parsed = RecoveryKeySchema.safeParse(key);
+      if (!parsed.success) throw new TypeError('That is not a valid recovery key.');
+      return z.boolean().parse(await invoke(Channels.importRecoveryKey, parsed.data));
+    },
+    async state() {
+      return RecoveryStateSchema.parse(await invoke(Channels.getRecoveryState));
+    },
+    async restore(input) {
+      const parsed = RestoreBackupSchema.safeParse(input);
+      if (!parsed.success) throw new TypeError('Choose a backup and, if given, a valid recovery key.');
+      return z.boolean().parse(await invoke(Channels.restoreBackup, parsed.data));
     },
   },
   async reportRendererError(error) {

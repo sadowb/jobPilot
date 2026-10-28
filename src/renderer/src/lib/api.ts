@@ -72,6 +72,14 @@ export const useSaveDocument = () =>
 
 export const useExportRecoveryKey = () => useMutation({ mutationFn: () => bridge().recovery.export() });
 
+export const useRecoveryState = () =>
+  useQuery({ queryKey: queryKeys.recovery.state(), queryFn: () => bridge().recovery.state() });
+export const useImportRecoveryKey = () => useMutation({ mutationFn: (key: string) => bridge().recovery.import(key) });
+export const useRestoreBackup = () =>
+  useMutation({
+    mutationFn: (input: Parameters<JobPilotBridge['recovery']['restore']>[0]) => bridge().recovery.restore(input),
+  });
+
 export const useSettings = () =>
   useQuery({
     queryKey: queryKeys.settings.current(),

@@ -72,6 +72,14 @@
     "schema": "RecoveryKeySchema"
   },
   {
+    "channel": "recovery:restore",
+    "schema": "RestoreBackupSchema"
+  },
+  {
+    "channel": "recovery:state",
+    "schema": "z.void()"
+  },
+  {
     "channel": "runs:cancel",
     "schema": "CancelRunSchema"
   },
