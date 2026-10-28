@@ -316,9 +316,9 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         data: JSON.stringify({ reason: 'app restarted' }),
       }),
     );
-    // Starting again returns the active run instead of creating a second one.
+    // The resumed run already finished (awaiting approval is not active), so starting again opens a new attempt.
     const replacement = await restarted.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[10]!);
-    expect(replacement.id).toBe(interrupted.id);
+    expect(replacement.id).not.toBe(interrupted.id);
     await expect
       .poll(
         async () =>
