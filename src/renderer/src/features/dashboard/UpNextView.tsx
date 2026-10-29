@@ -8,7 +8,7 @@ import { SearchField } from './components/SearchField';
 import { panelId, tabId, TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { clockTime } from './format';
 import { BulkBar } from './upnext/BulkBar';
-import { useSettings } from '../../lib/api';
+import { useConfirmPosting, useSettings } from '../../lib/api';
 import { CREW_DEFAULT } from '../../../../shared/dto';
 import {
   formatCrewTime,
@@ -107,6 +107,7 @@ export function UpNextView({
   }, [state, dispatch, remove, hold, modalOpen]);
 
   const { data: settings } = useSettings();
+  const confirmPosting = useConfirmPosting();
   const crewSize = settings?.crew ?? CREW_DEFAULT;
 
   const crew = state.paused
@@ -238,6 +239,7 @@ export function UpNextView({
                 onHold={() => hold([item.id])}
                 onRemove={() => remove([item.id])}
                 onOpenInbox={onOpenInbox}
+                onConfirm={(postingId) => confirmPosting(postingId)}
                 onDragStart={() => {
                   dragId.current = item.id;
                 }}

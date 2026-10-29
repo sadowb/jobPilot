@@ -17,6 +17,7 @@ const application = (over: Partial<ApplicationListItem> = {}): ApplicationListIt
   createdAt: 0,
   cvVersionId: null,
   postingId: 'p1',
+  verified: true,
   title: 'Backend Engineer',
   location: 'Remote',
   url: 'https://jobs.lever.co/acme/1',

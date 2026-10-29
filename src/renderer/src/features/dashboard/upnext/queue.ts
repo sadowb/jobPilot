@@ -23,6 +23,8 @@ export interface QueueItem {
   waitReason?: 'Draft to review' | 'Human check';
   /** Wall-clock time the user held it, "HH:MM". */
   heldAt?: string;
+  /** Set for custom pages accepted on apply-form evidence only; runs stay blocked until the owner confirms. */
+  unverifiedPostingId?: string;
 }
 
 /** How long a removal can be undone. The toast shows the seconds left. */

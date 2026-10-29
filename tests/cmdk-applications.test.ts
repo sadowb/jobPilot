@@ -12,6 +12,7 @@ const item = (over: Partial<ApplicationListItem>): ApplicationListItem => ({
   createdAt: 0,
   cvVersionId: null,
   postingId: 'p1',
+  verified: true,
   title: 'Backend Engineer',
   location: 'Remote',
   url: 'https://boards.greenhouse.io/acme/jobs/1',

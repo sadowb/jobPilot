@@ -39,6 +39,8 @@ export const PostingFormSchema = z.object({
   ats_tenant: z.string().nullable(),
   ats_job_id: z.string().nullable(),
   questions: z.array(PostingQuestionSchema).max(200),
+  /** false for custom pages without JobPosting JSON-LD (see htmlFallback); ATS adapters and JSON-LD pages are verified. */
+  verified: z.boolean().default(true),
 });
 export type PostingFormDto = z.infer<typeof PostingFormSchema>;
 
@@ -68,6 +70,8 @@ export const IngestUrlSchema = z
       return url.protocol === 'https:' && !url.username && !url.password && !url.port;
     }, 'Use an HTTPS URL without credentials or a custom port.'),
   );
+
+export const ConfirmPostingSchema = z.object({ postingId: z.ulid() });
 
 export const PostingPreviewSchema = PostingFormSchema.extend({ postingId: z.ulid() });
 export type PostingPreview = z.infer<typeof PostingPreviewSchema>;

@@ -41,6 +41,8 @@ export const jobPosting = sqliteTable(
     /** Hash of the form structure last seen; an approval is bound to it. */
     formHash: text('form_hash'),
     closedAt: integer('closed_at'),
+    /** false = a custom page accepted on apply-form evidence only; runs are refused until the owner confirms it. */
+    verified: integer('verified', { mode: 'boolean' }).notNull().default(true),
     ...timestamps(),
     deletedAt: deletedAt(),
   },

@@ -12,6 +12,7 @@ import { CrewSlider } from './CrewSlider';
 import { DEFAULT_SETTINGS, SUBMIT_MODES } from './data';
 import { MemoryCard } from './MemoryCard';
 import { LimitField } from './LimitField';
+import { RemoveDataDialog } from './RemoveDataDialog';
 import { CREW_MAX, LIMIT_SPECS, type SubmitMode } from './model';
 
 const THEMES: readonly { value: ThemeSource; label: string }[] = [
@@ -51,6 +52,7 @@ function Section({
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { state: theme, setSource, error: themeError } = useTheme();
   const [recoveryError, setRecoveryError] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const exportRecoveryKey = useExportRecoveryKey();
   const { data: settings } = useSettings();
   const updateSettings = useUpdateSettings();
@@ -241,6 +243,15 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             Export recovery key
           </Button>
           {recoveryError && <p role="alert">The recovery key could not be exported.</p>}
+        </Section>
+        <Section
+          title="Remove all JobPilot data"
+          desc="Deletes everything JobPilot stored on this Mac, including its Keychain item, then quits."
+        >
+          <Button variant="danger" onClick={() => setRemoving(true)}>
+            Remove all data…
+          </Button>
+          <RemoveDataDialog open={removing} onClose={() => setRemoving(false)} />
         </Section>
         <Section title="Theme" desc="Follows your Mac when set to System.">
           <Segmented label="Theme" options={THEMES} value={theme.source} onChange={setSource} className="w-[300px]" />

@@ -54,4 +54,21 @@ describe('Settings sheet Escape', () => {
     fireEvent(sheet, new Event('cancel', { cancelable: true }));
     expect(screen.getByText('home')).toBeTruthy();
   });
+
+  it('Escape in a nested React dialog closes only that dialog, not the sheet', () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove all data…', hidden: true }));
+    const confirm = screen.getByRole('dialog', { name: 'Remove all JobPilot data', hidden: true });
+    // React bubbles the synthetic cancel through the component tree to the sheet's handler.
+    fireEvent(confirm, new Event('cancel', { cancelable: true }));
+    expect(screen.queryByText('home')).toBeNull();
+    expect(
+      screen.queryByRole('dialog', { name: 'Remove all JobPilot data', hidden: true })?.hasAttribute('open'),
+    ).not.toBe(true);
+    fireEvent(
+      screen.getByRole('dialog', { name: 'Settings', hidden: true }),
+      new Event('cancel', { cancelable: true }),
+    );
+    expect(screen.getByText('home')).toBeTruthy();
+  });
 });

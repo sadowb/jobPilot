@@ -119,6 +119,16 @@ export function flushLogs(): void {
   }
 }
 
+/** Flush and release the log file so its directory can be deleted; later log calls would throw. */
+export function closeLogs(): void {
+  try {
+    destination?.flushSync();
+    destination?.destroy();
+  } catch {
+    // Nothing more can be done while exiting.
+  }
+}
+
 export function loggerFor(module: string): Logger {
   if (!root) throw new Error('LogService has not been initialized');
   return root.child({ module });

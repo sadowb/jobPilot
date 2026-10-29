@@ -1,5 +1,5 @@
 import { PostingFormSchema, type FillPlanDto, type IngestResult } from '../../../shared/dto';
-import { fetchPosting } from './ats';
+import { fetchPosting, NotAJobPageError } from './ats';
 import { ApplicationsService } from '../applications/applications.service';
 import { PostingsRepository, type PostingsDb } from './postings.repository';
 
@@ -20,7 +20,7 @@ export class PostingService {
   async ingest(url: string): Promise<IngestResult> {
     try {
       const parsed = PostingFormSchema.parse(await fetchPosting(url));
-      if (parsed.ats === 'custom' && !parsed.description && !parsed.questions.length) {
+      if (parsed.ats === 'custom' && parsed.verified && !parsed.description && !parsed.questions.length) {
         return {
           ok: false,
           code: 'UNSUPPORTED_ATS',
@@ -34,6 +34,8 @@ export class PostingService {
         alreadyTracked: new ApplicationsService(this.db).hasPosting(postingId),
       };
     } catch (error) {
+      if (error instanceof NotAJobPageError)
+        return { ok: false, code: 'UNSUPPORTED_ATS', message: 'This page does not look like a job posting.' };
       const host = (() => {
         try {
           return new URL(url).hostname;
@@ -51,6 +53,10 @@ export class PostingService {
 
   resolveFillPlan(applicationId: string): FillPlanDto {
     return this.repository.resolveFillPlan(applicationId);
+  }
+
+  confirm(postingId: string) {
+    this.repository.confirm(postingId);
   }
 
   get(postingId: string) {

@@ -41,6 +41,13 @@ export const useSetApplicationStatus = () =>
     mutationFn: (input: SetApplicationStatusInput) => bridge().applications.setStatus(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
   });
+export const useConfirmPosting = () => {
+  const { mutate } = useMutation({
+    mutationFn: (postingId: string) => bridge().postings.confirm(postingId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+  });
+  return mutate;
+};
 
 export const useIngestPosting = () => useMutation({ mutationFn: (url: string) => bridge().postings.ingest(url) });
 
@@ -85,6 +92,8 @@ export const useSaveDocument = () =>
 
 export const useExportRecoveryKey = () => useMutation({ mutationFn: () => bridge().recovery.export() });
 
+export const useRemoveAllData = () =>
+  useMutation({ mutationFn: () => bridge().settings.removeAllData({ confirm: 'DELETE' }) });
 export const useRecoveryState = () =>
   useQuery({ queryKey: queryKeys.recovery.state(), queryFn: () => bridge().recovery.state() });
 export const useImportRecoveryKey = () => useMutation({ mutationFn: (key: string) => bridge().recovery.import(key) });

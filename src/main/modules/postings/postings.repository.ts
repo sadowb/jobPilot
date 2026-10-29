@@ -1,4 +1,4 @@
-import { and, eq, inArray, notInArray, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { FillPlanDto, PostingFormDto } from '../../../shared/dto';
 import * as schema from '../../platform/db/schema';
@@ -14,6 +14,17 @@ export class PostingsRepository {
     const posting = this.db.select().from(jobPosting).where(eq(jobPosting.id, postingId)).get();
     if (!posting || posting.deletedAt !== null) throw new Error('Posting is unavailable.');
     return posting;
+  }
+
+  /** Owner confirmation of an unverified page; idempotent. */
+  confirm(postingId: string): void {
+    const done = this.db
+      .update(jobPosting)
+      .set({ verified: true })
+      .where(and(eq(jobPosting.id, postingId), isNull(jobPosting.deletedAt)))
+      .returning({ id: jobPosting.id })
+      .get();
+    if (!done) throw new Error('Posting is unavailable.');
   }
 
   ingest(form: PostingFormDto): string {
@@ -53,6 +64,7 @@ export class PostingsRepository {
           salaryMax: form.salary_max,
           salaryCurrency: form.salary_currency,
           fetchedAt: Date.now(),
+          verified: form.verified,
           deletedAt: null,
         })
         .onConflictDoUpdate({
@@ -69,6 +81,8 @@ export class PostingsRepository {
             salaryMax: form.salary_max,
             salaryCurrency: form.salary_currency,
             fetchedAt: Date.now(),
+            // A re-read can raise verification (JSON-LD appeared) but never revoke the owner's confirmation.
+            verified: sql`${jobPosting.verified} OR ${form.verified ? 1 : 0}`,
             deletedAt: null,
           },
         })

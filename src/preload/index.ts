@@ -27,6 +27,7 @@ import {
   ThemeStateSchema,
   AppSettingsSchema,
   UpdateSettingsSchema,
+  RemoveAllDataSchema,
 } from '../shared/dto';
 
 async function invoke(channel: string, ...args: unknown[]): Promise<unknown> {
@@ -97,6 +98,9 @@ const bridge: JobPilotBridge = {
   postings: {
     async ingest(url) {
       return IngestResultSchema.parse(await invoke(Channels.ingestPosting, url));
+    },
+    async confirm(postingId) {
+      return z.boolean().parse(await invoke(Channels.confirmPosting, { postingId }));
     },
   },
   applications: {
@@ -171,6 +175,9 @@ const bridge: JobPilotBridge = {
     },
     async update(input) {
       return AppSettingsSchema.parse(await invoke(Channels.updateSettings, UpdateSettingsSchema.parse(input)));
+    },
+    async removeAllData(input) {
+      await invoke(Channels.removeAllData, RemoveAllDataSchema.parse(input));
     },
   },
   onDataChanged(listener) {

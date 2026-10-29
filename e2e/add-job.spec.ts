@@ -162,7 +162,8 @@ test('paste a job, preview real ATS data, add once, and retain it after restart'
           return mock.dispatch(options, handler);
         }
       };
-      const html = '<html><head><title>Custom role</title></head><body><label>Name<input name="name" required></label>';
+      const html =
+        '<html><head><title>Custom role</title><script type="application/ld+json">{"@type":"JobPosting","title":"Custom role"}</script></head><body><label>Name<input name="name" required></label>';
       mock
         .get('https://custom.example')
         .intercept({ path: '/poison' })
@@ -545,7 +546,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
         .intercept({ path: '/retry' })
         .reply(
           200,
-          '<html><head><title>Retry role</title></head><body><label>Name<input name="name" required></label></body></html>',
+          '<html><head><title>Retry role</title></head><body><form><label>Name<input name="name" required></label><label>Email<input type="email" name="email"></label></form></body></html>',
         )
         .persist();
       undici.Agent = class extends undici.Agent {
@@ -578,7 +579,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(rows.nth(4)).toContainText('Unsupported');
     await expect(rows.nth(0)).toContainText('Greenhouse');
     await expect(rows.nth(4)).toContainText('example.com/about');
-    await expect(rows.nth(4).getByTitle(/No job description or application form/)).toBeVisible();
+    await expect(rows.nth(4).getByTitle(/does not look like a job posting/)).toBeVisible();
     await expect(window.getByRole('button', { name: 'Add 3 jobs', exact: true })).toBeEnabled();
     await window.setViewportSize({ width: 1280, height: 800 });
     const mixed = [
@@ -679,9 +680,14 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await rows.nth(0).getByRole('button', { name: 'Retry', exact: true }).click();
     await expect(rows.nth(0)).toContainText('Ready');
     await expect(rows.nth(0)).toContainText('Retry role');
+    await expect(rows.nth(0)).toContainText('Unverified page');
     await expect(rows.nth(0)).toContainText('example.com');
     await expect(rows.nth(0)).not.toContainText('custom');
     await window.getByRole('button', { name: 'Remove link', exact: true }).click();
+    await expect(rows).toHaveCount(0);
+    // A removed link must not resurrect when the paste box is edited.
+    await window.getByLabel('Job links', { exact: true }).press('End');
+    await window.getByLabel('Job links', { exact: true }).pressSequentially(' ');
     await expect(rows).toHaveCount(0);
     await window
       .getByLabel('Job links', { exact: true })

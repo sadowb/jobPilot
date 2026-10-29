@@ -48,6 +48,10 @@
     "schema": "RendererErrorInputSchema"
   },
   {
+    "channel": "postings:confirm",
+    "schema": "ConfirmPostingSchema"
+  },
+  {
     "channel": "postings:ingest",
     "schema": "IngestUrlSchema"
   },
@@ -122,6 +126,10 @@
   {
     "channel": "settings:get",
     "schema": "z.void()"
+  },
+  {
+    "channel": "settings:removeAllData",
+    "schema": "RemoveAllDataSchema"
   },
   {
     "channel": "settings:update",

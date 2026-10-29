@@ -46,6 +46,7 @@ export class ApplicationsRepository {
   create(postingId: string, recordCreated: (id: string) => void): ApplicationListItem {
     return this.db.transaction(() => {
       const existing = this.db.select().from(application).where(eq(application.postingId, postingId)).get();
+      // shortcut: a soft-deleted application blocks re-adding (UI shows Failed); no UI sets deleted_at yet, restore it when delete ships.
       if (existing?.deletedAt != null) throw new Error('This application has been removed.');
       let id = existing?.id;
       if (!id) {

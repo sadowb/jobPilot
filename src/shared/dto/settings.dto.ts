@@ -36,6 +36,10 @@ export const AppSettingsSchema = z.object({
 });
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
+/** Typed confirmation for the irreversible reset; the renderer never sends paths. */
+export const RemoveAllDataSchema = z.object({ confirm: z.literal('DELETE') });
+export type RemoveAllDataInput = z.infer<typeof RemoveAllDataSchema>;
+
 export const UpdateSettingsSchema = z.object({
   autopilot: z.literal(false).optional(),
   crew: z.number().int().min(1).max(CREW_MAX).optional(),
