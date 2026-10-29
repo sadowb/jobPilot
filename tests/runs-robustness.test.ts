@@ -55,7 +55,7 @@ let agentStarted: () => void;
 
 const agent: AgentProvider = {
   id: 'claude',
-  run: (spec: RunSpec) => {
+  run: ((spec: RunSpec) => {
     agentStarted();
     // Real providers reject on abort; do the same so cancel/quit paths are exercised.
     const result = new Promise<RunResult>((resolve, reject) => {
@@ -64,7 +64,7 @@ const agent: AgentProvider = {
     });
     result.catch(() => undefined);
     return { events: (async function* () {})(), result };
-  },
+  }) as AgentProvider['run'],
 };
 const browser: BrowserProvider = {
   id: 'neo',
@@ -94,6 +94,7 @@ const form = (url: string): PostingFormDto => ({
   ats_job_id: null,
   questions: [],
   verified: true,
+  source: 'fetch',
 });
 
 let n = 0;

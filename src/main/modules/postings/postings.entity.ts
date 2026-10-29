@@ -1,5 +1,5 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import { AtsKind, QuestionType } from '../../../shared/dto';
+import { AtsKind, PostingSource, QuestionType } from '../../../shared/dto';
 import { deletedAt, id, oneOf, timestamps } from '../../platform/db/columns';
 
 export const company = sqliteTable(
@@ -43,6 +43,8 @@ export const jobPosting = sqliteTable(
     closedAt: integer('closed_at'),
     /** false = a custom page accepted on apply-form evidence only; runs are refused until the owner confirms it. */
     verified: integer('verified', { mode: 'boolean' }).notNull().default(true),
+    /** `agent` = read by the posting reader; such rows are the cache that stops a re-paste from re-running the agent. */
+    source: text('source', { enum: PostingSource.values }).notNull().default('fetch'),
     ...timestamps(),
     deletedAt: deletedAt(),
   },
@@ -51,6 +53,7 @@ export const jobPosting = sqliteTable(
     uniqueIndex('job_posting_ats_job_id_uq').on(t.ats, t.atsJobId),
     index('job_posting_company_id_idx').on(t.companyId),
     oneOf('job_posting_ats_ck', t.ats, AtsKind.values),
+    oneOf('job_posting_source_ck', t.source, PostingSource.values),
   ],
 );
 

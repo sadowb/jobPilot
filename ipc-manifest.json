@@ -48,6 +48,10 @@
     "schema": "RendererErrorInputSchema"
   },
   {
+    "channel": "postings:cancel-ingest",
+    "schema": "IngestUrlSchema"
+  },
+  {
     "channel": "postings:confirm",
     "schema": "ConfirmPostingSchema"
   },

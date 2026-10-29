@@ -15,6 +15,7 @@ import { chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { applicationsHandlers } from '../modules/applications/applications.controller';
 import { postingsHandlers } from '../modules/postings/postings.controller';
+import { PostingReader } from '../modules/postings/posting-reader.service';
 import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
@@ -174,13 +175,10 @@ if (logsError) {
       );
       if (memory.status().state === 'ready') consolidation.start();
       agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);
-      runsService = new RunsService(
-        db,
-        app.getPath('userData'),
-        fakeAgent ?? agentSettings,
-        fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser')),
-        memory,
-      );
+      const agent = fakeAgent ?? agentSettings;
+      const browser = fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser'));
+      runsService = new RunsService(db, app.getPath('userData'), agent, browser, memory);
+      const postingReader = new PostingReader(agent, browser);
       await runsService.initialize();
       // Stops owned work (agent children, Neo tabs, timers) once, bounded so a stuck stop cannot keep the app alive.
       let stopping: Promise<void> | undefined;
@@ -189,11 +187,15 @@ if (logsError) {
           backups.stop();
           agentSettings.stop();
           await Promise.race([
-            Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).then((results) =>
-              results.forEach((result, index) => {
-                if (result.status === 'rejected')
-                  logger.error({ step: ['runs', 'consolidation', 'memory'][index] }, 'Quit cleanup failed');
-              }),
+            Promise.allSettled([runsService.stop(), postingReader.stop(), consolidation.stop(), memory.stop()]).then(
+              (results) =>
+                results.forEach((result, index) => {
+                  if (result.status === 'rejected')
+                    logger.error(
+                      { step: ['runs', 'posting reader', 'consolidation', 'memory'][index] },
+                      'Quit cleanup failed',
+                    );
+                }),
             ),
             delay(10_000),
           ]);
@@ -238,7 +240,7 @@ if (logsError) {
           ...claudeKeyHandlers(claudeKeyService(db)),
           ...documentsHandlers,
           ...observabilityHandlers,
-          ...postingsHandlers,
+          ...postingsHandlers(postingReader),
           ...applicationsHandlers,
           ...profileHandlers,
         ],

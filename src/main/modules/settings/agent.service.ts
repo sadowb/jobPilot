@@ -1,11 +1,11 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { AgentPreferencesSchema, AgentStateSchema, SaveAgentSchema } from '../../../shared/dto';
 import type { JobPilotDb } from '../../platform/db/database';
 import { ClaudeProvider } from '../../platform/agents/claude';
 import { detectClaude, executablePath } from '../../platform/agents/detect';
-import type { AgentProvider, AgentRun, RunSpec } from '../../platform/agents/types';
+import type { AgentProvider, AgentRun, RunResultSchema, RunSpec } from '../../platform/agents/types';
 import { loggerFor } from '../observability/log.service';
 import { redact } from '../observability/redact';
 import { SettingsRepository } from './settings.repository';
@@ -112,16 +112,17 @@ export class AgentSettingsService implements AgentProvider {
       throw new UserFacingError(`Claude is not ready (${state.status}). Check Settings → Agent.`);
   }
 
-  run(spec: RunSpec): AgentRun {
-    let resolve!: (value: Awaited<AgentRun['result']>) => void;
+  run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
+    let resolve!: (value: z.infer<S>) => void;
     let reject!: (error: unknown) => void;
-    const result = new Promise<Awaited<AgentRun['result']>>((yes, no) => {
+    const result = new Promise<z.infer<S>>((yes, no) => {
       resolve = yes;
       reject = no;
     });
     void result.catch(() => undefined);
     async function* events(service: AgentSettingsService) {
       let provider: ClaudeProvider | undefined;
+      let workspace: string | undefined;
       try {
         await service.prepare();
         const saved = service.preferences();
@@ -131,6 +132,7 @@ export class AgentSettingsService implements AgentProvider {
           .max(128)
           .parse(spec.runId);
         const cwd = join(service.userData, 'agents/claude', runId);
+        workspace = cwd;
         const configDirectory = join(cwd, 'config');
         await mkdir(configDirectory, { recursive: true, mode: 0o700 });
         provider = new ClaudeProvider({
@@ -169,6 +171,8 @@ export class AgentSettingsService implements AgentProvider {
         reject(new Error('Agent stream closed.'));
         provider?.stop();
         if (provider) service.active.delete(provider);
+        if (spec.ephemeral && workspace)
+          await rm(workspace, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => undefined);
       }
     }
     return { result, events: events(this) };

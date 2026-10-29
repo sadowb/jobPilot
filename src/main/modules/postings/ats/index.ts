@@ -508,9 +508,22 @@ export function hasApplyFormEvidence(document: LinkedomDocument): boolean {
 /** A custom page that carries no schema.org JobPosting data: search forms, articles and listing pages land here. */
 export class NotAJobPageError extends Error {
   override readonly name = 'NotAJobPageError';
+  /** Owner-facing explanation when the agent supplied one. */
+  constructor(
+    message: string,
+    readonly reason?: string,
+  ) {
+    super(message);
+  }
 }
 
-async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
+/**
+ * Reads a custom page that has no JobPosting JSON-LD (the service runs the agent here). Resolves a posting,
+ * throws NotAJobPageError for a verdict, or resolves null when it could not read the page and the heuristic should decide.
+ */
+export type CustomPageReader = (page: URL) => Promise<ReturnType<typeof form> | null>;
+
+async function htmlFallback(url: URL, readCustom?: CustomPageReader): Promise<ReturnType<typeof form>> {
   const response = await (
     await import('./common')
   ).request(url.href, {
@@ -519,10 +532,15 @@ async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
   });
   url = response.url;
   const { document } = parseHTML(response.text);
-  // Classification: JobPosting JSON-LD -> verified posting. Otherwise apply-form evidence -> accepted but
-  // unverified (runs stay gated until the owner confirms). Neither -> NotAJobPageError.
+  // Classification: JobPosting JSON-LD -> verified posting. Otherwise the agent reads the page (when configured).
+  // If it cannot, apply-form evidence -> accepted but unverified (runs stay gated until the owner confirms).
+  // Neither -> NotAJobPageError.
   const jsonLd = jsonLdPosting(document);
   const verified = jsonLd !== null;
+  if (!verified && readCustom) {
+    const read = await readCustom(url);
+    if (read) return read;
+  }
   if (!verified && !hasApplyFormEvidence(document)) throw new NotAJobPageError('Page has no job posting evidence');
   const ld = jsonLd ?? {};
   const org = asObject(ld.hiringOrganization);
@@ -572,8 +590,8 @@ export function matchPostingUrl(url: URL): MatchedPosting | null {
   return adapters.map((adapter) => adapter.match(url)).find((match) => match !== null) ?? null;
 }
 
-export async function fetchPosting(rawUrl: string): Promise<ReturnType<typeof form>> {
+export async function fetchPosting(rawUrl: string, readCustom?: CustomPageReader): Promise<ReturnType<typeof form>> {
   const url = canonicalUrl(rawUrl);
   const matched = adapters.map((adapter) => ({ adapter, match: adapter.match(url) })).find((x) => x.match);
-  return matched ? matched.adapter.fetch(matched.match!) : htmlFallback(url);
+  return matched ? matched.adapter.fetch(matched.match!) : htmlFallback(url, readCustom);
 }

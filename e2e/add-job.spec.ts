@@ -682,7 +682,9 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(rows.nth(0)).toContainText('Retry role');
     await expect(rows.nth(0)).toContainText('Unverified page');
     await expect(rows.nth(0)).toContainText('example.com');
-    await expect(rows.nth(0)).not.toContainText('custom');
+    await expect(rows.nth(0)).toContainText('Set up Claude in Settings → Agent');
+    // The raw ATS key never shows as a source label.
+    await expect(rows.nth(0)).not.toContainText(/·\s*custom\s*·/);
     await window.getByRole('button', { name: 'Remove link', exact: true }).click();
     await expect(rows).toHaveCount(0);
     // A removed link must not resurrect when the paste box is edited.

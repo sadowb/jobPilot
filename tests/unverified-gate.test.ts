@@ -35,6 +35,7 @@ const form = (verified: boolean): PostingFormDto => ({
   ats_job_id: null,
   questions: [],
   verified,
+  source: 'fetch',
 });
 
 beforeEach(() => {

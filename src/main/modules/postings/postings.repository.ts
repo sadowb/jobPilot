@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, notInArray, or, sql } from 'drizzle-orm';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { FillPlanDto, PostingFormDto } from '../../../shared/dto';
 import * as schema from '../../platform/db/schema';
+import { salaryRange } from './ats/common';
 import { canonicalKey } from './canonical';
 import { answerLibrary, company, jobPosting, postingQuestion } from './postings.entity';
 import { UserFacingError } from '../../platform/ipc/user-facing-error';
@@ -26,6 +27,51 @@ export class PostingsRepository {
       .returning({ id: jobPosting.id })
       .get();
     if (!done) throw new UserFacingError('Posting is unavailable.');
+  }
+
+  /** The stored result of an earlier agent read of this exact URL, so a re-paste never runs the agent again. */
+  findAgentRead(canonicalUrl: string): PostingFormDto | null {
+    const row = this.db
+      .select({ posting: jobPosting, company: company.name })
+      .from(jobPosting)
+      .innerJoin(company, eq(company.id, jobPosting.companyId))
+      .where(
+        and(eq(jobPosting.canonicalUrl, canonicalUrl), eq(jobPosting.source, 'agent'), isNull(jobPosting.deletedAt)),
+      )
+      .get();
+    if (!row) return null;
+    const { posting: p } = row;
+    const questions = this.db
+      .select()
+      .from(postingQuestion)
+      .where(eq(postingQuestion.postingId, p.id))
+      .orderBy(postingQuestion.position)
+      .all();
+    return {
+      company: row.company,
+      title: p.title,
+      location: p.location,
+      salary: salaryRange({ min: p.salaryMin, max: p.salaryMax, currency: p.salaryCurrency }).salary,
+      salary_min: p.salaryMin,
+      salary_max: p.salaryMax,
+      salary_currency: p.salaryCurrency,
+      description: p.description,
+      canonical_url: p.canonicalUrl,
+      ats: p.ats,
+      ats_tenant: null,
+      ats_job_id: p.atsJobId,
+      questions: questions.map((q) => ({
+        external_id: q.fieldKey,
+        label: q.label,
+        type: q.type,
+        required: q.required,
+        options: q.options ?? [],
+        position: q.position,
+        canonical_key: q.canonicalKey,
+      })),
+      verified: p.verified,
+      source: 'agent',
+    };
   }
 
   ingest(form: PostingFormDto): string {
@@ -67,6 +113,7 @@ export class PostingsRepository {
           salaryCurrency: form.salary_currency,
           fetchedAt: Date.now(),
           verified: form.verified,
+          source: form.source,
           deletedAt: null,
         })
         .onConflictDoUpdate({
@@ -84,6 +131,7 @@ export class PostingsRepository {
             fetchedAt: Date.now(),
             // A re-read can raise verification (JSON-LD appeared) but never revoke the owner's confirmation.
             verified: sql`${jobPosting.verified} OR ${form.verified ? 1 : 0}`,
+            source: form.source,
             deletedAt: null,
           },
         })

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Logger } from 'pino';
 import { allowlistedErrorCode, NeoMcp } from '../src/main/platform/browsers/neo-mcp';
-import { computeFormHash, extractFormFields, NeoBrowserProvider } from '../src/main/platform/browsers/neo';
+import {
+  clickTargetLine,
+  computeFormHash,
+  extractFormFields,
+  FINAL_ACTION,
+  NeoBrowserProvider,
+} from '../src/main/platform/browsers/neo';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
 
@@ -121,5 +127,84 @@ describe('Neo snapshot traversal error handling (#147)', () => {
     const fields = extractFormFields(plainText, logger);
     expect(fields.length).toBeGreaterThan(0);
     expect(logs.length).toBe(0);
+  });
+});
+
+describe('Neo browser tools: guarded click', () => {
+  const SNAPSHOT = [
+    'heading "Senior Engineer"',
+    '  button "Show more" [ref=e1]',
+    '  link "Apply for this job" [ref=e2]',
+    '  button "Submit application" [ref=e3]',
+    '  button "Accept cookies" [ref=e12]',
+  ].join('\n');
+
+  async function setup(urlAfterClick = 'https://jobs.example.com/apply') {
+    const calls: Array<{ name: string; arguments: Record<string, unknown> }> = [];
+    const provider = new NeoBrowserProvider({ debug() {}, warn() {} } as unknown as Logger, 'http://127.0.0.1:59999');
+    let url = 'https://example.com/careers/1';
+    (provider as unknown as { mcp: { call: (m: string, p: never) => Promise<unknown> } }).mcp = {
+      call: async (_method, params: { name: string; arguments: Record<string, unknown> }) => {
+        calls.push(params);
+        const action = params.arguments.action;
+        if (params.name === 'tabs' && action === 'new') return { content: [], structuredContent: { page: 7 } };
+        if (params.name === 'tabs' && action === 'list')
+          return { content: [], structuredContent: { pages: [{ page: 7, url }] } };
+        if (params.name === 'tabs') return { content: [], structuredContent: {} };
+        if (params.name === 'act') url = urlAfterClick;
+        return { content: [{ type: 'text', text: params.name === 'snapshot' ? SNAPSHOT : 'ok' }] };
+      },
+    };
+    await provider.openTab('read-1', 'https://example.com/careers/1');
+    const server = (await provider.mcpServerConfig('read-1', new AbortController().signal)) as unknown as {
+      instance: {
+        _registeredTools: Record<
+          string,
+          { handler: (args: object, extra: object) => Promise<{ isError?: boolean; content: Array<{ text: string }> }> }
+        >;
+      };
+    };
+    const run = (name: string, args: object = {}) => server.instance._registeredTools[name]!.handler(args, {});
+    return { provider, calls, run };
+  }
+
+  it('matches refs exactly and flags final actions', () => {
+    expect(clickTargetLine(SNAPSHOT, 'e1')).toContain('Show more');
+    expect(clickTargetLine(SNAPSHOT, 'e4')).toBeUndefined();
+    for (const name of ['Submit application', 'Send', 'Confirm and pay', 'Delete account', 'Log out', 'Place order'])
+      expect(FINAL_ACTION.test(name), name).toBe(true);
+    for (const name of ['Show more', 'Apply for this job', 'Next', 'Continue', 'Accept cookies', 'Read more'])
+      expect(FINAL_ACTION.test(name), name).toBe(false);
+  });
+
+  it('refuses a click before a snapshot and on a final action, without reaching Neo', async () => {
+    const { calls, run } = await setup();
+    expect((await run('click', { ref: 'e1' })).isError).toBe(true);
+    await run('snapshot');
+    const refused = await run('click', { ref: 'e3' });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]!.text).toMatch(/final action/);
+    expect(calls.filter(({ name }) => name === 'act')).toEqual([]);
+  });
+
+  it('clicks a safe control on the owned tab, then requires a fresh snapshot', async () => {
+    const { calls, run } = await setup();
+    await run('snapshot');
+    expect((await run('click', { ref: 'e2' })).isError).toBeFalsy();
+    expect(calls.find(({ name }) => name === 'act')!.arguments).toEqual({
+      kind: 'click',
+      ref: 'e2',
+      diff: 'summary',
+      page: 7,
+    });
+    expect((await run('click', { ref: 'e1' })).isError).toBe(true);
+  });
+
+  it('still closes the tab after a click moved it to another host', async () => {
+    const { provider, calls, run } = await setup('https://boards.example-ats.com/acme/1');
+    await run('snapshot');
+    await run('click', { ref: 'e2' });
+    await provider.closeTab('read-1');
+    expect(calls.some(({ name, arguments: a }) => name === 'tabs' && a.action === 'close')).toBe(true);
   });
 });

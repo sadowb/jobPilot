@@ -7,6 +7,8 @@ export type Row = {
   /** The URL being ingested; differs from `source` after the user edits a failed row. */
   url: string;
   result?: IngestResult;
+  /** Main reported that the agent is reading this link (can take a minute). */
+  agentReading?: boolean;
   added?: boolean;
   addError?: string;
 };

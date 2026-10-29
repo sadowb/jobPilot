@@ -1,5 +1,6 @@
 import type { FakeMemoryProvider } from '../memory/fake';
-import { RunResultSchema, type AgentProvider, type RunSpec } from './types';
+import type { z } from 'zod';
+import type { AgentProvider, AgentRun, RunResultSchema, RunSpec } from './types';
 
 export class FakeAgentProvider implements AgentProvider {
   readonly id = 'claude';
@@ -14,6 +15,9 @@ export class FakeAgentProvider implements AgentProvider {
     recalled: string[];
   }> = [];
   private readonly pending = new Map<string, (result: unknown) => void>();
+
+  /** Default answer for a run whose schema is not RunResultSchema (the posting reader); tests and E2E set it. */
+  reply?: (spec: RunSpec<z.ZodType>) => unknown;
 
   /** `memory` emulates the agent obeying the prompt's recall/remember instructions (no model runs in E2E). */
   constructor(private readonly memory?: FakeMemoryProvider) {}
@@ -32,7 +36,7 @@ export class FakeAgentProvider implements AgentProvider {
     this.pending.get(runId)?.(result);
   }
 
-  run(spec: RunSpec) {
+  run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
     const host = /"url":"https?:\/\/([^/"]+)/.exec(spec.prompt)?.[1] ?? '';
     const attached = 'memory' in spec.mcpServers && this.memory !== undefined;
     this.history.push({
@@ -54,12 +58,14 @@ export class FakeAgentProvider implements AgentProvider {
       rejectRun = reject;
       this.pending.set(spec.runId, resolve);
       signal.addEventListener('abort', abort, { once: true });
-      timer = setTimeout(() => this.complete(spec.runId), this.delayMs);
+      timer = setTimeout(() => this.complete(spec.runId, this.reply?.(spec)), this.delayMs);
       if (signal.aborted) abort();
     })
-      .then((value) => RunResultSchema.parse(value))
+      .then((value) => spec.outputSchema.parse(value) as z.infer<S>)
       .then((value) => {
-        if (attached) for (const lesson of value.learned) this.memory!.remember(`${host}: ${lesson}`);
+        const learned = (value as { learned?: unknown }).learned;
+        if (attached && Array.isArray(learned))
+          for (const lesson of learned) this.memory!.remember(`${host}: ${lesson}`);
         return value;
       })
       .finally(() => {

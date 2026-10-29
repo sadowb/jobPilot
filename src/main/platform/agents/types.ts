@@ -45,34 +45,36 @@ export const RunEventSchema = z.discriminatedUnion('type', [
 ]);
 export type RunEvent = z.infer<typeof RunEventSchema>;
 
-export interface RunSpec {
+export interface RunSpec<S extends z.ZodType = typeof RunResultSchema> {
   runId: string;
   prompt: string;
   /** MCP servers attached to the run (browser, memory). */
   mcpServers: Record<string, McpServerConfig>;
   /** Per-server tool allow-list (bare tool names); a server not listed here allows all its tools. */
   toolAllowlist?: Record<string, readonly string[]>;
-  /** Final structured output the agent must produce. */
-  outputSchema: typeof RunResultSchema;
+  /** Final structured output the agent must produce; runs use RunResultSchema, other callers (posting reader) bring their own. */
+  outputSchema: S;
   model?: string;
   /** Only the env the agent needs; never the app's full environment. */
   env?: Record<string, string>;
   /** Agent-side session id owned by the run row; first turn creates it, a resumed turn continues it. */
   sessionId: string;
   resume?: boolean;
+  /** One-shot task that never resumes: its workspace under userData is removed when the run ends. */
+  ephemeral?: boolean;
   signal: AbortSignal;
   timeoutMs: number;
 }
 
-export interface AgentRun {
+export interface AgentRun<T = RunResult> {
   /** Consume to completion (or abort); `result` settles after the stream ends. */
   events: AsyncIterable<RunEvent>;
-  /** Rejects on timeout, abort, or output that fails RunResultSchema. */
-  result: Promise<RunResult>;
+  /** Rejects on timeout, abort, or output that fails `outputSchema`. */
+  result: Promise<T>;
 }
 
 export interface AgentProvider {
   readonly id: AgentId;
   prepare?(): Promise<void>;
-  run(spec: RunSpec): AgentRun;
+  run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>>;
 }

@@ -6,6 +6,10 @@ const enumOf = <const T extends readonly [string, ...string[]]>(values: T) => ({
 export const AtsKind = enumOf(['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'bamboohr', 'custom']);
 export type AtsKind = z.infer<typeof AtsKind.schema>;
 
+/** How a posting was read: public API / HTML+JSON-LD (`fetch`) or by the agent in a browser tab (`agent`). */
+export const PostingSource = enumOf(['fetch', 'agent']);
+export type PostingSource = z.infer<typeof PostingSource.schema>;
+
 export const QuestionType = enumOf([
   'text',
   'textarea',
