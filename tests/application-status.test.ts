@@ -80,3 +80,15 @@ describe('SetApplicationStatusSchema (trust boundary)', () => {
     expect(() => SetApplicationStatusSchema.parse({ id: 'x', status: 'offer' })).toThrow();
   });
 });
+
+describe('ApplicationsService.create', () => {
+  it('restores a soft-deleted application instead of failing (ADD-F6)', () => {
+    const id = seed(null);
+    const postingId = db.select().from(schema.application).get()!.postingId;
+    db.update(schema.application).set({ deletedAt: Date.now() }).run();
+    expect(service.hasPosting(postingId)).toBe(false);
+    expect(service.create(postingId)).toMatchObject({ id });
+    expect(service.hasPosting(postingId)).toBe(true);
+    expect(db.select().from(schema.application).all()).toHaveLength(1);
+  });
+});

@@ -2,6 +2,7 @@ import { and, asc, eq, isNull, max } from 'drizzle-orm';
 import type { JobPilotDb } from '../../platform/db/database';
 import type { ApplicationListItem, OwnerStatus } from '../../../shared/dto';
 import { application, vApplicationList } from './applications.entity';
+import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 export class ApplicationsRepository {
   constructor(private readonly db: JobPilotDb) {}
@@ -30,15 +31,15 @@ export class ApplicationsRepository {
         .from(application)
         .where(and(eq(application.id, id), isNull(application.deletedAt)))
         .get();
-      if (!row) throw new Error('Application not found.');
-      if (row.appliedAt === null) throw new Error('Only a submitted application can change status.');
+      if (!row) throw new UserFacingError('Application not found.');
+      if (row.appliedAt === null) throw new UserFacingError('Only a submitted application can change status.');
       const changed = row.status !== status;
       if (changed) {
         this.db.update(application).set({ status, lastActivityAt: Date.now() }).where(eq(application.id, id)).run();
         recordChange(row.status);
       }
       const item = this.db.select().from(vApplicationList).where(eq(vApplicationList.id, id)).get();
-      if (!item) throw new Error('Application is unavailable.');
+      if (!item) throw new UserFacingError('Application is unavailable.');
       return { item, changed };
     });
   }
@@ -46,8 +47,10 @@ export class ApplicationsRepository {
   create(postingId: string, recordCreated: (id: string) => void): ApplicationListItem {
     return this.db.transaction(() => {
       const existing = this.db.select().from(application).where(eq(application.postingId, postingId)).get();
-      // shortcut: a soft-deleted application blocks re-adding (UI shows Failed); no UI sets deleted_at yet, restore it when delete ships.
-      if (existing?.deletedAt != null) throw new Error('This application has been removed.');
+      // Re-adding a removed posting brings its application back instead of failing.
+      if (existing?.deletedAt != null) {
+        this.db.update(application).set({ deletedAt: null }).where(eq(application.id, existing.id)).run();
+      }
       let id = existing?.id;
       if (!id) {
         const rank =
@@ -64,7 +67,7 @@ export class ApplicationsRepository {
         recordCreated(id);
       }
       const item = this.db.select().from(vApplicationList).where(eq(vApplicationList.id, id)).get();
-      if (!item) throw new Error('Application is unavailable.');
+      if (!item) throw new UserFacingError('Application is unavailable.');
       return item;
     });
   }

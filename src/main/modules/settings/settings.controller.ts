@@ -1,4 +1,4 @@
-import { dialog } from 'electron';
+import { dialog, type BrowserWindow } from 'electron';
 import type { AgentSettingsService } from './agent.service';
 import type { MemorySettingsService } from './memory.service';
 import { z } from 'zod';
@@ -20,12 +20,32 @@ export const recoveryHandlers = [
   defineHandler(Channels.restoreBackup, RestoreBackupSchema, (input) => restoreFromBackup(input)),
 ];
 
+/** Main is the trust boundary: switching to Auto needs a native confirmation the renderer cannot fake. Cancel keeps review. */
+async function confirmAutoSubmit(window: BrowserWindow | null): Promise<boolean> {
+  const options = {
+    type: 'warning' as const,
+    message: 'Submit without review?',
+    detail:
+      'In Auto the crew presses the final Submit button itself once every answer is set. Nothing is shown to you first. The hard limits under Advanced still apply.',
+    buttons: ['Keep review', 'Submit automatically'],
+    defaultId: 0,
+    cancelId: 0,
+  };
+  const { response } = await (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));
+  return response === 1;
+}
+
 export const settingsHandlers = [
   defineHandler(Channels.exportRecoveryKey, z.void(), (_input, { window }) => exportRecoveryKey(window)),
   defineHandler(Channels.getTheme, z.void(), () => themeState()),
   defineHandler(Channels.setTheme, ThemeSourceSchema, (source) => setTheme(source)),
   defineHandler(Channels.getSettings, z.void(), () => getSettings()),
-  defineHandler(Channels.updateSettings, UpdateSettingsSchema, (input) => updateSettings(input)),
+  defineHandler(Channels.updateSettings, UpdateSettingsSchema, async (input, { window }) => {
+    if (input.submitMode === 'auto' && getSettings().submitMode !== 'auto' && !(await confirmAutoSubmit(window))) {
+      return updateSettings({ ...input, submitMode: undefined });
+    }
+    return updateSettings(input);
+  }),
 ];
 
 export function claudeKeyHandlers(service: ReturnType<typeof claudeKeyService>) {

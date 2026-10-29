@@ -5,8 +5,8 @@ import { useImportRecoveryKey, useRecoveryState, useRestoreBackup } from '../lib
 
 const COPY: Record<RecoveryState['reason'], string> = {
   unlock:
-    'JobPilot could not open jobpilot.db: the stored key is wrong or the file is damaged. Enter your recovery key, or restore a backup.',
-  empty: 'jobpilot.db is empty. Restore a backup to continue.',
+    'JobPilot could not open jobpilot.db: the file may be damaged, or the stored key may be wrong. Restore a backup, or enter your recovery key if you have it.',
+  empty: 'jobpilot.db is damaged (it is empty). Restore a backup to continue.',
   corrupt: 'jobpilot.db is damaged. Restore a backup to continue.',
   missing: 'jobpilot.db is missing. Restore a backup to continue.',
 };

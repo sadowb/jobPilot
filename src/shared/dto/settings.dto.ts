@@ -14,7 +14,10 @@ export const SettingsLimitsSchema = z.object({
 });
 export type SettingsLimits = z.infer<typeof SettingsLimitsSchema>;
 
-export const SitesConfigSchema = z.record(z.string().min(1).max(64), SiteModeSchema);
+export const SITES_MAX = 500;
+export const SitesConfigSchema = z
+  .record(z.string().min(1).max(64), SiteModeSchema)
+  .refine((sites) => Object.keys(sites).length <= SITES_MAX, `At most ${SITES_MAX} sites.`);
 export type SitesConfig = z.infer<typeof SitesConfigSchema>;
 
 /** ADR 0016 rule 5: parallel runs default to six, configurable 1 to 64. */

@@ -2,6 +2,7 @@ import { desc, eq, and, inArray, sql } from 'drizzle-orm';
 import { ACTIVE_RUN_STATUSES } from '../../../shared/dto';
 import type { JobPilotDb } from '../../platform/db/database';
 import { approval, run, runEvent } from './runs.entity';
+import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 export class RunsRepository {
   constructor(private readonly db: JobPilotDb) {}
@@ -12,7 +13,7 @@ export class RunsRepository {
 
   get(id: string) {
     const row = this.db.select().from(run).where(eq(run.id, id)).get();
-    if (!row) throw new Error('Run is unavailable.');
+    if (!row) throw new UserFacingError('Run is unavailable.');
     return row;
   }
 
@@ -100,7 +101,8 @@ export class RunsRepository {
 
   requestApproval(runId: string, cvVersionId: string | null) {
     const row = this.get(runId);
-    if (!row.formHash || row.status !== 'awaiting_approval') throw new Error('Run is not ready for approval.');
+    if (!row.formHash || row.status !== 'awaiting_approval')
+      throw new UserFacingError('Run is not ready for approval.');
     return this.db
       .insert(approval)
       .values({

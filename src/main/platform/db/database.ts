@@ -6,7 +6,18 @@ import { RecoveryKeySchema } from '../../../shared/ipc';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import {
+  accessSync,
+  chmodSync,
+  constants,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as schema from './schema';
@@ -155,8 +166,34 @@ export function closeDatabase(): void {
   db?.$client.close();
 }
 
+/**
+ * Clean-shutdown path: the open-time backup misses everything written that day, so refresh today's backup, then
+ * release the handle. A database that fails its integrity check never replaces a good backup. Never throws.
+ */
+export async function backupAndCloseDatabase(logger: Pick<Logger, 'error'>): Promise<void> {
+  if (!db?.$client.open) return;
+  let key: Buffer | undefined;
+  try {
+    ({ key } = await getDatabaseKey());
+    assertIntact(db.$client as SqliteDatabase);
+    await createBackup(db.$client as SqliteDatabase, key, backupDay(), logger);
+    pruneBackups();
+  } catch (error) {
+    logger.error(
+      { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+      'Quit backup skipped; the existing backup was left as is',
+    );
+  } finally {
+    key?.fill(0);
+    closeDatabase();
+  }
+}
+
 /** The stored key (or the file header) did not open the file: a wrong key and a damaged header look identical. */
 export class DatabaseUnlockError extends Error {}
+
+/** The profile folder cannot be written; opening would fail midway with a misleading error. */
+export class DataFolderNotWritableError extends Error {}
 
 /** The file is empty, missing or fails integrity checks. It must never be migrated or written over. */
 export class DatabaseDamagedError extends Error {
@@ -266,7 +303,12 @@ export async function restoreBackup(name: string, encodedKey?: string): Promise<
 export async function openDatabase(logger: Pick<Logger, 'error'>): Promise<void> {
   const directory = app.getPath('userData');
   mkdirSync(directory, { recursive: true, mode: 0o700 });
-  chmodSync(directory, 0o700);
+  try {
+    chmodSync(directory, 0o700);
+    accessSync(directory, constants.W_OK);
+  } catch {
+    throw new DataFolderNotWritableError('The data folder is not writable.');
+  }
   const file = databasePath();
   const existed = existsSync(file);
   // SQLite treats a 0-byte file as a valid empty database, so any key would "unlock" it and migrations would run.
@@ -293,7 +335,9 @@ export async function openDatabase(logger: Pick<Logger, 'error'>): Promise<void>
         sqlite.pragma("cipher='sqlcipher'");
         sqlite.key(key);
       }
-    } catch {
+    } catch (error) {
+      // A brand-new file that cannot be created is an environment fault, not a key problem.
+      if (!existed) throw error;
       throw new DatabaseUnlockError('The stored key could not unlock the database: wrong key or damaged file.');
     }
     try {

@@ -51,6 +51,20 @@ describe.skipIf(process.platform === 'win32')('agent detection', () => {
   });
 });
 
+describe.skipIf(process.platform === 'win32')('agent.detect on a confirmed agent (S-4)', () => {
+  it('keeps the confirmed choice while it verifies and drops it once the executable is gone', async () => {
+    const sqlite = new Database(':memory:');
+    sqlite.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL);');
+    const service = new AgentSettingsService(drizzle(sqlite, { schema }) as JobPilotDb, dir, false);
+    const path = script('claude-confirmed', '2.1.303 (Claude Code)');
+    await service.chooseCandidate(path);
+    await service.save({ model: 'haiku', auth: 'login' });
+    expect(await service.detect()).toMatchObject({ confirmed: true });
+    rmSync(path);
+    expect(await service.detect()).toMatchObject({ confirmed: false });
+  });
+});
+
 describe('profile input validation', () => {
   const save = (over: object) =>
     ProfileSaveSchema.safeParse({ section: 'personal', value: { ...EMPTY_PROFILE, ...over } }).success;

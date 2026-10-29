@@ -45,7 +45,9 @@ import {
   markConsolidated,
 } from '../modules/settings/settings.service';
 import {
+  backupAndCloseDatabase,
   closeDatabase,
+  DataFolderNotWritableError,
   DatabaseDamagedError,
   DatabaseUnlockError,
   openDatabase,
@@ -60,6 +62,8 @@ import { denyPermissionsByDefault, lockDown } from './security';
 import { createWindow } from './window';
 import { setTimeout as delay } from 'node:timers/promises';
 
+const UNWRITABLE = 'JobPilot cannot write to its data folder. Make the folder writable, then start JobPilot again.';
+
 // Inspector-only journey access follows the exports below; shipped builds disable the inspector.
 export let databaseBackupTimer: NodeJS.Timeout | undefined;
 
@@ -71,14 +75,32 @@ export let fakeMemory: FakeMemoryProvider | undefined;
 export let consolidation: ConsolidationWorker;
 
 process.umask(0o077);
-// Before ready, so startup failures and crashes are on disk.
-initLogService();
-initCrashReporting();
-installCrashHandlers();
+// Before ready, so startup failures and crashes are on disk. A read-only profile folder fails here, before any window.
+let logsError: unknown;
+try {
+  initLogService();
+  initCrashReporting();
+  installCrashHandlers();
+} catch (error) {
+  logsError = error;
+}
 registerAppScheme();
 
+// No window exists yet on these paths, so a dialog is the only way the user learns why the app closed.
+const failStartup = (error: unknown, message: string): void => {
+  try {
+    loggerFor('main').fatal({ err: error }, 'Startup failed');
+  } catch {
+    // The log directory may be the very thing that is unwritable.
+  }
+  dialog.showErrorBox('JobPilot could not start', `${message}\nYour data folder: ${app.getPath('userData')}`);
+  app.exit(1);
+};
+
 // One instance only; a second launch focuses the first.
-if (!app.requestSingleInstanceLock()) {
+if (logsError) {
+  void app.whenReady().then(() => failStartup(logsError, UNWRITABLE));
+} else if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -94,17 +116,6 @@ if (!app.requestSingleInstanceLock()) {
     lockDown(contents);
     watchContents(contents);
   });
-
-  // No window exists yet on these paths, so a dialog is the only way the user learns why the app closed.
-  const failStartup = (error: unknown, message: string): void => {
-    try {
-      loggerFor('main').fatal({ err: error }, 'Startup failed');
-    } catch {
-      // The log directory may be the very thing that is unwritable.
-    }
-    dialog.showErrorBox('JobPilot could not start', `${message}\nYour data folder: ${app.getPath('userData')}`);
-    app.exit(1);
-  };
 
   void app
     .whenReady()
@@ -128,7 +139,12 @@ if (!app.requestSingleInstanceLock()) {
           await openDatabase(loggerFor('database'));
         }
       } catch (error) {
-        failStartup(error, 'JobPilot could not safely open its encrypted database. No database files were replaced.');
+        failStartup(
+          error,
+          error instanceof DataFolderNotWritableError
+            ? UNWRITABLE
+            : 'JobPilot could not safely open its encrypted database. No database files were replaced.',
+        );
         return;
       }
 
@@ -200,7 +216,10 @@ if (!app.requestSingleInstanceLock()) {
       app.on('before-quit', (event) => {
         event.preventDefault();
         // app.exit() emits no further quit events, so the quit is never re-entered.
-        if (!stopping) void stopOwnedWork().finally(() => app.exit(0));
+        if (!stopping)
+          void stopOwnedWork()
+            .then(() => backupAndCloseDatabase(loggerFor('database')))
+            .finally(() => app.exit(0));
       });
       // Windows sends no before-quit on shutdown/logoff (Electron app.md); session-end is the last chance to stop
       // agent children. Aborts and kills run synchronously inside stop(); the OS then ends the process.

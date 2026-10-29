@@ -1,6 +1,7 @@
 import { safeStorage } from 'electron';
 import { z } from 'zod';
 import { ClaudeApiKeySchema, type ClaudeKeyStatus, type ClaudeKeyTest } from '../../../shared/dto';
+import { UserFacingError } from '../ipc/user-facing-error';
 
 const encryptedSchema = z
   .string()
@@ -22,7 +23,7 @@ export class AnthropicKeyStore {
       !(await safeStorage.isAsyncEncryptionAvailable()) ||
       (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')
     ) {
-      throw new Error('Secure storage is unavailable.');
+      throw new UserFacingError('Secure storage is unavailable.');
     }
   }
 
@@ -32,7 +33,7 @@ export class AnthropicKeyStore {
       await this.requireEncryption();
       this.storage.storeAnthropicKey((await safeStorage.encryptStringAsync(parsed)).toString('base64'));
     } catch {
-      throw new Error('Could not save the Claude API key.');
+      throw new UserFacingError('Could not save the Claude API key.');
     }
   }
 
@@ -43,7 +44,7 @@ export class AnthropicKeyStore {
       const { result } = await safeStorage.decryptStringAsync(Buffer.from(encrypted, 'base64'));
       return ClaudeApiKeySchema.parse(result);
     } catch {
-      throw new Error('Claude API key is unavailable.');
+      throw new UserFacingError('Claude API key is unavailable.');
     }
   }
 
@@ -52,7 +53,7 @@ export class AnthropicKeyStore {
       if (this.storage.anthropicKey() === undefined) return { set: false, last4: null };
       return { set: true, last4: (await this.readApiKey()).slice(-4) };
     } catch {
-      throw new Error('Could not read Claude API key status.');
+      throw new UserFacingError('Could not read Claude API key status.');
     }
   }
 
@@ -60,7 +61,7 @@ export class AnthropicKeyStore {
     try {
       this.storage.removeAnthropicKey();
     } catch {
-      throw new Error('Could not remove the Claude API key.');
+      throw new UserFacingError('Could not remove the Claude API key.');
     }
   }
 

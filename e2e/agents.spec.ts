@@ -166,8 +166,10 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
       else await expect(window.locator('html')).not.toHaveClass(/dark/);
       await window.screenshot({ path: testInfo.outputPath(`settings-agent-${theme}.png`), animations: 'disabled' });
     }
+    // Finding again keeps a confirmed Claude that still verifies; the owner's choice is not silently dropped.
     await card().getByRole('button', { name: 'Find again' }).click();
-    await expect(card().getByRole('status')).toHaveText('Save once before starting a run.');
+    await expect(card().getByRole('status')).toHaveText('Saved.');
+    expect((await window.evaluate(() => window.jobpilot!.agent.get())).confirmed).toBe(true);
     await chooseFile(window, resolve('scripts/fixtures/claude/fake-claude'));
     await card().getByRole('button', { name: 'Save', exact: true }).click();
     await expect(card().getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
