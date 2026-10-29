@@ -1,7 +1,7 @@
 import { V17Kbd } from '../../../components/V17Kbd';
 
 const action =
-  'inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent px-3 text-[13.5px]! whitespace-nowrap text-inherit hover:bg-white/12 disabled:cursor-default disabled:opacity-50';
+  'inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border-0 bg-transparent px-3 text-[13.5px]! whitespace-nowrap text-inherit hover:bg-white/12 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-pri disabled:cursor-default disabled:opacity-50';
 
 /** Floating toolbar for the current selection: Start, Remove, Hold, Move to top; Esc clears. */
 export function BulkBar({
