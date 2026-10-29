@@ -60,6 +60,8 @@ export interface RunSpec<S extends z.ZodType = typeof RunResultSchema> {
   /** Agent-side session id owned by the run row; first turn creates it, a resumed turn continues it. */
   sessionId: string;
   resume?: boolean;
+  /** One-shot task that never resumes: its workspace under userData is removed when the run ends. */
+  ephemeral?: boolean;
   signal: AbortSignal;
   timeoutMs: number;
 }

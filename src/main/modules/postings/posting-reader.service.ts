@@ -151,6 +151,7 @@ export class PostingReader {
           toolAllowlist: READER_TOOLS,
           outputSchema: AgentPostingSchema,
           model: 'haiku',
+          ephemeral: true,
           signal: cancel,
           timeoutMs: this.timeoutMs,
         });
