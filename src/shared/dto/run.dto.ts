@@ -19,5 +19,10 @@ export const RunSummarySchema = z.object({
   finishedAt: z.number().int().nullable(),
 });
 export type RunSummaryDto = z.infer<typeof RunSummarySchema>;
+/** Why the queue is paused: the owner did it, or JobPilot closed/crashed with jobs in progress. */
+export const RunsPauseReasonSchema = z.enum(['owner', 'interrupted', 'quit']);
+export type RunsPauseReason = z.infer<typeof RunsPauseReasonSchema>;
+export const RunsStateSchema = z.object({ paused: z.boolean(), reason: RunsPauseReasonSchema.nullable() });
+export type RunsState = z.infer<typeof RunsStateSchema>;
 export const StartRunSchema = z.object({ applicationId: z.ulid() }).strict();
 export const CancelRunSchema = z.object({ runId: z.ulid() }).strict();

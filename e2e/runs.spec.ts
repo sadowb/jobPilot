@@ -267,21 +267,35 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     expect(retryApproval).toMatchObject({ status: 'pending' });
     expect((await inspect(app)).tabs).toContain(retry.id);
 
+    // Starting again while an approval is pending returns that run and keeps the approval (idempotent).
+    expect((await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!)).id).toBe(retry.id);
+    expect(
+      ((await inspect(app)).approvals as Array<{ run_id: string; status: string }>).find((a) => a.run_id === retry.id),
+    ).toMatchObject({ status: 'pending' });
+    // Cancelling it really cancels: run cancelled, approval rejected, tab closed.
+    expect(await window.evaluate((id) => window.jobpilot!.runs.cancel(id), retry.id)).toMatchObject({
+      status: 'cancelled',
+    });
+    const cancelled = await inspect(app);
+    expect(
+      (cancelled.approvals as Array<{ run_id: string; status: string }>).find((a) => a.run_id === retry.id),
+    ).toMatchObject({ status: 'rejected' });
+    expect(cancelled.tabs).not.toContain(retry.id);
+    // Malformed ids fail with a short message, never raw zod issues.
+    const badId = await window.evaluate(async () => {
+      try {
+        await window.jobpilot!.runs.cancel('nope');
+        return '';
+      } catch (error) {
+        return String(error);
+      }
+    });
+    expect(badId).toContain('not valid');
+    expect(badId).not.toContain('pattern');
+
     for (const status of ['blocked', 'submitted']) {
       const next = await window.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[9]!);
       await expect.poll(async () => (await inspect(app!)).tabs.includes(next.id)).toBe(true);
-      if (status === 'blocked') {
-        // Starting again while an approval is pending expires that approval and closes the replaced run's tab.
-        const replaced = await inspect(app);
-        expect(replaced.runs.find((r) => (r as { id: string }).id === retry.id)).toMatchObject({
-          status: 'failed',
-          error: 'Replaced by a new attempt',
-        });
-        expect(
-          (replaced.approvals as Array<{ run_id: string; status: string }>).find((a) => a.run_id === retry.id),
-        ).toMatchObject({ status: 'expired' });
-        expect(replaced.tabs).not.toContain(retry.id);
-      }
       await complete(app, [next.id], status);
       await expect
         .poll(
@@ -314,6 +328,16 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     const restarted = await app.firstWindow();
     await skipOnboarding(restarted);
     await expect(restarted.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    // An unclean exit with an interrupted run starts the queue paused: nothing re-executes until the owner resumes.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(
+      (await restarted.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === interrupted.id),
+    ).toMatchObject({ status: 'queued' });
+    // Main is the source of truth: Up next shows why it is paused, and its button drives main.
+    await restarted.getByRole('tab', { name: /Up next/ }).click();
+    await expect(restarted.getByText(/Paused because JobPilot stopped unexpectedly/)).toBeVisible();
+    await restarted.getByRole('button', { name: /Resume queue/ }).click();
+    await expect(restarted.getByRole('button', { name: /Pause queue/ })).toBeVisible();
     await expect
       .poll(
         async () =>
@@ -337,12 +361,10 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         data: JSON.stringify({ reason: 'app restarted' }),
       }),
     );
-    // The resumed run finished and waits for approval; starting again replaces it instead of leaving two live attempts.
+    // The resumed run finished and waits for approval; cancel it, then a new start makes a fresh attempt.
+    await restarted.evaluate((id) => window.jobpilot!.runs.cancel(id), interrupted.id);
     const replacement = await restarted.evaluate((id) => window.jobpilot!.runs.start(id), applicationIds[10]!);
     expect(replacement.id).not.toBe(interrupted.id);
-    expect(
-      (await restarted.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === interrupted.id),
-    ).toMatchObject({ status: 'failed' });
     await expect
       .poll(
         async () =>
@@ -373,6 +395,11 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     const configured = await app.firstWindow();
     await skipOnboarding(configured);
     await expect(configured.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    // The owner's pause set before the restart survived it, with no interruption notice.
+    await configured.getByRole('tab', { name: /Up next/ }).click();
+    await expect(configured.getByRole('button', { name: /Resume queue/ })).toBeVisible();
+    await expect(configured.getByText(/Paused (because|after) JobPilot/)).toHaveCount(0);
+    await configured.getByRole('button', { name: /Resume queue/ }).click();
     await expect
       .poll(async () =>
         (await configured.evaluate(() => window.jobpilot!.runs.list()))

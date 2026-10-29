@@ -8,7 +8,7 @@ import { SearchField } from './components/SearchField';
 import { panelId, tabId, TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { clockTime } from './format';
 import { BulkBar } from './upnext/BulkBar';
-import { useConfirmPosting, useSettings } from '../../lib/api';
+import { useConfirmPosting, useRunsState, useSetRunsPaused, useSettings } from '../../lib/api';
 import { CREW_DEFAULT } from '../../../../shared/dto';
 import {
   formatCrewTime,
@@ -83,6 +83,11 @@ export function UpNextView({
   const running = state.items.filter((i) => i.stage === 'running').length;
   const minutes = minutesLeft(state.items);
 
+  const { data: runsState } = useRunsState();
+  const paused = runsState?.paused ?? false;
+  const setPaused = useSetRunsPaused();
+  const togglePause = useCallback(() => setPaused.mutate(!paused), [setPaused, paused]);
+
   const remove = useCallback((ids: string[]) => dispatch({ type: 'remove', ids, now: Date.now() }), [dispatch]);
   const hold = useCallback((ids: string[]) => dispatch({ type: 'hold', ids, at: clockTime() }), [dispatch]);
 
@@ -101,16 +106,17 @@ export function UpNextView({
       if (res.hold) hold(targets);
       if (res.moveToTop) dispatch({ type: 'moveToTop', ids: targets });
       if (res.undo) dispatch({ type: 'undoRemove' });
+      if (res.togglePause) togglePause();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [state, dispatch, remove, hold, modalOpen]);
+  }, [state, dispatch, remove, hold, modalOpen, togglePause]);
 
   const { data: settings } = useSettings();
   const confirmPosting = useConfirmPosting();
   const crewSize = settings?.crew ?? CREW_DEFAULT;
 
-  const crew = state.paused
+  const crew = paused
     ? 'QUEUE PAUSED'
     : running === 0
       ? `CREW IDLE · 0 / ${crewSize} RUNNING`
@@ -138,16 +144,14 @@ export function UpNextView({
               <i
                 className={cn(
                   'inline-block size-[7px] rounded-full',
-                  state.paused
-                    ? 'bg-need'
-                    : 'animate-jp-pulse bg-work motion-reduce:animate-none motion-reduce:opacity-100',
+                  paused ? 'bg-need' : 'animate-jp-pulse bg-work motion-reduce:animate-none motion-reduce:opacity-100',
                 )}
               />
               {crew}
             </span>
-            <AppButton size="sm" onClick={() => dispatch({ type: 'togglePause' })}>
-              <V17Icon name={state.paused ? 'play' : 'pause'} />
-              {state.paused ? 'Resume queue ' : 'Pause queue '}
+            <AppButton size="sm" onClick={togglePause}>
+              <V17Icon name={paused ? 'play' : 'pause'} />
+              {paused ? 'Resume queue ' : 'Pause queue '}
               <V17Kbd>P</V17Kbd>
             </AppButton>
             <AppButton variant="primary" size="sm" onClick={onAddJobs}>
@@ -162,6 +166,13 @@ export function UpNextView({
           aria-labelledby={tabId('dashboard', 'up-next')}
           className="contents"
         >
+          {runsState?.reason === 'interrupted' || runsState?.reason === 'quit' ? (
+            <div role="status" className="rounded-lg border border-line-2 px-3.5 py-2.5 text-[13.5px] text-ink-2">
+              {runsState.reason === 'quit'
+                ? 'Paused after JobPilot closed with jobs in progress. Resume when ready.'
+                : 'Paused because JobPilot stopped unexpectedly with jobs in progress. Resume when ready.'}
+            </div>
+          ) : null}
           <div className="-mt-1.5 text-[13.5px] text-muted">
             Up next is the order the crew opens jobs in. Remove or hold anything before it starts. Nothing is sent from
             here.

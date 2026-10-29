@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Channels } from '../../../shared/ipc';
-import { CancelRunSchema, RunSummarySchema, StartRunSchema } from '../../../shared/dto';
+import { CancelRunSchema, RunsStateSchema, RunSummarySchema, StartRunSchema } from '../../../shared/dto';
 import { defineHandler } from '../../platform/ipc/registry';
 import type { RunsService } from './runs.service';
 
@@ -14,6 +14,7 @@ export function runsHandlers(service: RunsService) {
     ),
     defineHandler(Channels.pauseRuns, z.void(), () => z.boolean().parse(service.pause())),
     defineHandler(Channels.resumeRuns, z.void(), () => z.boolean().parse(service.resume())),
+    defineHandler(Channels.getRunsState, z.void(), () => RunsStateSchema.parse(service.state())),
     defineHandler(Channels.listRuns, z.void(), () => z.array(RunSummarySchema).parse(service.list())),
   ];
 }

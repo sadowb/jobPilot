@@ -27,7 +27,7 @@ flowchart LR
 
 ## Run state machine
 
-The run row is authoritative. The application service applies validated agent results and owns every transition. A partial unique index permits at most one `queued` or `running` run per application. Starting a new attempt retires a run still in `needs_you` or `awaiting_approval`: it moves to `failed` ("Replaced by a new attempt"), its pending approval to `expired`, and its tab is closed, so an application never holds two live attempts. Submission requires a pending approval bound to the current form hash unless auto mode is explicitly enabled.
+The run row is authoritative. The application service applies validated agent results and owns every transition. A partial unique index permits at most one `queued` or `running` run per application. Starting a new attempt retires a run still in `needs_you`: it moves to `failed` ("Replaced by a new attempt"), its pending approval to `expired`, and its tab is closed, so an application never holds two live attempts. Starting a job whose run is `awaiting_approval` returns that run unchanged; the owner cancels it first to redo it. Cancelling a run in `awaiting_approval` or `needs_you` moves it to `cancelled`, rejects its pending approval and closes its tab. The queue pause is persisted (`runs.paused`); after an unclean exit with interrupted runs, and after a quit that re-queued in-flight runs, the queue starts paused until the owner resumes it. Submission requires a pending approval bound to the current form hash unless auto mode is explicitly enabled.
 
 ```mermaid
 stateDiagram-v2
@@ -44,6 +44,8 @@ stateDiagram-v2
   needs_you --> failed
   owner_in_control --> failed
   awaiting_approval --> failed
+  awaiting_approval --> cancelled
+  needs_you --> cancelled
 ```
 
 `needs_you` represents an owner answer or intervention. `owner_in_control` represents an active takeover. The agent result vocabulary (`filled`, `needs_answers`, `blocked`, `submitted`, `failed`) is an input contract; the service maps it to run and application states.

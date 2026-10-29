@@ -146,7 +146,6 @@ export interface QueueState {
   selected: string[];
   /** Row the keyboard acts on; its row shows the action buttons. */
   cursor: string | null;
-  paused: boolean;
   removed: RemovedBatch | null;
 }
 
@@ -163,12 +162,11 @@ export type QueueAction =
   | { type: 'remove'; ids: string[]; now: number }
   | { type: 'undoRemove' }
   | { type: 'expireUndo'; now: number }
-  | { type: 'togglePause' }
   | { type: 'add'; items: QueueItem[] }
   | { type: 'reorder'; id: string; beforeId: string };
 
 export function initialQueueState(items: QueueItem[] = SAMPLE_QUEUE): QueueState {
-  return { items, query: '', filter: 'all', selected: [], cursor: null, paused: false, removed: null };
+  return { items, query: '', filter: 'all', selected: [], cursor: null, removed: null };
 }
 
 export function matchesQueueFilter(i: QueueItem, f: QueueFilter): boolean {
@@ -333,8 +331,6 @@ export function queueReducer(s: QueueState, a: QueueAction): QueueState {
       const fresh = a.items.filter((i) => !have.has(i.id));
       return fresh.length ? { ...s, items: [...s.items, ...fresh] } : s;
     }
-    case 'togglePause':
-      return { ...s, paused: !s.paused };
     case 'reorder': {
       const from = s.items.find((i) => i.id === a.id);
       const before = s.items.find((i) => i.id === a.beforeId);

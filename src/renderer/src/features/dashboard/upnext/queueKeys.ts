@@ -10,6 +10,7 @@ export interface QueueKeyResult {
   hold?: boolean;
   moveToTop?: boolean;
   undo?: boolean;
+  togglePause?: boolean;
   preventDefault: boolean;
 }
 
@@ -54,7 +55,7 @@ export function queueKeyToResult(e: QueueKeyEvent, s: QueueState, inText: boolea
     case 'Delete':
       return { remove: true, preventDefault: true };
     case 'p':
-      return { action: { type: 'togglePause' }, preventDefault: true };
+      return { togglePause: true, preventDefault: true };
     case '/':
       return { effect: 'focusSearch', preventDefault: true };
     case 'Escape':

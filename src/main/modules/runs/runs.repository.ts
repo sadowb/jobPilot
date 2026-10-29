@@ -89,11 +89,11 @@ export class RunsRepository {
       .get()!;
   }
 
-  /** A replaced run's pending approval can never be acted on. */
-  expireApprovals(runId: string) {
+  /** A replaced or cancelled run's pending approval can never be acted on. */
+  closeApprovals(runId: string, status: 'expired' | 'rejected') {
     this.db
       .update(approval)
-      .set({ status: 'expired', decidedAt: Date.now() })
+      .set({ status, ...(status === 'rejected' ? { decidedBy: 'owner' as const } : {}), decidedAt: Date.now() })
       .where(and(eq(approval.runId, runId), eq(approval.status, 'pending')))
       .run();
   }
