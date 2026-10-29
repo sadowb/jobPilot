@@ -579,7 +579,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(rows.nth(4)).toContainText('Unsupported');
     await expect(rows.nth(0)).toContainText('Greenhouse');
     await expect(rows.nth(4)).toContainText('example.com/about');
-    await expect(rows.nth(4).getByTitle(/No job description or application form/)).toBeVisible();
+    await expect(rows.nth(4).getByTitle(/does not look like a job posting/)).toBeVisible();
     await expect(window.getByRole('button', { name: 'Add 3 jobs', exact: true })).toBeEnabled();
     await window.setViewportSize({ width: 1280, height: 800 });
     const mixed = [
