@@ -30,31 +30,35 @@ function Shell() {
 }
 
 // Hash router: the packaged app is a single document, so history routing is not an option.
-const router = createHashRouter([
-  { path: '/recovery', element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
-  // Standalone: the extension popup preview has no app shell.
-  { path: '/extension', element: <Extension />, errorElement: <RouteErrorPage /> },
-  {
-    element: <Shell />,
-    // Every app route waits for setup. The loader runs whenever the shell is entered (launch, typed hash, leaving /welcome), so no hash skips it.
-    loader: () => (onboardingPending() ? redirect('/welcome/1') : null),
-    errorElement: <RouteErrorPage />,
-    children: [
-      { path: '/', element: <Dashboard /> },
-      { path: '/first-day', element: <FirstDay /> },
-      { path: '/inbox', element: <Inbox /> },
-      { path: '/fixes', element: <ManualControl /> },
-      { path: '/analytics', element: <AnalyticsPage /> },
-      { path: '/profile', element: <ProfilePage /> },
-      { path: '/settings', element: <SettingsPage /> },
-      { path: '*', element: <NotFoundPage /> },
-    ],
-  },
-  // Setup is full screen: no top bar, no pill nav.
-  { path: '/welcome', element: <Navigate to="/welcome/1" replace /> },
-  { path: '/welcome/:step', element: <OnboardingPage />, errorElement: <RouteErrorPage /> },
-]);
+// Created on first render, not at import: its first navigation runs the onboarding loader, which needs the loaded profile.
+const createRouter = () =>
+  createHashRouter([
+    { path: '/recovery', element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
+    // Standalone: the extension popup preview has no app shell.
+    { path: '/extension', element: <Extension />, errorElement: <RouteErrorPage /> },
+    {
+      element: <Shell />,
+      // Every app route waits for setup. The loader runs whenever the shell is entered (launch, typed hash, leaving /welcome), so no hash skips it.
+      loader: () => (onboardingPending() ? redirect('/welcome/1') : null),
+      errorElement: <RouteErrorPage />,
+      children: [
+        { path: '/', element: <Dashboard /> },
+        { path: '/first-day', element: <FirstDay /> },
+        { path: '/inbox', element: <Inbox /> },
+        { path: '/fixes', element: <ManualControl /> },
+        { path: '/analytics', element: <AnalyticsPage /> },
+        { path: '/profile', element: <ProfilePage /> },
+        { path: '/settings', element: <SettingsPage /> },
+        { path: '*', element: <NotFoundPage /> },
+      ],
+    },
+    // Setup is full screen: no top bar, no pill nav.
+    { path: '/welcome', element: <Navigate to="/welcome/1" replace /> },
+    { path: '/welcome/:step', element: <OnboardingPage />, errorElement: <RouteErrorPage /> },
+  ]);
+let router: ReturnType<typeof createRouter> | undefined;
 
 export function App() {
+  router ??= createRouter();
   return <RouterProvider router={router} />;
 }
