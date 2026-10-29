@@ -54,8 +54,12 @@ export const useAgent = () =>
 
 export const useAgentAction = () =>
   useMutation({
-    mutationFn: (action: 'detect' | { save: Parameters<JobPilotBridge['agent']['save']>[0] }) =>
-      action === 'detect' ? bridge().agent.detect() : bridge().agent.save(action.save),
+    mutationFn: (action: 'detect' | 'choose' | { save: Parameters<JobPilotBridge['agent']['save']>[0] }) =>
+      action === 'detect'
+        ? bridge().agent.detect()
+        : action === 'choose'
+          ? bridge().agent.choosePath()
+          : bridge().agent.save(action.save),
     onSuccess: (state: AgentState) => queryClient.setQueryData(queryKeys.agent.state(), state),
   });
 

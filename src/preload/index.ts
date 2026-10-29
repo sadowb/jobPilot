@@ -14,7 +14,6 @@ import {
 import {
   AgentStateSchema,
   SaveAgentSchema,
-  DetectAgentSchema,
   ClaudeKeyStatusSchema,
   ClaudeKeyTestSchema,
   MemoryStatusSchema,
@@ -43,8 +42,11 @@ const bridge: JobPilotBridge = {
     async get() {
       return AgentStateSchema.parse(await invoke(Channels.getAgent));
     },
-    async detect(path) {
-      return AgentStateSchema.parse(await invoke(Channels.detectAgent, DetectAgentSchema.parse({ path })));
+    async detect() {
+      return AgentStateSchema.parse(await invoke(Channels.detectAgent));
+    },
+    async choosePath() {
+      return AgentStateSchema.parse(await invoke(Channels.chooseAgentPath));
     },
     async save(input) {
       return AgentStateSchema.parse(await invoke(Channels.saveAgent, SaveAgentSchema.parse(input)));

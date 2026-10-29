@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../components/ui';
 import { hasBridge, useSaveDocument } from '../../lib/api';
 import { PButton, ghostLinkButton } from './buttons';
-import { documentError } from './personal';
+import { documentContentError, documentError } from './personal';
 import { documentStore, type ProfileDocument } from './documents';
 import { Glyph } from './icons';
 import { actionsRow, sectionTitle } from './styles';
@@ -138,15 +138,16 @@ export function ProfileDocuments() {
   const upload = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
-    const problem = documentError(file);
-    if (problem) {
-      setError(problem);
-      if (input.current) input.current.value = '';
-      return;
-    }
     setBusy(true);
     setError('');
     setMessage('');
+    const problem = documentError(file) ?? (await documentContentError(file));
+    if (problem) {
+      setError(problem);
+      setBusy(false);
+      if (input.current) input.current.value = '';
+      return;
+    }
     const doc: ProfileDocument = { id: crypto.randomUUID(), name: file.name, file, uploaded: new Date().toISOString() };
     try {
       await documentStore('put', doc);
@@ -273,7 +274,7 @@ export function ProfileDocuments() {
         </div>
       )}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4 text-xs text-muted">
-        <span aria-live="polite">
+        <span aria-live="polite" className="block max-w-full min-w-0 truncate" title={error || message}>
           {error ? (
             <span role="alert" className="text-bad">
               {error}

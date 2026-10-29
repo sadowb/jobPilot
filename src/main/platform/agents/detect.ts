@@ -16,6 +16,13 @@ export async function executablePath(path: string): Promise<string> {
   return resolved;
 }
 
+/** `claude --version` prints e.g. `2.1.303 (Claude Code)`; anything else is not the Claude Code CLI. */
+const CLAUDE_VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[0-9A-Za-z.]{1,32})? \(Claude Code(?: [0-9A-Za-z .-]{1,32})?\)$/;
+export function claudeVersion(stdout: string): string | null {
+  const version = stdout.trim();
+  return CLAUDE_VERSION.test(version) ? version : null;
+}
+
 /** Discovery is advisory: only the owner-confirmed absolute path is used by runs. */
 export async function detectClaude(override?: string | null): Promise<{ path: string; version: string } | null> {
   let pathValue = process.env.PATH ?? '';
@@ -96,7 +103,8 @@ export async function detectClaude(override?: string | null): Promise<{ path: st
           SystemRoot: process.env.SystemRoot,
         },
       });
-      return { path, version: z.string().trim().min(1).max(256).parse(stdout) };
+      const version = claudeVersion(stdout);
+      if (version) return { path, version };
     } catch {
       /* An unavailable or invalid candidate is not an installed tool. */
     }

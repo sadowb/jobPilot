@@ -6,6 +6,7 @@ import {
   OPEN_EDITOR_EVENT,
   PROFILE_KEY,
   effectiveSalaryCurrency,
+  emailProblem,
   readProfile,
   type OpenEditorDetail,
   type ProfileField,
@@ -188,11 +189,13 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
           error={problem || profile.error}
           onCancel={closeProfile}
           onSave={async () => {
+            const mail = emailProblem(draft.email);
             const phone = phoneProblem(draft.phone);
             const alternate = phoneProblem(draft.alternatePhone);
             const langProblem = languagesError(draft.languages);
             const roleProblem = draft.career.map(careerError).find(Boolean);
             const bad =
+              (mail && `Email: ${mail}`) ||
               (phone && `Phone number: ${phone}`) ||
               (alternate && `Alternate phone: ${alternate}`) ||
               (roleProblem && `Work history: ${roleProblem}`) ||
@@ -201,7 +204,8 @@ export function AboutMe({ onSeeAllCvs }: { onSeeAllCvs: () => void }) {
               setProblem(bad);
               return;
             }
-            if (await profile.save({ ...draft, career: sortCareer(draft.career) })) setView(null);
+            if (await profile.save({ ...draft, email: draft.email.trim(), career: sortCareer(draft.career) }))
+              setView(null);
           }}
         >
           {group.career && (
