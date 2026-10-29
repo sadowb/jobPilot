@@ -363,7 +363,9 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         .createRequire(path.join(app.getAppPath(), 'package.json'));
       const { db } = require(path.join(app.getAppPath(), 'out/main/index.js')) as Main;
       db.$client
-        .prepare('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)')
+        .prepare(
+          'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
+        )
         .run('runs.concurrency', '1', Date.now());
     });
     await app.close();
