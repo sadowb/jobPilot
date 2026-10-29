@@ -12,7 +12,7 @@ export const queryClient = new QueryClient({
 /** One typed key factory; every `useQuery` and every invalidation takes its key from here. */
 export const queryKeys = {
   applications: { all: ['applications'] as const, list: () => [...queryKeys.applications.all, 'list'] as const },
-  runs: { all: ['runs'] as const, state: () => ['runs', 'state'] as const },
+  runs: { all: ['runs'] as const, state: () => ['runs', 'state'] as const, list: () => ['runs', 'list'] as const },
   recovery: { state: () => ['recovery', 'state'] as const },
   agent: { state: () => ['agent', 'state'] as const },
   claudeKey: { status: () => ['claude-key', 'status'] as const },
