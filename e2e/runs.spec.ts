@@ -112,6 +112,8 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       }
       return Array.from({ length: 16 }, (_, i) => id(i + 101));
     });
+    // Pin the crew so this test checks the limit itself, not the default (ADR 0016 default is 6).
+    await window.evaluate(() => window.jobpilot!.settings.update({ crew: 4 }));
     expect(await window.evaluate(() => window.jobpilot!.runs.pause())).toBe(true);
     const first = await window.evaluate(
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
