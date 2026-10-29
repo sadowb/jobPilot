@@ -7,7 +7,7 @@ import { V17Icon } from '../../../components/V17Icon';
 import { V17Kbd } from '../../../components/V17Kbd';
 import { V17StatusChip } from '../../../components/V17StatusChip';
 import { AppButton } from '../components/AppButton';
-import { useCreateApplication, useIngestPosting } from '../../../lib/api';
+import { cancelIngest, onPostingReadState, useCreateApplication, useIngestPosting } from '../../../lib/api';
 
 import { candidateUrls, editRow, isWebUrl, newRow, reconcileRows, type Row } from './rows';
 
@@ -37,6 +37,8 @@ export function AddJobsDialog({
   const { mutateAsync: ingest } = useIngestPosting();
   const createApplication = useCreateApplication();
   const active = useRef(new Set<number>());
+  // Row id -> URL of its in-flight ingest, so removing the row or closing the dialog can abort an agent read.
+  const pending = useRef(new Map<number, string>());
   const adding = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +46,24 @@ export function AddJobsDialog({
   const list = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
+    const live = pending.current;
+    const stop = onPostingReadState(({ url }) =>
+      setRows((current) =>
+        current.map((row) => (row.url === url && !row.result ? { ...row, agentReading: true } : row)),
+      ),
+    );
+    return () => {
+      stop();
+      for (const url of live.values()) cancelIngest(url);
+    };
+  }, []);
+
+  useEffect(() => {
     for (const row of rows) {
       if (active.current.size >= 3) break;
       if (row.result || active.current.has(row.id)) continue;
       active.current.add(row.id);
+      pending.current.set(row.id, row.url);
       void (async () => {
         let result: IngestResult;
         try {
@@ -60,6 +76,7 @@ export function AddJobsDialog({
           };
         }
         active.current.delete(row.id);
+        pending.current.delete(row.id);
         setRows((current) => current.map((item) => (item.id === row.id ? { ...item, result } : item)));
       })();
     }
@@ -83,6 +100,8 @@ export function AddJobsDialog({
     if (busy) return;
     const source = rows[index]?.source;
     if (source === undefined) return;
+    const reading = pending.current.get(rows[index]!.id);
+    if (reading !== undefined) cancelIngest(reading);
     dismissed.current.add(source);
     setRows((current) => current.filter((_, i) => i !== index));
     requestAnimationFrame(() => {
@@ -239,7 +258,9 @@ export function AddJobsDialog({
               const status = row.added
                 ? 'Added'
                 : !result
-                  ? 'Reading'
+                  ? row.agentReading
+                    ? 'Reading with agent…'
+                    : 'Reading'
                   : neutral
                     ? 'Already in your list'
                     : unsupported
@@ -330,7 +351,9 @@ export function AddJobsDialog({
                                 (failed || unsupported) && 'font-mono',
                               )}
                             >
-                              {posting && !posting.verified && 'Apply form found, no job data · '}
+                              {posting &&
+                                !posting.verified &&
+                                `${(result?.ok && result.note) || 'Apply form found, no job data'} · `}
                               {failed || unsupported
                                 ? link
                                   ? `${link.host}${link.pathname}`

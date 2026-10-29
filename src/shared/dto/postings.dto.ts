@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AtsKind, QuestionType } from './enums';
+import { AtsKind, PostingSource, QuestionType } from './enums';
 
 export const IsoCountryCodeSchema = z
   .string()
@@ -41,6 +41,7 @@ export const PostingFormSchema = z.object({
   questions: z.array(PostingQuestionSchema).max(200),
   /** false for custom pages without JobPosting JSON-LD (see htmlFallback); ATS adapters and JSON-LD pages are verified. */
   verified: z.boolean().default(true),
+  source: PostingSource.schema.default('fetch'),
 });
 export type PostingFormDto = z.infer<typeof PostingFormSchema>;
 
@@ -76,7 +77,17 @@ export const ConfirmPostingSchema = z.object({ postingId: z.ulid() });
 export const PostingPreviewSchema = PostingFormSchema.extend({ postingId: z.ulid() });
 export type PostingPreview = z.infer<typeof PostingPreviewSchema>;
 export const IngestResultSchema = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true), posting: PostingPreviewSchema, alreadyTracked: z.boolean() }),
+  z.object({
+    ok: z.literal(true),
+    posting: PostingPreviewSchema,
+    alreadyTracked: z.boolean(),
+    /** Owner-facing hint shown on the row, e.g. why an unverified page was not read by the agent. */
+    note: z.string().max(300).optional(),
+  }),
   z.object({ ok: z.literal(false), code: z.enum(['UNSUPPORTED_ATS', 'FETCH_FAILED']), message: z.string() }),
 ]);
 export type IngestResult = z.infer<typeof IngestResultSchema>;
+
+/** Pushed while an ingest is slow, so the row can say what is happening. `url` is the URL as pasted. */
+export const PostingReadStateSchema = z.object({ url: z.string().max(2048), state: z.literal('reading_with_agent') });
+export type PostingReadState = z.infer<typeof PostingReadStateSchema>;

@@ -75,6 +75,14 @@ export const useConfirmPosting = () => {
 
 export const useIngestPosting = () => useMutation({ mutationFn: (url: string) => bridge().postings.ingest(url) });
 
+/** Aborts an in-flight ingest (and any agent read behind it); best effort, the dialog does not wait for it. */
+export const cancelIngest = (url: string): void =>
+  void window.jobpilot?.postings.cancelIngest(url).catch(() => undefined);
+
+/** Fires when main starts reading a pasted URL with the agent. Returns the unsubscribe. */
+export const onPostingReadState: JobPilotBridge['postings']['onReadState'] = (listener) =>
+  window.jobpilot?.postings.onReadState(listener) ?? (() => undefined);
+
 export const useAgent = () =>
   useQuery({
     queryKey: queryKeys.agent.state(),

@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { Logger } from 'pino';
 import {
   RunEventSchema,
-  RunResultSchema,
+  type RunResultSchema,
   type AgentProvider,
   type AgentRun,
   type RunEvent,
@@ -70,10 +70,10 @@ export class ClaudeProvider implements AgentProvider {
     }
   }
 
-  run(spec: RunSpec): AgentRun {
-    let resolveResult!: (value: z.infer<typeof RunResultSchema>) => void;
+  run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
+    let resolveResult!: (value: z.infer<S>) => void;
     let rejectResult!: (error: Error) => void;
-    const promise = new Promise<z.infer<typeof RunResultSchema>>((resolve, reject) => {
+    const promise = new Promise<z.infer<S>>((resolve, reject) => {
       resolveResult = resolve;
       rejectResult = reject;
     });
@@ -209,7 +209,7 @@ export class ClaudeProvider implements AgentProvider {
             },
           },
         });
-        let output: z.infer<typeof RunResultSchema> | undefined;
+        let output: z.infer<S> | undefined;
         for await (const message of stream) {
           controller.signal.throwIfAborted();
           if (message.type === 'system' && message.subtype === 'init') {
@@ -250,7 +250,7 @@ export class ClaudeProvider implements AgentProvider {
             });
             if (message.subtype !== 'success' || message.is_error) throw new Error('Claude result error.');
             failure = 'Claude returned an invalid structured result.';
-            output = RunResultSchema.parse(spec.outputSchema.parse(message.structured_output));
+            output = spec.outputSchema.parse(message.structured_output) as z.infer<S>;
             if (apiKey && redactSecret(JSON.stringify(output), apiKey) !== JSON.stringify(output)) {
               throw new Error('Claude returned credential material.');
             }

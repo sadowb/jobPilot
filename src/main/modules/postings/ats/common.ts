@@ -356,7 +356,11 @@ export async function jsonValue(
 }
 
 export function form(
-  input: Omit<PostingFormDto, 'questions' | 'verified'> & { questions?: PostingQuestionDto[]; verified?: boolean },
+  input: Omit<PostingFormDto, 'questions' | 'verified' | 'source'> & {
+    questions?: PostingQuestionDto[];
+    verified?: boolean;
+    source?: PostingFormDto['source'];
+  },
 ): PostingFormDto {
   return PostingFormSchema.parse({ ...input, questions: input.questions ?? [] });
 }

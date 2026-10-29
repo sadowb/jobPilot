@@ -4,6 +4,7 @@ import type {
   SaveAgentSchema,
   ApplicationListItem,
   IngestResult,
+  PostingReadState,
   ProfileData,
   ProfileSave,
   ClaudeKeyStatus,
@@ -48,6 +49,8 @@ export const Channels = {
   getRunsState: 'runs:state',
   ingestPosting: 'postings:ingest',
   confirmPosting: 'postings:confirm',
+  cancelIngestPosting: 'postings:cancel-ingest',
+  postingReadState: 'postings:read-state',
   listApplications: 'applications:list',
   createApplication: 'applications:create',
   setApplicationStatus: 'applications:set-status',
@@ -122,7 +125,14 @@ export interface JobPilotBridge {
     list(): Promise<RunSummaryDto[]>;
     state(): Promise<RunsState>;
   };
-  postings: { ingest(url: string): Promise<IngestResult>; confirm(postingId: string): Promise<boolean> };
+  postings: {
+    ingest(url: string): Promise<IngestResult>;
+    confirm(postingId: string): Promise<boolean>;
+    /** Aborts an in-flight ingest of this pasted URL (closing the dialog or removing the row). */
+    cancelIngest(url: string): Promise<boolean>;
+    /** Main -> renderer: the agent started reading a pasted URL, which can take a minute. */
+    onReadState(listener: (state: PostingReadState) => void): () => void;
+  };
   applications: {
     list(): Promise<ApplicationListItem[]>;
     create(postingId: string): Promise<ApplicationListItem>;

@@ -23,6 +23,7 @@ import {
   CancelRunSchema,
   ApplicationListItemSchema,
   IngestResultSchema,
+  PostingReadStateSchema,
   ProfileDataSchema,
   ProfileSaveSchema,
   ThemeStateSchema,
@@ -110,6 +111,17 @@ const bridge: JobPilotBridge = {
     },
     async confirm(postingId) {
       return z.boolean().parse(await invoke(Channels.confirmPosting, { postingId }));
+    },
+    async cancelIngest(url) {
+      return z.boolean().parse(await invoke(Channels.cancelIngestPosting, url));
+    },
+    onReadState(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, state: unknown) => {
+        const parsed = PostingReadStateSchema.safeParse(state);
+        if (parsed.success) listener(parsed.data);
+      };
+      ipcRenderer.on(Channels.postingReadState, handler);
+      return () => ipcRenderer.removeListener(Channels.postingReadState, handler);
     },
   },
   applications: {

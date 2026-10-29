@@ -5,7 +5,7 @@ import { AgentPreferencesSchema, AgentStateSchema, SaveAgentSchema } from '../..
 import type { JobPilotDb } from '../../platform/db/database';
 import { ClaudeProvider } from '../../platform/agents/claude';
 import { detectClaude, executablePath } from '../../platform/agents/detect';
-import type { AgentProvider, AgentRun, RunSpec } from '../../platform/agents/types';
+import type { AgentProvider, AgentRun, RunResultSchema, RunSpec } from '../../platform/agents/types';
 import { loggerFor } from '../observability/log.service';
 import { redact } from '../observability/redact';
 import { SettingsRepository } from './settings.repository';
@@ -112,10 +112,10 @@ export class AgentSettingsService implements AgentProvider {
       throw new UserFacingError(`Claude is not ready (${state.status}). Check Settings → Agent.`);
   }
 
-  run(spec: RunSpec): AgentRun {
-    let resolve!: (value: Awaited<AgentRun['result']>) => void;
+  run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
+    let resolve!: (value: z.infer<S>) => void;
     let reject!: (error: unknown) => void;
-    const result = new Promise<Awaited<AgentRun['result']>>((yes, no) => {
+    const result = new Promise<z.infer<S>>((yes, no) => {
       resolve = yes;
       reject = no;
     });
