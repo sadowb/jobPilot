@@ -33,21 +33,22 @@ describe('crew slider maths', () => {
   it('clamps and rounds into 1..32', () => {
     expect(clampCrew(0)).toBe(CREW_MIN);
     expect(clampCrew(99)).toBe(CREW_MAX);
+    expect(CREW_MAX).toBe(64);
     expect(clampCrew(4.4)).toBe(4);
     expect(clampCrew(Number.NaN)).toBe(CREW_MIN);
   });
 
   it('places the board values on the track (4 of 32 is 9.68%)', () => {
-    expect(crewPercent(4).toFixed(2)).toBe('9.68');
+    expect(crewPercent(6).toFixed(2)).toBe('7.94');
     expect(crewPercent(1)).toBe(0);
-    expect(crewPercent(32)).toBe(100);
-    expect(CREW_TICKS.map((t) => crewPercent(t).toFixed(2))).toEqual(['0.00', '22.58', '48.39', '74.19', '100.00']);
+    expect(crewPercent(64)).toBe(100);
+    expect(CREW_TICKS.map((t) => crewPercent(t).toFixed(2))).toEqual(['0.00', '23.81', '49.21', '74.60', '100.00']);
   });
 
   it('anchors first and last tick labels inside the track', () => {
     expect(tickTransform(1)).toBe('translateX(0)');
-    expect(tickTransform(16)).toBe('translateX(-50%)');
-    expect(tickTransform(32)).toBe('translateX(-100%)');
+    expect(tickTransform(32)).toBe('translateX(-50%)');
+    expect(tickTransform(64)).toBe('translateX(-100%)');
   });
 });
 
@@ -55,23 +56,39 @@ describe('limit parsing', () => {
   const tabs = LIMIT_SPECS.find((s) => s.key === 'openTabs')!;
   const run = LIMIT_SPECS.find((s) => s.key === 'runSeconds')!;
 
-  it('keeps the previous value for non-numeric input', () => {
-    expect(parseLimit('', tabs, 8)).toBe(8);
-    expect(parseLimit('abc', tabs, 8)).toBe(8);
+  const ok = (value: number) => ({ ok: true, value });
+  const bad = { ok: false, error: expect.stringContaining('whole number') };
+
+  it('accepts plain whole numbers inside the range', () => {
+    expect(parseLimit('12', tabs)).toEqual(ok(12));
+    expect(parseLimit(' 8 ', tabs)).toEqual(ok(8));
+    expect(
+      parseLimit(
+        '1000',
+        LIMIT_SPECS.find((l) => l.key === 'costPerDay')!,
+      ),
+    ).toEqual(ok(1000));
   });
 
-  it('strips non-digits and clamps into range', () => {
-    expect(parseLimit('$12', tabs, 8)).toBe(12);
-    expect(parseLimit('0', tabs, 8)).toBe(tabs.min);
-    expect(parseLimit('999', tabs, 8)).toBe(tabs.max);
-    expect(parseLimit('10', run, 540)).toBe(run.min);
+  it('rejects instead of reinterpreting decimals, exponents, signs and symbols', () => {
+    const cost = LIMIT_SPECS.find((l) => l.key === 'costPerDay')!;
+    for (const raw of ['2.5', '1e3', '-5', '+5', '$12', '1,000', '0x10', 'abc', '', '  ', '٣']) {
+      expect(parseLimit(raw, cost)).toMatchObject(bad);
+    }
+  });
+
+  it('rejects out-of-range numbers instead of clamping', () => {
+    expect(parseLimit('0', tabs)).toMatchObject(bad);
+    expect(parseLimit('999', tabs)).toMatchObject(bad);
+    expect(parseLimit('10', run)).toMatchObject(bad);
+    expect(parseLimit('99999999', run)).toMatchObject(bad);
   });
 });
 
 describe('autopilot caption', () => {
   it('reflects the switch and the crew size', () => {
     expect(autopilotStatus(true, 4)).toContain('Crew 2 / 4 busy');
-    expect(autopilotStatus(true, 99)).toContain('/ 32 busy');
+    expect(autopilotStatus(true, 99)).toContain('/ 64 busy');
     expect(autopilotStatus(false, 4)).toMatch(/^Off/);
   });
 });
@@ -100,11 +117,11 @@ describe('settings shortcut', () => {
 describe('settings IPC validation', () => {
   it('validates ranges and rejects out-of-bounds values', () => {
     expect(() => UpdateSettingsSchema.parse({ crew: 0 })).toThrow();
-    expect(() => UpdateSettingsSchema.parse({ crew: 33 })).toThrow();
+    expect(() => UpdateSettingsSchema.parse({ crew: 65 })).toThrow();
     expect(() => UpdateSettingsSchema.parse({ crew: -5 })).toThrow();
     expect(() => UpdateSettingsSchema.parse({ crew: 1.5 })).toThrow();
     expect(UpdateSettingsSchema.parse({ crew: 1 }).crew).toBe(1);
-    expect(UpdateSettingsSchema.parse({ crew: 32 }).crew).toBe(32);
+    expect(UpdateSettingsSchema.parse({ crew: 64 }).crew).toBe(64);
 
     expect(() => UpdateSettingsSchema.parse({ limits: { openTabs: 0 } })).toThrow();
     expect(() => UpdateSettingsSchema.parse({ limits: { openTabs: 33 } })).toThrow();
@@ -120,8 +137,14 @@ describe('settings IPC validation', () => {
     expect(UpdateSettingsSchema.parse({ submitMode: 'auto' }).submitMode).toBe('auto');
   });
 
-  it('defaults autopilot to off', () => {
+  it('defaults autopilot to off and crew to six (ADR 0016)', () => {
     expect(AppSettingsSchema.parse({}).autopilot).toBe(false);
+    expect(AppSettingsSchema.parse({}).crew).toBe(6);
+  });
+
+  it('rejects autopilot: true until the feature ships', () => {
+    expect(() => UpdateSettingsSchema.parse({ autopilot: true })).toThrow();
+    expect(UpdateSettingsSchema.parse({ autopilot: false }).autopilot).toBe(false);
   });
 });
 
@@ -137,16 +160,16 @@ describe('settings persistence and queue concurrency reuse', () => {
     const defaults = getSettings(testDb);
     expect(defaults).toEqual({
       autopilot: false,
-      crew: 4,
+      crew: 6,
       submitMode: 'review',
       sites: {},
       limits: { openTabs: 8, costPerDay: 5, runSeconds: 540, stuckSeconds: 120 },
     });
 
-    const updated = updateSettings({ crew: 30 }, testDb);
-    expect(updated.crew).toBe(30);
+    const updated = updateSettings({ crew: 60 }, testDb);
+    expect(updated.crew).toBe(60);
 
-    expect(applyConcurrency(testDb)).toBe(30);
+    expect(applyConcurrency(testDb)).toBe(60);
 
     const updatedLimits = updateSettings({ limits: { costPerDay: 50 } }, testDb);
     expect(updatedLimits.limits).toEqual({
@@ -156,14 +179,24 @@ describe('settings persistence and queue concurrency reuse', () => {
       stuckSeconds: 120,
     });
 
-    updateSettings({ submitMode: 'auto', autopilot: true }, testDb);
+    expect(() => updateSettings({ autopilot: true } as never, testDb)).toThrow();
+    updateSettings({ submitMode: 'auto' }, testDb);
 
     const fresh = getSettings(testDb);
-    expect(fresh.crew).toBe(30);
+    expect(fresh.crew).toBe(60);
     expect(fresh.submitMode).toBe('auto');
-    expect(fresh.autopilot).toBe(true);
+    expect(fresh.autopilot).toBe(false);
     expect(fresh.limits.costPerDay).toBe(50);
     expect(fresh.limits.openTabs).toBe(8);
+  });
+});
+
+describe('autopilot normalised on read', () => {
+  it('reports off even when an older build stored true', () => {
+    const sqlite = new Database(':memory:');
+    sqlite.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL);');
+    sqlite.exec(`INSERT INTO settings VALUES ('runs.autopilot', 'true', 0)`);
+    expect(getSettings(drizzle(sqlite, { schema }) as JobPilotDb).autopilot).toBe(false);
   });
 });
 

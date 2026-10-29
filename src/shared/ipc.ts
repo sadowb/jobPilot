@@ -14,6 +14,7 @@ import type {
   RunSummaryDto,
   AppSettings,
   UpdateSettingsInput,
+  SetApplicationStatusInput,
   RemoveAllDataInput,
 } from './dto';
 import { z } from 'zod';
@@ -47,6 +48,7 @@ export const Channels = {
   confirmPosting: 'postings:confirm',
   listApplications: 'applications:list',
   createApplication: 'applications:create',
+  setApplicationStatus: 'applications:set-status',
   getProfile: 'profile:get',
   profileMigrationDone: 'profile:migration-done',
   saveProfile: 'profile:save',
@@ -118,7 +120,11 @@ export interface JobPilotBridge {
     list(): Promise<RunSummaryDto[]>;
   };
   postings: { ingest(url: string): Promise<IngestResult>; confirm(postingId: string): Promise<boolean> };
-  applications: { list(): Promise<ApplicationListItem[]>; create(postingId: string): Promise<ApplicationListItem> };
+  applications: {
+    list(): Promise<ApplicationListItem[]>;
+    create(postingId: string): Promise<ApplicationListItem>;
+    setStatus(input: SetApplicationStatusInput): Promise<ApplicationListItem>;
+  };
   profile: {
     get(): Promise<ProfileData>;
     migrationDone(): Promise<boolean>;

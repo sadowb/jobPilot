@@ -1,5 +1,5 @@
 import type { AgentBotState } from '../../components/AgentBotArt';
-import type { SiteMode, SubmitMode } from './model';
+import { CREW_DEFAULT, type SiteMode, type SubmitMode } from './model';
 
 /** Sample data copied from the V17 Settings board (placeholder, not product claims). */
 
@@ -37,7 +37,7 @@ export const SUBMIT_MODES: readonly { value: SubmitMode; title: string; body: st
 
 export const DEFAULT_SETTINGS = {
   autopilot: false,
-  crew: 4,
+  crew: CREW_DEFAULT,
   submitMode: 'review' as SubmitMode,
   sites: {} as Record<string, SiteMode>,
   limits: { openTabs: 8, costPerDay: 5, runSeconds: 540, stuckSeconds: 120 },

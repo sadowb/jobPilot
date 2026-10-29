@@ -112,6 +112,8 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       }
       return Array.from({ length: 16 }, (_, i) => id(i + 101));
     });
+    // Pin the crew so this test checks the limit itself, not the default (ADR 0016 default is 6).
+    await window.evaluate(() => window.jobpilot!.settings.update({ crew: 4 }));
     expect(await window.evaluate(() => window.jobpilot!.runs.pause())).toBe(true);
     const first = await window.evaluate(
       async (ids) => Promise.all(ids.map((id) => window.jobpilot!.runs.start(id))),
@@ -361,7 +363,9 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         .createRequire(path.join(app.getAppPath(), 'package.json'));
       const { db } = require(path.join(app.getAppPath(), 'out/main/index.js')) as Main;
       db.$client
-        .prepare('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)')
+        .prepare(
+          'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
+        )
         .run('runs.concurrency', '1', Date.now());
     });
     await app.close();

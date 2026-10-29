@@ -45,8 +45,8 @@ describe('typing in a text field', () => {
     const withQuery = dashboardReducer(base, { type: 'query', query: 'ramp' });
     expect(keyToResult(key('Escape'), withQuery, true)).toMatchObject({
       action: { type: 'query', query: '' },
-      effect: 'blurSearch',
     });
+    expect(keyToResult(key('Escape'), withQuery, true)?.effect).toBeUndefined();
     expect(keyToResult(key('Escape'), base, true)).toMatchObject({ action: { type: 'escape' }, effect: 'blurSearch' });
   });
 });

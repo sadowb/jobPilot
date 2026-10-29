@@ -18,7 +18,8 @@ describe('parseStatusCommand', () => {
 
   it('accepts a unique status prefix, rejects ambiguous or unknown ones', () => {
     expect(parseStatusCommand('set ramp to int')?.status).toBe('Interview');
-    expect(parseStatusCommand('set ramp to s')).toBeNull(); // Submitted / Screening
+    expect(parseStatusCommand('set ramp to s')?.status).toBe('Submitted'); // Screening is not settable
+    expect(parseStatusCommand('set ramp to screening')).toBeNull();
     expect(parseStatusCommand('set ramp to nonsense')).toBeNull();
     expect(parseStatusCommand('ramp interview')).toBeNull();
   });
@@ -34,29 +35,27 @@ describe('matchJobs', () => {
 });
 
 describe('buildResults', () => {
-  it('the V17 command: Actions, Jobs, Ask Cap, with Set first', () => {
+  it('the V17 command: Actions, Jobs, Ask Cap, with the status change in Actions', () => {
     const sections = buildResults('set ramp to interview', SAMPLE_JOBS);
     expect(sections.map((s) => s.label)).toEqual(['Actions', 'Jobs', 'Ask Cap']);
-    const [set, open] = sections[0]!.results;
-    expect(set).toMatchObject({
+    expect(sections[0]!.results).toHaveLength(1);
+    expect(sections[0]!.results[0]).toMatchObject({
       title: 'Set Ramp → Interview',
       subtitle: 'Screening · got contacted → Interview · follow-up Mon Oct 26',
       intent: { type: 'set-status', jobId: 'ramp', status: 'Interview' },
       hint: '↵',
     });
-    expect(open).toMatchObject({ title: 'Open Ramp posting', subtitle: 'Ashby · opens in your browser', hint: 'O' });
     expect(sections[1]!.results[0]).toMatchObject({ title: 'Ramp · Software Engineer, New Grad' });
     expect(sections[2]!.results[0]).toMatchObject({ title: '“set ramp to interview”', hint: '⇥' });
   });
 
   it('does not offer a no-op status change', () => {
-    const titles = flatten(buildResults('set ramp to screening', SAMPLE_JOBS)).map((r) => r.title);
-    expect(titles).not.toContain('Set Ramp → Screening');
-    expect(titles).toContain('Open Ramp posting');
+    const titles = flatten(buildResults('set perpay to rejected', SAMPLE_JOBS)).map((r) => r.title);
+    expect(titles).not.toContain('Set Perpay → Rejected');
   });
 
-  it('a plain query offers open + jobs + ask; no match leaves only Ask Cap', () => {
-    expect(buildResults('notion', SAMPLE_JOBS).map((s) => s.label)).toEqual(['Actions', 'Jobs', 'Ask Cap']);
+  it('offers no action that nothing backs: a plain query is jobs + ask, no match leaves only Ask Cap', () => {
+    expect(buildResults('notion', SAMPLE_JOBS).map((s) => s.label)).toEqual(['Jobs', 'Ask Cap']);
     expect(buildResults('zzzz', SAMPLE_JOBS).map((s) => s.label)).toEqual(['Ask Cap']);
   });
 
@@ -78,7 +77,7 @@ describe('moveIndex', () => {
 describe('answerFor', () => {
   it('explains the Ramp status change exactly as the board does', () => {
     const a = answerFor('set ramp to interview', SAMPLE_JOBS);
-    expect(a?.meta).toBe('answer · read the Ramp record and 2 emails · 1.2 s');
+    expect(a?.meta).toBe('answer · read the Ramp record and 2 emails');
     expect(a?.intro).toBe(
       'I can set Ramp to Interview. Its record has sat at Screening since Oct 19, when Dana emailed to set up a recruiter call. This is what would change:',
     );
@@ -92,7 +91,7 @@ describe('answerFor', () => {
   it('returns null for anything it cannot honestly answer', () => {
     expect(answerFor('why was perpay rejected', SAMPLE_JOBS)).toBeNull();
     expect(answerFor('set nobody to interview', SAMPLE_JOBS)).toBeNull();
-    expect(answerFor('set ramp to screening', SAMPLE_JOBS)).toBeNull();
+    expect(answerFor('set perpay to rejected', SAMPLE_JOBS)).toBeNull();
   });
 
   it('drops the follow-up row when the record has none', () => {

@@ -9,6 +9,8 @@ import { Channels } from '../../../shared/ipc';
 import {
   AgentPreferencesSchema,
   AppSettingsSchema,
+  CREW_DEFAULT,
+  CREW_MAX,
   SettingsLimitsSchema,
   ThemeSourceSchema,
   UpdateSettingsSchema,
@@ -57,14 +59,21 @@ export function markProfileMigrated(database: JobPilotDb): void {
 }
 
 export function applyConcurrency(database: JobPilotDb): number {
-  return z.number().int().min(1).max(32).default(4).parse(new SettingsRepository(database).applyConcurrency());
+  return z
+    .number()
+    .int()
+    .min(1)
+    .max(CREW_MAX)
+    .default(CREW_DEFAULT)
+    .parse(new SettingsRepository(database).applyConcurrency());
 }
 
 export function getSettings(database: JobPilotDb = db): AppSettings {
   const repository = new SettingsRepository(database);
   return AppSettingsSchema.parse({
-    autopilot: repository.autopilot(),
-    crew: Math.min(32, Math.max(1, applyConcurrency(database))),
+    // Normalised on read: a `true` stored by an older build or a direct write must not reach the app.
+    autopilot: false,
+    crew: applyConcurrency(database),
     submitMode: repository.submitMode(),
     sites: repository.sites(),
     limits: repository.limits(),

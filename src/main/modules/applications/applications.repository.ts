@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull, max } from 'drizzle-orm';
 import type { JobPilotDb } from '../../platform/db/database';
-import type { ApplicationListItem } from '../../../shared/dto';
+import type { ApplicationListItem, OwnerStatus } from '../../../shared/dto';
 import { application, vApplicationList } from './applications.entity';
 
 export class ApplicationsRepository {
@@ -16,6 +16,31 @@ export class ApplicationsRepository {
       .from(application)
       .where(and(eq(application.postingId, postingId), isNull(application.deletedAt)))
       .get();
+  }
+
+  /** Only an application that was submitted can take an owner outcome; a queued or running one is the crew's. */
+  setStatus(
+    id: string,
+    status: OwnerStatus,
+    recordChange: (from: string) => void,
+  ): { item: ApplicationListItem; changed: boolean } {
+    return this.db.transaction(() => {
+      const row = this.db
+        .select()
+        .from(application)
+        .where(and(eq(application.id, id), isNull(application.deletedAt)))
+        .get();
+      if (!row) throw new Error('Application not found.');
+      if (row.appliedAt === null) throw new Error('Only a submitted application can change status.');
+      const changed = row.status !== status;
+      if (changed) {
+        this.db.update(application).set({ status, lastActivityAt: Date.now() }).where(eq(application.id, id)).run();
+        recordChange(row.status);
+      }
+      const item = this.db.select().from(vApplicationList).where(eq(vApplicationList.id, id)).get();
+      if (!item) throw new Error('Application is unavailable.');
+      return { item, changed };
+    });
   }
 
   create(postingId: string, recordCreated: (id: string) => void): ApplicationListItem {

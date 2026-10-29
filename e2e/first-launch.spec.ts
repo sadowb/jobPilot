@@ -105,7 +105,7 @@ test('fresh profile opens onboarding and contains only real empty states', async
     await capture('empty-applied');
     await window.getByRole('tab', { name: /Up next 0/ }).click();
     await expect(window.getByText('Nothing queued. Add jobs to start the crew.')).toBeVisible();
-    await expect(window.getByText('CREW IDLE · 0 / 4 RUNNING')).toBeVisible();
+    await expect(window.getByText('CREW IDLE · 0 / 6 RUNNING')).toBeVisible();
     await expect(window.locator('body')).not.toContainText('BUSY');
     await capture('empty-up-next');
     for (const [route, title, name] of [
@@ -119,8 +119,12 @@ test('fresh profile opens onboarding and contains only real empty states', async
       await window.evaluate((route) => {
         location.hash = `#${route}`;
       }, route!);
-      if (route === '/settings') await expect(window.getByRole('dialog', { name: 'Settings' })).toBeVisible();
-      else await expect(window.getByRole('heading', { name: title!, exact: true })).toBeVisible();
+      if (route === '/settings') {
+        await expect(window.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+        // Modal: focus moves inside, and the page behind is inert.
+        expect(await window.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true);
+        expect(await window.evaluate(() => !!document.querySelector('dialog:modal'))).toBe(true);
+      } else await expect(window.getByRole('heading', { name: title!, exact: true })).toBeVisible();
       await expect(window.locator('body')).not.toContainText(/Arrives with|Phase \d/);
       if (route === '/inbox') {
         await expect(window.getByText('Nothing needs you', { exact: true })).toBeVisible();
@@ -132,6 +136,34 @@ test('fresh profile opens onboarding and contains only real empty states', async
         await capture('empty-settings-logins');
       }
     }
+    // A strict limit: a decimal is rejected with an inline error and nothing is saved.
+    await window.evaluate(() => {
+      location.hash = '#/settings';
+    });
+    const cost = window.getByRole('textbox', { name: /Cost limit/ });
+    await cost.fill('2.5');
+    await cost.press('Enter');
+    await expect(window.getByRole('alert').filter({ hasText: 'whole number' })).toBeVisible();
+    expect((await window.evaluate(() => window.jobpilot!.settings.get())).limits.costPerDay).toBe(5);
+    expect((await window.evaluate(() => window.jobpilot!.settings.get())).crew).toBe(6);
+    await expect(
+      window.evaluate(() => window.jobpilot!.settings.update({ autopilot: true } as never)),
+    ).rejects.toThrow();
+    // Esc closes the sheet and focus returns to the page, not the void.
+    await window.keyboard.press('Escape');
+    await expect(window.getByRole('dialog', { name: 'Settings' })).toHaveCount(0);
+    // Unknown routes get a product page, not the router's developer error.
+    await window.evaluate(() => {
+      location.hash = '#/nope-404';
+    });
+    await expect(window.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+    await expect(window.locator('body')).not.toContainText('Hey developer');
+    // The command box is modal and reports why nothing matches.
+    await window.getByRole('link', { name: 'Back to dashboard' }).click();
+    await window.keyboard.press('Control+K');
+    await expect(window.getByRole('dialog', { name: 'Ask Cap' })).toBeVisible();
+    await window.keyboard.press('Escape');
+    await expect(window.getByRole('dialog', { name: 'Ask Cap' })).toHaveCount(0);
     // Profile presence is persisted by main; clearing browser storage cannot turn it into a fresh profile.
     await window.evaluate(
       async (personal) => {
@@ -194,7 +226,7 @@ test('fresh profile opens onboarding and contains only real empty states', async
     expect(await perPage.locator('option').allTextContents()).toEqual(['10 per page', '25 per page', '50 per page']);
     await capture('real-applied');
     await window.getByRole('tab', { name: 'Up next 1', exact: true }).click();
-    await expect(window.getByText('CREW IDLE · 0 / 4 RUNNING')).toBeVisible();
+    await expect(window.getByText('CREW IDLE · 0 / 6 RUNNING')).toBeVisible();
     await capture('real-up-next');
     await window.getByRole('tab', { name: /Applied 2/ }).click();
     await window.getByPlaceholder('Search company, role, location').fill('missing employer');

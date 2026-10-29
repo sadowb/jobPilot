@@ -50,6 +50,9 @@ describe('queue keys', () => {
   it('while typing only Escape (blur) is handled', () => {
     expect(queueKeyToResult(ev('j'), s0, true)).toBeNull();
     expect(queueKeyToResult(ev('Escape'), s0, true)?.effect).toBe('blurSearch');
+    const typed = queueReducer(s0, { type: 'query', query: 'x' });
+    expect(queueKeyToResult(ev('Escape'), typed, true)).toMatchObject({ action: { type: 'query', query: '' } });
+    expect(queueKeyToResult(ev('Escape'), typed, true)?.effect).toBeUndefined();
   });
   it('bulk keys act on the selection, else on the cursor row', () => {
     expect(actionTargets(s0)).toEqual([]);

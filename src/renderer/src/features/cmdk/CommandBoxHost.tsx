@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CommandBox, type CommandBoxProps } from './CommandBox';
+import { useApplications, useSetApplicationStatus } from '../../lib/api';
+import { toJobRecords, toOwnerStatus } from './applications';
+import { CommandBox } from './CommandBox';
+import type { CommandIntent } from './search';
 
 export const ASK_CAP_EVENT = 'jobpilot:ask-cap';
 
@@ -17,12 +20,34 @@ export const openCommandBox = (): void => {
  *   <CommandBoxHost />
  *
  * It owns the ⌘K / Ctrl+K shortcut and the open state, restores focus on close, and renders nothing
- * while closed. Pass `onRun` to receive the chosen CommandIntent (nothing is applied until it does).
+ * while closed. Jobs come from the applications query; a chosen status change goes through the real mutation.
  */
-export function CommandBoxHost({ onRun, jobs }: Pick<CommandBoxProps, 'onRun' | 'jobs'>) {
+export function CommandBoxHost() {
   const [open, setOpen] = useState(false);
   const returnFocus = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
+  const { data: items } = useApplications();
+  const jobs = useMemo(() => toJobRecords(items ?? []), [items]);
+  const setStatus = useSetApplicationStatus();
+  const [failed, setFailed] = useState(false);
+
+  const onRun = useCallback(
+    (intent: CommandIntent) => {
+      if (intent.type === 'open-job') void navigate('/');
+      else if (intent.type === 'set-status')
+        setStatus.mutate(
+          { id: intent.jobId, status: toOwnerStatus(intent.status) },
+          { onError: () => setFailed(true) },
+        );
+    },
+    [navigate, setStatus],
+  );
+
+  useEffect(() => {
+    if (!failed) return;
+    const timer = window.setTimeout(() => setFailed(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [failed]);
 
   const show = useCallback(() => {
     if (document.activeElement instanceof HTMLElement) returnFocus.current = document.activeElement;
@@ -50,6 +75,17 @@ export function CommandBoxHost({ onRun, jobs }: Pick<CommandBoxProps, 'onRun' | 
     };
   }, [open, show, close]);
 
-  if (!open) return null;
-  return <CommandBox jobs={jobs} onRun={onRun} onOpenInInbox={() => void navigate('/inbox')} onClose={close} />;
+  return (
+    <>
+      {open && <CommandBox jobs={jobs} onRun={onRun} onOpenInInbox={() => void navigate('/inbox')} onClose={close} />}
+      {failed && (
+        <div
+          role="alert"
+          className="fixed bottom-8 left-1/2 z-10 -translate-x-1/2 rounded-2xl border border-line bg-bg px-5 py-3 text-sm text-ink shadow-float"
+        >
+          Could not change that status.
+        </div>
+      )}
+    </>
+  );
 }

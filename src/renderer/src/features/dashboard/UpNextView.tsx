@@ -5,10 +5,11 @@ import { V17Icon } from '../../components/V17Icon';
 import { V17Kbd } from '../../components/V17Kbd';
 import { Pagination, usePaging } from './components/Pagination';
 import { SearchField } from './components/SearchField';
-import { TabSwitch, type DashboardTab } from './components/TabSwitch';
+import { panelId, tabId, TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { clockTime } from './format';
 import { BulkBar } from './upnext/BulkBar';
 import { useConfirmPosting, useSettings } from '../../lib/api';
+import { CREW_DEFAULT } from '../../../../shared/dto';
 import {
   formatCrewTime,
   minutesLeft,
@@ -107,7 +108,7 @@ export function UpNextView({
 
   const { data: settings } = useSettings();
   const confirmPosting = useConfirmPosting();
-  const crewSize = settings?.crew ?? 4;
+  const crewSize = settings?.crew ?? CREW_DEFAULT;
 
   const crew = state.paused
     ? 'QUEUE PAUSED'
@@ -155,92 +156,102 @@ export function UpNextView({
             </AppButton>
           </div>
         </div>
-        <div className="-mt-1.5 text-[13.5px] text-muted">
-          Up next is the order the crew opens jobs in. Remove or hold anything before it starts. Nothing is sent from
-          here.
-        </div>
-        <div className="flex min-w-0 flex-nowrap items-center justify-between gap-4">
-          <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
-            <SearchField
-              ref={searchRef}
-              pill
-              width={300}
-              placeholder="Search company, role, site"
-              value={state.query}
-              onChange={(query) => dispatch({ type: 'query', query })}
-            />
+        <div
+          role="tabpanel"
+          id={panelId('dashboard', 'up-next')}
+          aria-labelledby={tabId('dashboard', 'up-next')}
+          className="contents"
+        >
+          <div className="-mt-1.5 text-[13.5px] text-muted">
+            Up next is the order the crew opens jobs in. Remove or hold anything before it starts. Nothing is sent from
+            here.
+          </div>
+          <div className="flex min-w-0 flex-nowrap items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
+              <SearchField
+                ref={searchRef}
+                pill
+                width={300}
+                placeholder="Search company, role, site"
+                value={state.query}
+                onChange={(query) => dispatch({ type: 'query', query })}
+              />
+              <div
+                role="group"
+                aria-label="Filter queue"
+                className="box-border flex min-w-0 flex-nowrap items-center gap-2 overflow-hidden pr-10 [mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)]"
+              >
+                {CHIPS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={state.filter === key}
+                    className={cn(
+                      'flex-none cursor-pointer rounded-full border px-[13px] py-1.5 text-[13px]! whitespace-nowrap',
+                      state.filter === key
+                        ? 'border-pri bg-pri text-on-pri!'
+                        : 'border-line-2 bg-transparent text-ink-2!',
+                    )}
+                    onClick={() => dispatch({ type: 'filter', filter: key })}
+                  >
+                    {label} {counts[key]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <span className="flex-none flex-nowrap text-[12.5px] text-muted">Sorted by crew order</span>
+          </div>
+          <div
+            className="flex-none overflow-hidden rounded-3xl border border-line bg-bg"
+            role="table"
+            aria-label="Up next"
+          >
             <div
-              role="group"
-              aria-label="Filter queue"
-              className="box-border flex min-w-0 flex-nowrap items-center gap-2 overflow-hidden pr-10 [mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)]"
+              role="row"
+              className={cn('grid items-center gap-x-3 border-b border-line bg-panel px-3.5', QUEUE_GRID)}
             >
-              {CHIPS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={state.filter === key}
-                  className={cn(
-                    'flex-none cursor-pointer rounded-full border px-[13px] py-1.5 text-[13px]! whitespace-nowrap',
-                    state.filter === key
-                      ? 'border-pri bg-pri text-on-pri!'
-                      : 'border-line-2 bg-transparent text-ink-2!',
-                  )}
-                  onClick={() => dispatch({ type: 'filter', filter: key })}
+              {HEADERS.map((h, i) => (
+                <div
+                  key={i}
+                  role="columnheader"
+                  className="py-3 font-mono text-[11.5px] tracking-[0.06em] whitespace-nowrap text-muted"
                 >
-                  {label} {counts[key]}
-                </button>
+                  {h}
+                </div>
               ))}
             </div>
-          </div>
-          <span className="flex-none flex-nowrap text-[12.5px] text-muted">Sorted by crew order</span>
-        </div>
-        <div
-          className="flex-none overflow-hidden rounded-3xl border border-line bg-bg"
-          role="table"
-          aria-label="Up next"
-        >
-          <div role="row" className={cn('grid items-center gap-x-3 border-b border-line bg-panel px-3.5', QUEUE_GRID)}>
-            {HEADERS.map((h, i) => (
-              <div
-                key={i}
-                role="columnheader"
-                className="py-3 font-mono text-[11.5px] tracking-[0.06em] whitespace-nowrap text-muted"
-              >
-                {h}
+            {rows.length === 0 && (
+              <div role="status" className="border-t border-line px-3.5 py-7 text-center text-[13.5px] text-muted">
+                {state.items.length === 0 ? 'Nothing queued. Add jobs to start the crew.' : 'No queued jobs match.'}
               </div>
+            )}
+            {rows.slice(paging.start, paging.start + paging.size).map((item) => (
+              <QueueRow
+                added={addedIds.includes(item.id)}
+                key={item.id}
+                item={item}
+                position={queuePosition(state.items, item.id)}
+                selected={state.selected.includes(item.id)}
+                cursor={state.cursor === item.id}
+                onCursor={() => dispatch({ type: 'cursor', id: item.id })}
+                onToggle={() => dispatch({ type: 'toggle', id: item.id })}
+                onMoveToTop={() => dispatch({ type: 'moveToTop', ids: [item.id] })}
+                onHold={() => hold([item.id])}
+                onRemove={() => remove([item.id])}
+                onOpenInbox={onOpenInbox}
+                onConfirm={(postingId) => confirmPosting(postingId)}
+                onDragStart={() => {
+                  dragId.current = item.id;
+                }}
+                onDropOn={() => {
+                  if (dragId.current) dispatch({ type: 'reorder', id: dragId.current, beforeId: item.id });
+                  dragId.current = null;
+                }}
+              />
             ))}
           </div>
-          {rows.length === 0 && (
-            <div role="status" className="border-t border-line px-3.5 py-7 text-center text-[13.5px] text-muted">
-              {state.items.length === 0 ? 'Nothing queued. Add jobs to start the crew.' : 'No queued jobs match.'}
-            </div>
-          )}
-          {rows.slice(paging.start, paging.start + paging.size).map((item) => (
-            <QueueRow
-              added={addedIds.includes(item.id)}
-              key={item.id}
-              item={item}
-              position={queuePosition(state.items, item.id)}
-              selected={state.selected.includes(item.id)}
-              cursor={state.cursor === item.id}
-              onCursor={() => dispatch({ type: 'cursor', id: item.id })}
-              onToggle={() => dispatch({ type: 'toggle', id: item.id })}
-              onMoveToTop={() => dispatch({ type: 'moveToTop', ids: [item.id] })}
-              onHold={() => hold([item.id])}
-              onRemove={() => remove([item.id])}
-              onOpenInbox={onOpenInbox}
-              onConfirm={(postingId) => confirmPosting(postingId)}
-              onDragStart={() => {
-                dragId.current = item.id;
-              }}
-              onDropOn={() => {
-                if (dragId.current) dispatch({ type: 'reorder', id: dragId.current, beforeId: item.id });
-                dragId.current = null;
-              }}
-            />
-          ))}
+          <Pagination paging={paging} />
         </div>
-        <Pagination paging={paging} />
       </main>
       {state.removed && <UndoToast batch={state.removed} now={now} onUndo={() => dispatch({ type: 'undoRemove' })} />}
       {state.selected.length > 0 && (

@@ -1,6 +1,8 @@
+import { CREW_DEFAULT, CREW_MAX } from '../../../../shared/dto';
+
+export { CREW_DEFAULT, CREW_MAX };
 export const CREW_MIN = 1;
-export const CREW_MAX = 32;
-export const CREW_TICKS = [1, 8, 16, 24, 32] as const;
+export const CREW_TICKS = [1, 16, 32, 48, 64] as const;
 
 export type SubmitMode = 'review' | 'auto';
 export type SiteMode = 'auto' | 'assisted' | 'manual';
@@ -46,11 +48,15 @@ export function tickTransform(tick: number): string {
   return tick === CREW_MAX ? 'translateX(-100%)' : 'translateX(-50%)';
 }
 
-/** Parses a limit typed by the user. Non-numeric input keeps the previous value; numbers are clamped into range. */
-export function parseLimit(raw: string, spec: Pick<LimitSpec, 'min' | 'max'>, previous: number): number {
-  const digits = raw.replace(/[^\d]/g, '');
-  if (digits === '') return previous;
-  return clampInt(Number(digits), spec.min, spec.max);
+export type LimitParse = { ok: true; value: number } | { ok: false; error: string };
+
+/** Strict: only plain digits inside the bridge's range are accepted. Anything else is an error, never a different number. */
+export function parseLimit(raw: string, spec: Pick<LimitSpec, 'min' | 'max'>): LimitParse {
+  const text = raw.trim();
+  const value = /^\d{1,6}$/.test(text) ? Number(text) : Number.NaN;
+  return value >= spec.min && value <= spec.max
+    ? { ok: true, value }
+    : { ok: false, error: `Enter a whole number from ${spec.min} to ${spec.max}.` };
 }
 
 /** Autopilot caption under the switch. The busy count, time left and change date are sample data. */

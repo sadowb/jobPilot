@@ -28,7 +28,7 @@ export function FilterChips({
           aria-pressed={active === key}
           onClick={() => onChange(key)}
         >
-          {label} <span className="tabular-nums opacity-60">{counts[key]}</span>
+          {label} <span className="tabular-nums">{counts[key]}</span>
         </button>
       ))}
     </div>

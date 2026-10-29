@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { cn } from '../../../components/ui';
 import { controlFocus } from '../../../components/ui/controlStyles';
 
@@ -10,18 +10,27 @@ export interface SegTab<T extends string> {
   count?: number;
 }
 
+// Arrow keys leave `body[data-tab-focus]`: the dashboard swaps whole views, so the new tablist mounts and claims focus.
+
+/** DOM ids tying a tab to its panel (`aria-controls` / `aria-labelledby`). */
+export const tabId = (prefix: string, key: string) => `${prefix}-tab-${key}`;
+export const panelId = (prefix: string, key: string) => `${prefix}-panel-${key}`;
+
 /**
  * Tablist pill (board `.seg`). Accessible tablist with aria-selected, roving tabindex,
  * and arrow key navigation.
  */
 export function SegTabs<T extends string>({
   label,
+  idPrefix,
   tabs,
   active,
   onChange,
   className,
 }: {
   label: string;
+  /** Set when each tab controls a `role=tabpanel` with `panelId(idPrefix, key)`. */
+  idPrefix?: string;
   tabs: readonly SegTab<T>[];
   active: T;
   onChange: (key: T) => void;
@@ -30,6 +39,12 @@ export function SegTabs<T extends string>({
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const activeIndex = tabs.findIndex((t) => t.key === active);
   const tabStop = activeIndex >= 0 ? activeIndex : 0;
+
+  useEffect(() => {
+    if (document.body.getAttribute('data-tab-focus') !== `${label}:${active}`) return;
+    document.body.removeAttribute('data-tab-focus');
+    tabRefs.current[activeIndex]?.focus();
+  }, [label, active, activeIndex]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const step =
@@ -40,6 +55,7 @@ export function SegTabs<T extends string>({
         e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (index + step + tabs.length) % tabs.length;
       const next = tabs[nextIndex];
       if (next) {
+        document.body.setAttribute('data-tab-focus', `${label}:${next.key}`);
         onChange(next.key);
         tabRefs.current[nextIndex]?.focus();
       }
@@ -65,6 +81,9 @@ export function SegTabs<T extends string>({
             }}
             type="button"
             role="tab"
+            id={idPrefix ? tabId(idPrefix, key) : undefined}
+            // Only the active panel is mounted, so only the selected tab may point at it.
+            aria-controls={idPrefix && on ? panelId(idPrefix, key) : undefined}
             tabIndex={index === tabStop ? 0 : -1}
             aria-selected={on}
             className={cn(
@@ -110,6 +129,7 @@ export function TabSwitch({
   return (
     <SegTabs
       label="Dashboard view"
+      idPrefix="dashboard"
       active={active}
       onChange={onChange}
       className={className}

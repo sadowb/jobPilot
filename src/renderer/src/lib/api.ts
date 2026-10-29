@@ -1,5 +1,12 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { ProfileSave, ProfileData, AgentState, AppSettings, UpdateSettingsInput } from '../../../shared/dto';
+import type {
+  ProfileSave,
+  ProfileData,
+  AgentState,
+  AppSettings,
+  SetApplicationStatusInput,
+  UpdateSettingsInput,
+} from '../../../shared/dto';
 import type { JobPilotBridge } from '../../../shared/ipc';
 import { invalidateForChange, queryClient, queryKeys } from './query';
 
@@ -29,6 +36,11 @@ export const useCreateApplication = () =>
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
   });
 
+export const useSetApplicationStatus = () =>
+  useMutation({
+    mutationFn: (input: SetApplicationStatusInput) => bridge().applications.setStatus(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+  });
 export const useConfirmPosting = () => {
   const { mutate } = useMutation({
     mutationFn: (postingId: string) => bridge().postings.confirm(postingId),

@@ -98,7 +98,8 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     await card().screenshot({ path: testInfo.outputPath('agent-card-first-run.png'), animations: 'disabled' });
     await expect(window.getByLabel('Agent model', { exact: true })).toHaveValue('haiku');
     await expect(window.getByLabel('Agent authentication')).toHaveValue('login');
-    await expect(window.getByLabel('Crew size')).toHaveValue('4');
+    // ADR 0016: a fresh profile runs six in parallel.
+    await expect(window.getByLabel('Crew size')).toHaveValue('6');
     expect(
       await window.evaluate(async () => {
         try {

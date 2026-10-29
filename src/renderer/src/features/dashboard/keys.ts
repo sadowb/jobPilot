@@ -31,11 +31,10 @@ export function keyToResult(e: KeyLike, state: DashboardState, typing: boolean):
 
   if (typing) {
     if (e.key !== 'Escape') return null;
-    // First Esc empties the search text; the next one (field now empty) backs out of the screen.
-    return handled({
-      action: state.query !== '' ? { type: 'query', query: '' } : { type: 'escape' },
-      effect: 'blurSearch',
-    });
+    // First Esc empties the search text and keeps focus in the field; the next one (field now empty) backs out.
+    return state.query !== ''
+      ? handled({ action: { type: 'query', query: '' } })
+      : handled({ action: { type: 'escape' }, effect: 'blurSearch' });
   }
 
   if (!plain) return null;

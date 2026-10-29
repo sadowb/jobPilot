@@ -1,13 +1,12 @@
-import { JOB_STATUSES, type JobRecord, type JobStatus } from './jobs';
+import { SETTABLE_STATUSES, type JobRecord, type SettableStatus } from './jobs';
 
 /** What running a result does. The host decides how (API call, navigation); the box only reports intent. */
 export type CommandIntent =
-  | { type: 'set-status'; jobId: string; status: JobStatus }
-  | { type: 'open-posting'; jobId: string }
+  | { type: 'set-status'; jobId: string; status: SettableStatus }
   | { type: 'open-job'; jobId: string }
   | { type: 'ask'; query: string };
 
-export type ResultHint = '↵' | 'O' | '⇥' | null;
+export type ResultHint = '↵' | '⇥' | null;
 
 export interface CommandResult {
   id: string;
@@ -28,7 +27,7 @@ export const normalize = (s: string): string => s.trim().replace(/\s+/g, ' ').to
 
 export interface StatusCommand {
   companyQuery: string;
-  status: JobStatus;
+  status: SettableStatus;
 }
 
 /** "set ramp to interview" / "move ramp to interview" / "mark ramp as rejected". A unique status prefix is accepted. */
@@ -36,8 +35,8 @@ export function parseStatusCommand(query: string): StatusCommand | null {
   const m = /^(?:set|move|mark)\s+(.+?)\s+(?:to|as)\s+(\S.*)$/i.exec(normalize(query));
   if (!m) return null;
   const [, companyQuery, wanted] = m;
-  const exact = JOB_STATUSES.find((s) => s.toLowerCase() === wanted);
-  const prefixed = JOB_STATUSES.filter((s) => s.toLowerCase().startsWith(wanted!));
+  const exact = SETTABLE_STATUSES.find((s) => s.toLowerCase() === wanted);
+  const prefixed = SETTABLE_STATUSES.filter((s) => s.toLowerCase().startsWith(wanted!));
   const status = exact ?? (prefixed.length === 1 ? prefixed[0] : undefined);
   return status ? { companyQuery: companyQuery!, status } : null;
 }
@@ -64,7 +63,7 @@ export function matchJobs(text: string, jobs: readonly JobRecord[]): JobRecord[]
 const jobTitle = (j: JobRecord) => `${j.company} · ${j.role}`;
 const jobSubtitle = (j: JobRecord) => `${j.ats} · ${j.location} · applied ${j.applied}`;
 
-export function setStatusSubtitle(job: JobRecord, to: JobStatus): string {
+export function setStatusSubtitle(job: JobRecord, to: SettableStatus): string {
   const from = job.statusNote ? `${job.status} · ${job.statusNote}` : job.status;
   return `${from} → ${to}${job.followUp ? ` · follow-up ${job.followUp.date}` : ''}`;
 }
@@ -92,15 +91,6 @@ export function buildResults(query: string, jobs: readonly JobRecord[]): ResultS
         hint: '↵',
       });
     }
-    actions.push({
-      id: `open:${top.id}`,
-      kind: 'action',
-      title: `Open ${top.company} posting`,
-      subtitle: `${top.ats} · opens in your browser`,
-      jobId: top.id,
-      intent: { type: 'open-posting', jobId: top.id },
-      hint: 'O',
-    });
   }
   const sections: ResultSection[] = [];
   if (actions.length) sections.push({ label: 'Actions', results: actions });
@@ -112,7 +102,7 @@ export function buildResults(query: string, jobs: readonly JobRecord[]): ResultS
         id: 'ask',
         kind: 'ask',
         title: `“${query.trim()}”`,
-        subtitle: 'Ask Cap · answers inline, changes nothing yet',
+        subtitle: 'Ask Cap · answers inline, changes nothing',
         intent: { type: 'ask', query: query.trim() },
         hint: '⇥',
       },
@@ -165,7 +155,7 @@ export function answerFor(query: string, jobs: readonly JobRecord[]): Answer | n
     ? ` Its record has sat at ${job.status} since ${job.statusSince}${job.statusReason ? `, when ${job.statusReason}` : ''}.`
     : '';
   const rows = [
-    { label: 'Status', text: `${job.status} → ${cmd.status}. Set by you, with one undo.` },
+    { label: 'Status', text: `${job.status} → ${cmd.status}. Set by you.` },
     ...(job.followUp
       ? [
           {
@@ -180,7 +170,7 @@ export function answerFor(query: string, jobs: readonly JobRecord[]): Answer | n
     },
   ];
   return {
-    meta: `answer · read the ${job.company} record${job.emails ? ` and ${job.emails} emails` : ''} · 1.2 s`,
+    meta: `answer · read the ${job.company} record${job.emails ? ` and ${job.emails} emails` : ''}`,
     intro: `I can set ${job.company} to ${cmd.status}.${since} This is what would change:`,
     rows,
     note: `I haven’t changed anything yet. Press ↵ to set it, or open the thread in Inbox to add context first.`,

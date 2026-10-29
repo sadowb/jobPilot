@@ -9,6 +9,7 @@ import { Dashboard } from '../pages/Dashboard';
 import { Extension } from '../pages/Extension';
 import { Inbox } from '../pages/Inbox';
 import { ManualControl } from '../pages/ManualControl';
+import { NotFoundPage, RouteErrorPage } from '../pages/NotFoundPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { RecoveryPage } from '../pages/RecoveryPage';
@@ -29,11 +30,12 @@ function Shell() {
 
 // Hash router: the packaged app is a single document, so history routing is not an option.
 const router = createHashRouter([
-  { path: '/recovery', element: <RecoveryPage /> },
+  { path: '/recovery', element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
   // Standalone: the extension popup preview has no app shell.
-  { path: '/extension', element: <Extension /> },
+  { path: '/extension', element: <Extension />, errorElement: <RouteErrorPage /> },
   {
     element: <Shell />,
+    errorElement: <RouteErrorPage />,
     children: [
       { path: '/', element: <Dashboard /> },
       { path: '/first-day', element: <FirstDay /> },
@@ -42,11 +44,12 @@ const router = createHashRouter([
       { path: '/analytics', element: <AnalyticsPage /> },
       { path: '/profile', element: <ProfilePage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
   // Setup is full screen: no top bar, no pill nav.
   { path: '/welcome', element: <Navigate to="/welcome/1" replace /> },
-  { path: '/welcome/:step', element: <OnboardingPage /> },
+  { path: '/welcome/:step', element: <OnboardingPage />, errorElement: <RouteErrorPage /> },
 ]);
 
 export function App() {
