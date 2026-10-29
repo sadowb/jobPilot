@@ -93,7 +93,8 @@ export function Dialog({
       )}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        // A nested dialog's cancel bubbles here through React; only our own Escape closes this one.
+        if (event.target === event.currentTarget) onClose();
       }}
       onClose={(event) => {
         // Ignore the queued native close event from effect cleanup or StrictMode replay.

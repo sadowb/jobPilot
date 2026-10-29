@@ -76,7 +76,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       aria-label="Settings"
       onCancel={(e) => {
         e.preventDefault();
-        onClose();
+        // React bubbles a nested dialog's cancel through the component tree; only close for our own Escape.
+        if (e.target === e.currentTarget) onClose();
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className="fixed top-0 right-0 bottom-0 left-auto m-0 h-auto max-h-none w-[584px] max-w-none flex-col overflow-hidden border-0 border-l border-line bg-bg p-0 text-ink shadow-float backdrop:bg-black/25 backdrop:backdrop-blur-[8px] open:flex open:animate-[v17Slide_0.3s_cubic-bezier(0.2,0.8,0.2,1)_both] motion-reduce:animate-none dark:backdrop:bg-black/45 in-[html[data-platform=darwin]]:top-(--app-toolbar-height)"

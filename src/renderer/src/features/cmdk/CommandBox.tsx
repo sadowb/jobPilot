@@ -249,7 +249,7 @@ export function CommandBox({ jobs = [], initialQuery = '', onRun, onOpenInInbox,
       onKeyDown={onKeyDown}
       onCancel={(e) => {
         e.preventDefault();
-        onClose();
+        if (e.target === e.currentTarget) onClose();
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className={cn(

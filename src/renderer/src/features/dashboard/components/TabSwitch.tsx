@@ -82,7 +82,8 @@ export function SegTabs<T extends string>({
             type="button"
             role="tab"
             id={idPrefix ? tabId(idPrefix, key) : undefined}
-            aria-controls={idPrefix ? panelId(idPrefix, key) : undefined}
+            // Only the active panel is mounted, so only the selected tab may point at it.
+            aria-controls={idPrefix && on ? panelId(idPrefix, key) : undefined}
             tabIndex={index === tabStop ? 0 : -1}
             aria-selected={on}
             className={cn(
