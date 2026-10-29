@@ -112,7 +112,7 @@ test('a custom career page without JSON-LD is read by the agent and ends Ready',
     });
     expect(state).toEqual({
       reads: 1,
-      allowlist: { browser: ['snapshot'] },
+      allowlist: { browser: ['snapshot', 'click', 'scroll'] },
       tabs: 0,
       rows: [{ source: 'agent', verified: 1 }],
     });
