@@ -522,10 +522,16 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
       };
       const today = new Date().toISOString().slice(0, 10);
       const original = path.join(directory, `jobpilot-${today}.db`);
-      const before = fs.statSync(original).mtimeMs;
       try {
+        // Onboarding wrote to the database after open, so the first tick refreshes today's backup.
+        const opened = fs.statSync(original).mtimeMs;
         await timer._onTimeout();
-        const sameDaySkipped = keyReads === 0 && fs.statSync(original).mtimeMs === before;
+        const sameDayRefreshed = keyReads === 1 && fs.statSync(original).mtimeMs !== opened;
+        // Nothing changed since that refresh: the next tick reads no key and rewrites nothing.
+        const readsBeforeSkip = keyReads;
+        const before = fs.statSync(original).mtimeMs;
+        await timer._onTimeout();
+        const sameDaySkipped = keyReads === readsBeforeSkip && fs.statSync(original).mtimeMs === before;
         const tomorrow = new Date();
         tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
         // Only the inspector harness changes the clock; no test clock or IPC exists in shipped builds.
@@ -537,6 +543,7 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
         const target = path.join(directory, `jobpilot-${new Date().toISOString().slice(0, 10)}.db`);
         fs.renameSync(directory, `${directory}-fixture`);
         fs.writeFileSync(directory, 'backup failure fixture', { mode: 0o600 });
+        const readsBeforeFailure = keyReads;
         try {
           await Promise.all([timer._onTimeout(), timer._onTimeout()]);
         } finally {
@@ -545,6 +552,7 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
         }
         const failedWithoutBackup = !fs.existsSync(target);
         const readsAfterFailure = keyReads;
+        const failureReads = readsAfterFailure - readsBeforeFailure;
         await Promise.all([timer._onTimeout(), timer._onTimeout()]);
         const retryReads = keyReads - readsAfterFailure;
         const { result: encoded } = await decrypt.call(
@@ -575,9 +583,10 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
         return {
           hourly: timer._idleTimeout === 3_600_000,
           unreferenced: !timer.hasRef(),
+          sameDayRefreshed,
           sameDaySkipped,
           failedWithoutBackup,
-          failureReads: readsAfterFailure,
+          failureReads,
           retryReads,
           opensWithKey,
           refusesWithoutKey,
@@ -592,6 +601,7 @@ test('backs up a new UTC day without restarting and retries failed hourly checks
     expect(result).toEqual({
       hourly: true,
       unreferenced: true,
+      sameDayRefreshed: true,
       sameDaySkipped: true,
       failedWithoutBackup: true,
       failureReads: 1,

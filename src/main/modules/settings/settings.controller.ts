@@ -11,6 +11,8 @@ import {
   RemoveAllDataSchema,
 } from '../../../shared/dto';
 import { defineHandler } from '../../platform/ipc/registry';
+import { UserFacingError } from '../../platform/ipc/user-facing-error';
+import { loggerFor } from '../observability/log.service';
 import { exportRecoveryKey, importRecoveryKey, recoveryState, restoreFromBackup } from './recovery.service';
 import { claudeKeyService, getSettings, setTheme, themeState, updateSettings } from './settings.service';
 
@@ -21,7 +23,10 @@ export const recoveryHandlers = [
 ];
 
 /** Main is the trust boundary: switching to Auto needs a native confirmation the renderer cannot fake. Cancel keeps review. */
-async function confirmAutoSubmit(window: BrowserWindow | null): Promise<boolean> {
+let consentOpen = false;
+
+// shortcut: application_event rows are per-application (FK), so the owner's decision goes to the structured log; give settings its own audit table if this needs querying in-app.
+export async function confirmAutoSubmit(window: BrowserWindow | null): Promise<boolean> {
   const options = {
     type: 'warning' as const,
     message: 'Submit without review?',
@@ -31,8 +36,19 @@ async function confirmAutoSubmit(window: BrowserWindow | null): Promise<boolean>
     defaultId: 0,
     cancelId: 0,
   };
-  const { response } = await (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));
-  return response === 1;
+  if (consentOpen) throw new UserFacingError('Answer the open dialog first.');
+  consentOpen = true;
+  try {
+    const { response } = await (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));
+    const approved = response === 1;
+    loggerFor('audit').info(
+      { actor: 'owner', type: 'submit_mode_consent', decision: approved ? 'approved' : 'declined' },
+      'Owner answered the auto-submit consent dialog',
+    );
+    return approved;
+  } finally {
+    consentOpen = false;
+  }
 }
 
 export const settingsHandlers = [

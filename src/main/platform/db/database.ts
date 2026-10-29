@@ -108,6 +108,11 @@ export function pruneBackups(): void {
   }
 }
 
+// shortcut: total_changes() counts row writes on this one connection, not DDL; fine while db.$client is the only writer, switch to PRAGMA data_version if a second connection appears.
+const changeCount = (sqlite: SqliteDatabase): number =>
+  sqlite.prepare('SELECT total_changes()').pluck().get() as number;
+let backedUpChanges = -1;
+
 async function backupToday(
   sqlite: SqliteDatabase,
   key: Buffer,
@@ -116,6 +121,10 @@ async function backupToday(
 ): Promise<void> {
   if (!existsSync(join(backupDirectory(), `jobpilot-${today}.db`))) {
     await createBackup(sqlite, key, today, logger);
+    backedUpChanges = changeCount(sqlite);
+  } else {
+    // An existing backup may predate writes from a session that crashed; the first tick refreshes it.
+    backedUpChanges = -1;
   }
   pruneBackups();
 }
@@ -131,9 +140,17 @@ export function startDailyBackups(logger: Pick<Logger, 'error'>): { timer: NodeJ
       let key: Buffer | undefined;
       try {
         const today = backupDay();
-        if (existsSync(join(backupDirectory(), `jobpilot-${today}.db`))) return;
+        const sqlite = db.$client as SqliteDatabase;
+        const changes = changeCount(sqlite);
+        const current = existsSync(join(backupDirectory(), `jobpilot-${today}.db`));
+        if (current && changes === backedUpChanges) return;
         ({ key } = await getDatabaseKey());
-        if (!stopped) await backupToday(db.$client as SqliteDatabase, key, today, logger);
+        if (stopped) return;
+        // A damaged database must never replace a good backup.
+        assertIntact(sqlite);
+        await createBackup(sqlite, key, today, logger);
+        backedUpChanges = changes;
+        pruneBackups();
       } catch (error) {
         const code = z.object({ code: z.string().regex(/^SQLITE_[A-Z_]+$/) }).safeParse(error);
         logger.error(

@@ -45,6 +45,10 @@ describe('runErrorMessage', () => {
         'x',
       ),
     ).toBe('Confirm this unverified page before starting a run.');
+    // Pre-fix main sent the class name; stripped here too so an older wrapper never shows it.
+    expect(
+      runErrorMessage(new Error("Error invoking remote method 'runs:start': UserFacingError: Confirm first."), 'x'),
+    ).toBe('Confirm first.');
     expect(runErrorMessage('boom', 'Could not start the run.')).toBe('Could not start the run.');
   });
 });
