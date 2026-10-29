@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0](https://github.com/sadowb/jobPilot/compare/v0.2.1...v0.3.0) (2026-10-29)
+
+
+### Features
+
+* **dashboard:** start and cancel runs from Up next ([#185](https://github.com/sadowb/jobPilot/issues/185)) ([4340dbb](https://github.com/sadowb/jobPilot/commit/4340dbb58f6310e60da081ab2ab9d986f5619647))
+* **settings:** remove all JobPilot data ([#177](https://github.com/sadowb/jobPilot/issues/177)) ([522c6b3](https://github.com/sadowb/jobPilot/commit/522c6b3d1f1f31866ea7956ab7ddf6fa217706ac))
+
+
+### Bug Fixes
+
+* **db:** detect damaged database and restore from backup ([#178](https://github.com/sadowb/jobPilot/issues/178)) ([074ea05](https://github.com/sadowb/jobPilot/commit/074ea05858279f9946c384d36dcb84fb5a064297))
+* **postings:** keep add-jobs edits, flag unverified pages, anchor ATS URLs ([#180](https://github.com/sadowb/jobPilot/issues/180)) ([1d5b2ed](https://github.com/sadowb/jobPilot/commit/1d5b2ed005435a4e41099b3463a43485dca1cc29))
+* **runs:** tolerant settings reads, persisted pause, real cancel, URL guard ([#183](https://github.com/sadowb/jobPilot/issues/183)) ([55e1692](https://github.com/sadowb/jobPilot/commit/55e16928b00607cd7d3759e338c66b2970cdd953))
+* same-day backups, short IPC errors, main-owned submit consent ([#187](https://github.com/sadowb/jobPilot/issues/187)) ([85393f7](https://github.com/sadowb/jobPilot/commit/85393f7d91b6d8f3bb7374a27240954502e364c6))
+* **security:** main-owned agent path, block downloads, stricter profile input ([#179](https://github.com/sadowb/jobPilot/issues/179)) ([0d2b044](https://github.com/sadowb/jobPilot/commit/0d2b044b2b71f01928e8ad9c553e9cc1aca96421))
+* **settings:** keep the OS keychain item when safeStorage uses a mock store ([#184](https://github.com/sadowb/jobPilot/issues/184)) ([5140042](https://github.com/sadowb/jobPilot/commit/5140042a414ef970a2fc75c0d7b8c65e4cf525c7))
+* strict settings inputs, scrub diagnostics, working command box, modal focus ([#182](https://github.com/sadowb/jobPilot/issues/182)) ([8856fcf](https://github.com/sadowb/jobPilot/commit/8856fcfa7e646078495838df24dac337881b17ea))
+* **ui:** honest add-jobs counts, palette answers, onboarding guards ([#186](https://github.com/sadowb/jobPilot/issues/186)) ([b83e3c6](https://github.com/sadowb/jobPilot/commit/b83e3c6311a6ec8d06cbf1b42d699e89febcf2b5))
+
 ## [0.2.1](https://github.com/sadowb/jobPilot/compare/v0.2.0...v0.2.1) (2026-10-28)
 
 
