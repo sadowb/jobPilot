@@ -44,7 +44,13 @@ import {
   loadTheme,
   markConsolidated,
 } from '../modules/settings/settings.service';
-import { closeDatabase, DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
+import {
+  closeDatabase,
+  DatabaseDamagedError,
+  DatabaseUnlockError,
+  openDatabase,
+  startDailyBackups,
+} from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
@@ -89,138 +95,145 @@ if (!app.requestSingleInstanceLock()) {
     watchContents(contents);
   });
 
-  void app.whenReady().then(async () => {
-    const logger = loggerFor('main');
-
-    serveRenderer();
-    installAppMenu();
-    denyPermissionsByDefault();
-    registerIpc(recoveryHandlers, originCheck(isTrustedUrl), loggerFor('ipc'));
-    let recoveryWindow: BrowserWindow | undefined;
+  // No window exists yet on these paths, so a dialog is the only way the user learns why the app closed.
+  const failStartup = (error: unknown, message: string): void => {
     try {
+      loggerFor('main').fatal({ err: error }, 'Startup failed');
+    } catch {
+      // The log directory may be the very thing that is unwritable.
+    }
+    dialog.showErrorBox('JobPilot could not start', `${message}\nYour data folder: ${app.getPath('userData')}`);
+    app.exit(1);
+  };
+
+  void app
+    .whenReady()
+    .then(async () => {
+      const logger = loggerFor('main');
+
+      serveRenderer();
+      installAppMenu();
+      denyPermissionsByDefault();
+      registerIpc(recoveryHandlers, originCheck(isTrustedUrl), loggerFor('ipc'));
+      let recoveryWindow: BrowserWindow | undefined;
       try {
-        await openDatabase(loggerFor('database'));
+        try {
+          await openDatabase(loggerFor('database'));
+        } catch (error) {
+          if (!(error instanceof DatabaseUnlockError || error instanceof DatabaseDamagedError)) throw error;
+          const recovered = waitForRecovery(error instanceof DatabaseDamagedError ? error.reason : 'unlock');
+          recoveryWindow = createWindow('/recovery');
+          recoveryWindow.on('closed', () => app.quit());
+          await recovered;
+          await openDatabase(loggerFor('database'));
+        }
       } catch (error) {
-        if (!(error instanceof DatabaseUnlockError)) throw error;
-        const recovered = waitForRecovery();
-        recoveryWindow = createWindow('/recovery');
-        recoveryWindow.on('closed', () => app.quit());
-        await recovered;
-        await openDatabase(loggerFor('database'));
+        failStartup(error, 'JobPilot could not safely open its encrypted database. No database files were replaced.');
+        return;
       }
-    } catch (error) {
-      logger.fatal({ err: error }, 'Encrypted database could not be opened');
-      await dialog.showMessageBox({
-        type: 'error',
-        title: 'JobPilot database error',
-        message: 'JobPilot could not safely open its encrypted database. No database files were replaced.',
-        detail: 'Restore a backup if the database is damaged. Your database files have been kept.',
-      });
-      app.quit();
-      return;
-    }
 
-    const backups = startDailyBackups(loggerFor('database'));
-    databaseBackupTimer = backups.timer;
+      const backups = startDailyBackups(loggerFor('database'));
+      databaseBackupTimer = backups.timer;
 
-    // An active Node inspector requires the fuse enabled; shipped apps cannot enter this branch.
-    if (process.env.JOBPILOT_E2E_PROVIDER === 'fake' && (!app.isPackaged || inspectorUrl() !== undefined)) {
-      fakeMemory = new FakeMemoryProvider(app.getPath('userData'), () => consolidation.start());
-      fakeAgent = new FakeAgentProvider(fakeMemory);
-      fakeBrowser = new FakeBrowserProvider();
-    }
-    const memory: MemoryProvider =
-      fakeMemory ??
-      new MnemosyneMemory(app.getPath('userData'), {
-        logger: loggerFor('memory'),
-        onReady: () => consolidation.start(),
-      });
-    consolidation = new ConsolidationWorker(
-      (signal) => memory.consolidate(signal),
-      (error) =>
-        loggerFor('memory').error(
-          { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
-          'Memory consolidation failed',
-        ),
-      { get: () => lastConsolidation(db), set: (at) => markConsolidated(db, at) },
-    );
-    if (memory.status().state === 'ready') consolidation.start();
-    agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);
-    runsService = new RunsService(
-      db,
-      app.getPath('userData'),
-      fakeAgent ?? agentSettings,
-      fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser')),
-      memory,
-    );
-    await runsService.initialize();
-    // Stops owned work (agent children, Neo tabs, timers) once, bounded so a stuck stop cannot keep the app alive.
-    let stopping: Promise<void> | undefined;
-    const stopOwnedWork = () =>
-      (stopping ??= (async () => {
-        backups.stop();
-        agentSettings.stop();
-        await Promise.race([
-          Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).then((results) =>
-            results.forEach((result, index) => {
-              if (result.status === 'rejected')
-                logger.error({ step: ['runs', 'consolidation', 'memory'][index] }, 'Quit cleanup failed');
-            }),
+      // An active Node inspector requires the fuse enabled; shipped apps cannot enter this branch.
+      if (process.env.JOBPILOT_E2E_PROVIDER === 'fake' && (!app.isPackaged || inspectorUrl() !== undefined)) {
+        fakeMemory = new FakeMemoryProvider(app.getPath('userData'), () => consolidation.start());
+        fakeAgent = new FakeAgentProvider(fakeMemory);
+        fakeBrowser = new FakeBrowserProvider();
+      }
+      const memory: MemoryProvider =
+        fakeMemory ??
+        new MnemosyneMemory(app.getPath('userData'), {
+          logger: loggerFor('memory'),
+          onReady: () => consolidation.start(),
+        });
+      consolidation = new ConsolidationWorker(
+        (signal) => memory.consolidate(signal),
+        (error) =>
+          loggerFor('memory').error(
+            { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+            'Memory consolidation failed',
           ),
-          delay(10_000),
-        ]);
-      })());
-    // Packaged only: in development the Keychain item belongs to the generic Electron app, not JobPilot.
-    const removeEverything = () =>
-      removeAllData({
-        log: () => logger.warn('Remove all JobPilot data requested'),
-        stopOwnedWork,
-        closeDatabase,
-        closeLogs,
-        deleteUserData: () =>
-          rm(app.getPath('userData'), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
-        removeKeychainItem: () => (app.isPackaged ? removeKeychainItem(app.getName()) : Promise.resolve('skipped')),
-        exit: (code) => app.exit(code),
+        { get: () => lastConsolidation(db), set: (at) => markConsolidated(db, at) },
+      );
+      if (memory.status().state === 'ready') consolidation.start();
+      agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);
+      runsService = new RunsService(
+        db,
+        app.getPath('userData'),
+        fakeAgent ?? agentSettings,
+        fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser')),
+        memory,
+      );
+      await runsService.initialize();
+      // Stops owned work (agent children, Neo tabs, timers) once, bounded so a stuck stop cannot keep the app alive.
+      let stopping: Promise<void> | undefined;
+      const stopOwnedWork = () =>
+        (stopping ??= (async () => {
+          backups.stop();
+          agentSettings.stop();
+          await Promise.race([
+            Promise.allSettled([runsService.stop(), consolidation.stop(), memory.stop()]).then((results) =>
+              results.forEach((result, index) => {
+                if (result.status === 'rejected')
+                  logger.error({ step: ['runs', 'consolidation', 'memory'][index] }, 'Quit cleanup failed');
+              }),
+            ),
+            delay(10_000),
+          ]);
+        })());
+      // Packaged only: in development the Keychain item belongs to the generic Electron app, not JobPilot.
+      const removeEverything = () =>
+        removeAllData({
+          log: () => logger.warn('Remove all JobPilot data requested'),
+          stopOwnedWork,
+          closeDatabase,
+          closeLogs,
+          deleteUserData: () =>
+            rm(app.getPath('userData'), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
+          removeKeychainItem: () => (app.isPackaged ? removeKeychainItem(app.getName()) : Promise.resolve('skipped')),
+          exit: (code) => app.exit(code),
+        });
+      app.on('before-quit', (event) => {
+        event.preventDefault();
+        // app.exit() emits no further quit events, so the quit is never re-entered.
+        if (!stopping) void stopOwnedWork().finally(() => app.exit(0));
       });
-    app.on('before-quit', (event) => {
-      event.preventDefault();
-      // app.exit() emits no further quit events, so the quit is never re-entered.
-      if (!stopping) void stopOwnedWork().finally(() => app.exit(0));
-    });
-    // Windows sends no before-quit on shutdown/logoff (Electron app.md); session-end is the last chance to stop
-    // agent children. Aborts and kills run synchronously inside stop(); the OS then ends the process.
-    app.on('browser-window-created', (_event, window) => window.on('session-end', () => void stopOwnedWork()));
+      // Windows sends no before-quit on shutdown/logoff (Electron app.md); session-end is the last chance to stop
+      // agent children. Aborts and kills run synchronously inside stop(); the OS then ends the process.
+      app.on('browser-window-created', (_event, window) => window.on('session-end', () => void stopOwnedWork()));
 
-    const themePreference = join(app.getPath('userData'), 'theme-preference');
-    if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
-    loadTheme();
-    registerIpc(
-      [
-        ...runsHandlers(runsService),
-        ...settingsHandlers,
-        ...dataHandlers(removeEverything),
-        ...agentHandlers(agentSettings),
-        ...memoryHandlers(new MemorySettingsService(memory)),
-        ...claudeKeyHandlers(claudeKeyService(db)),
-        ...documentsHandlers,
-        ...observabilityHandlers,
-        ...postingsHandlers,
-        ...applicationsHandlers,
-        ...profileHandlers,
-      ],
-      originCheck(isTrustedUrl),
-      loggerFor('ipc'),
-    );
-    broadcastThemeChanges();
-    createWindow();
-    if (recoveryWindow) {
-      recoveryWindow.removeAllListeners('closed');
-      recoveryWindow.close();
-    }
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
-  });
+      const themePreference = join(app.getPath('userData'), 'theme-preference');
+      if (existsSync(themePreference)) chmodSync(themePreference, 0o600);
+      loadTheme();
+      registerIpc(
+        [
+          ...runsHandlers(runsService),
+          ...settingsHandlers,
+          ...dataHandlers(removeEverything),
+          ...agentHandlers(agentSettings),
+          ...memoryHandlers(new MemorySettingsService(memory)),
+          ...claudeKeyHandlers(claudeKeyService(db)),
+          ...documentsHandlers,
+          ...observabilityHandlers,
+          ...postingsHandlers,
+          ...applicationsHandlers,
+          ...profileHandlers,
+        ],
+        originCheck(isTrustedUrl),
+        loggerFor('ipc'),
+      );
+      broadcastThemeChanges();
+      createWindow();
+      if (recoveryWindow) {
+        recoveryWindow.removeAllListeners('closed');
+        recoveryWindow.close();
+      }
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      });
+    })
+    .catch((error: unknown) => failStartup(error, 'JobPilot hit an unexpected error while starting.'));
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();

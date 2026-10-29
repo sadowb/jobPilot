@@ -43,7 +43,7 @@ The owner installs and signs in to the unmodified CLI independently.
 
 `platform/agents/detect.ts` checks only `--version` (five seconds), resolves an
 absolute executable path, and offers it in Settings for one-time confirmation.
-The owner can override the path and re-detect. Runs use the saved path, with a
+The owner can pick the file in a native dialog opened by main (the renderer never sends a path) and re-detect. Runs use the saved path, with a
 private workspace under `userData/agents/claude/`, and never auto-install or
 re-resolve a tool. Haiku is the persisted default model.
 

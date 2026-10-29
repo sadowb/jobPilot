@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AgentModelSchema, type AgentState } from '../../../../shared/dto';
-import { Button, Field, Input, Select, Status, type StatusKind } from '../../components/ui';
+import { Button, Select, Status, type StatusKind } from '../../components/ui';
 import { hasBridge, useAgent, useAgentAction } from '../../lib/api';
 import { S } from '../shared-ui';
 
@@ -20,30 +20,29 @@ export function AgentCard() {
   const query = useAgent();
   const state = query.data;
   const agentAction = useAgentAction();
-  const [path, setPath] = useState('');
   const [model, setModel] = useState<AgentState['model']>('haiku');
   const [auth, setAuth] = useState<AgentState['auth']>('login');
-  const [manual, setManual] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   // Mirror the saved state into the editable form whenever a new one arrives (load, detect, save).
   const [mirrored, setMirrored] = useState<AgentState>();
   if (state && state !== mirrored) {
     setMirrored(state);
-    setPath(state.path ?? '');
     setModel(state.model);
     setAuth(state.auth);
-    if (!state.confirmed) setManual(true);
   }
-  async function act(action: 'detect' | 'save') {
+  async function act(action: 'detect' | 'choose' | 'save') {
     if (!hasBridge() || busy) return;
     setBusy(true);
     setError('');
     try {
-      await agentAction.mutateAsync(action === 'detect' ? 'detect' : { save: { path, model, auth } });
+      await agentAction.mutateAsync(action === 'save' ? { save: { model, auth } } : action);
     } catch {
-      setManual(true);
-      setError('That location is not a working copy of Claude. Choose the claude file itself.');
+      setError(
+        action === 'save'
+          ? 'Could not save. Use Find again or Choose file to pick Claude first.'
+          : 'That file is not a working copy of Claude. Choose the claude file itself.',
+      );
     } finally {
       setBusy(false);
     }
@@ -95,26 +94,15 @@ export function AgentCard() {
           </Select>
         </label>
       </div>
-      <details className="mt-2.5" open={manual} onToggle={(event) => setManual(event.currentTarget.open)}>
-        <summary className={`${S} cursor-pointer select-none`}>Choose location manually</summary>
-        <div className="mt-2">
-          <Field label="Claude executable path" hint="The claude file on this Mac. Runs use this saved location.">
-            <Input
-              id="claude-path"
-              value={path}
-              onChange={(event) => setPath(event.target.value)}
-              disabled={busy}
-              spellCheck={false}
-            />
-          </Field>
-        </div>
-      </details>
       <div className="mt-2.5 flex items-center gap-2">
-        <Button size="sm" variant="primary" disabled={busy || !path.startsWith('/')} onClick={() => void act('save')}>
+        <Button size="sm" variant="primary" disabled={busy || !state?.path} onClick={() => void act('save')}>
           Save
         </Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={() => void act('detect')}>
           Find again
+        </Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => void act('choose')}>
+          Choose file…
         </Button>
         <p role="status" className={`${S} ml-1`}>
           {error ||

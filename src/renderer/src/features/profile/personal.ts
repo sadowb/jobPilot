@@ -1,3 +1,4 @@
+import { EmailSchema, matchesDocumentSignature, MAX_SIGNATURE_BYTES } from '../../../../shared/dto';
 import { parseCareer, type CareerEntry } from './career';
 import { matchCountry } from './countries';
 import { parseLanguages, parseLanguageText, type LanguageEntry } from './languages';
@@ -193,6 +194,15 @@ export function documentError(file: Pick<File, 'name' | 'size'>): string | null 
   if (!/\.(pdf|docx)$/i.test(file.name)) return 'Choose a PDF or DOCX file.';
   if (!file.size) return 'This file is empty. Choose another file.';
   return file.size > 20 * 1024 * 1024 ? 'Choose a file smaller than 20 MB.' : null;
+}
+
+export const emailProblem = (value: string): string | null =>
+  EmailSchema.safeParse(value.trim()).success ? null : 'Enter an email like name@example.com.';
+
+/** Content check on top of documentError: the file must really start like a PDF or DOCX. */
+export async function documentContentError(file: File): Promise<string | null> {
+  const head = new Uint8Array(await file.slice(0, MAX_SIGNATURE_BYTES).arrayBuffer());
+  return matchesDocumentSignature(file.name, head) ? null : 'This file is not a real PDF or DOCX. Choose another file.';
 }
 
 /** Comma- or newline-separated free text → trimmed, de-duplicated entries (case-insensitive). */

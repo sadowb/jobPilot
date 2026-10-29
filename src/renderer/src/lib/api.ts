@@ -41,8 +41,12 @@ export const useAgent = () =>
 
 export const useAgentAction = () =>
   useMutation({
-    mutationFn: (action: 'detect' | { save: Parameters<JobPilotBridge['agent']['save']>[0] }) =>
-      action === 'detect' ? bridge().agent.detect() : bridge().agent.save(action.save),
+    mutationFn: (action: 'detect' | 'choose' | { save: Parameters<JobPilotBridge['agent']['save']>[0] }) =>
+      action === 'detect'
+        ? bridge().agent.detect()
+        : action === 'choose'
+          ? bridge().agent.choosePath()
+          : bridge().agent.save(action.save),
     onSuccess: (state: AgentState) => queryClient.setQueryData(queryKeys.agent.state(), state),
   });
 
@@ -70,6 +74,13 @@ export const useExportRecoveryKey = () => useMutation({ mutationFn: () => bridge
 
 export const useRemoveAllData = () =>
   useMutation({ mutationFn: () => bridge().settings.removeAllData({ confirm: 'DELETE' }) });
+export const useRecoveryState = () =>
+  useQuery({ queryKey: queryKeys.recovery.state(), queryFn: () => bridge().recovery.state() });
+export const useImportRecoveryKey = () => useMutation({ mutationFn: (key: string) => bridge().recovery.import(key) });
+export const useRestoreBackup = () =>
+  useMutation({
+    mutationFn: (input: Parameters<JobPilotBridge['recovery']['restore']>[0]) => bridge().recovery.restore(input),
+  });
 
 export const useSettings = () =>
   useQuery({

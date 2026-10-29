@@ -18,13 +18,8 @@ export const AgentStateSchema = AgentPreferencesSchema.extend({
   status: z.enum(['ready', 'needs_confirmation', 'tool_not_installed', 'not_logged_in', 'api_key_required']),
   login: z.enum(['unknown', 'ok', 'not_logged_in']),
 });
-export const DetectAgentSchema = z.object({ path: AgentPreferencesSchema.shape.path.optional() });
+/** Preferences only: the executable is never renderer-supplied, main confirms the candidate it found itself. */
 export const SaveAgentSchema = z.object({
-  path: z
-    .string()
-    .min(1)
-    .max(4096)
-    .refine((path) => path.startsWith('/') && !path.includes('\0')),
   model: AgentModelSchema,
   auth: z.enum(['login', 'api_key']),
 });
