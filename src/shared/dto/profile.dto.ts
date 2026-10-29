@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 
-const text = z.string().max(10000);
+// Trimmed on parse: a whitespace-only value is stored (and read back) as empty, i.e. missing.
+const text = z.string().trim().max(10000);
 // C0 controls (NUL, ESC/ANSI...) and DEL are never legitimate profile text; tab, LF and CR are.
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;

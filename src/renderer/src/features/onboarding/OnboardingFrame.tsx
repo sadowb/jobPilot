@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppearanceControl } from '../../components/AppearanceControl';
 import { CapDartArt } from '../../components/CapDartArt';
 import { Logo } from '../../components/Logo';
@@ -36,6 +37,18 @@ export function OnboardingFrame({
   aside?: ReactNode;
   children: ReactNode;
 }) {
+  const navigate = useNavigate();
+  const [skipError, setSkipError] = useState(false);
+  // Only leave setup once completion is saved; otherwise the route guard would bounce the user back anyway.
+  const skip = async () => {
+    setSkipError(false);
+    try {
+      await saveProfileData('onboardingCompletedAt', Date.now());
+      void navigate('/');
+    } catch {
+      setSkipError(true);
+    }
+  };
   return (
     <>
       <header className={HEADER}>
@@ -68,7 +81,10 @@ export function OnboardingFrame({
           {/* Skipping is a choice, not a crash: don't show onboarding again on the next launch (#135). */}
           <GoButton
             to="/"
-            onClick={() => void saveProfileData('onboardingCompletedAt', Date.now())}
+            onClick={(event) => {
+              event.preventDefault();
+              void skip();
+            }}
             variant="ghost"
             size="sm"
             className="hover:bg-transparent! text-ink-2! font-semibold! text-[13.5px]! in-[html[data-platform=darwin]]:h-8 in-[html[data-platform=darwin]]:min-h-8"
@@ -77,6 +93,11 @@ export function OnboardingFrame({
           </GoButton>
         </div>
       </header>
+      {skipError && (
+        <p role="alert" className="px-14 text-sm text-bad">
+          Could not save your progress. Please try again.
+        </p>
+      )}
       <div
         className={cn('flex flex-col gap-5 px-14 pt-2 pb-8', REDUCE_ALL)}
         // The minimum height is a per-step prop (the board's content height).

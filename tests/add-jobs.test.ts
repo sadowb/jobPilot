@@ -5,7 +5,7 @@ vi.mock('../src/main/modules/postings/ats/common', async (orig) => ({
   ...(await orig<typeof import('../src/main/modules/postings/ats/common')>()),
   request: async (url: string) => ({ url: new URL(url), text: page.html }),
 }));
-import { candidateUrls, reconcileRows } from '../src/renderer/src/features/dashboard/addjobs/rows';
+import { candidateUrls, editRow, newRow, reconcileRows } from '../src/renderer/src/features/dashboard/addjobs/rows';
 import { fetchPosting, matchPostingUrl, NotAJobPageError } from '../src/main/modules/postings/ats';
 import { canonicalUrl } from '../src/main/modules/postings/ats/common';
 
@@ -28,6 +28,28 @@ describe('add-jobs row state', () => {
     const [row] = reconcileRows(GH, [], new Set()).rows;
     const edited = { ...row!, url: WK };
     expect(reconcileRows(`${GH} `, [edited], new Set()).rows[0]).toBe(edited);
+  });
+
+  it('keeps non-web schemes as rows that are rejected up front with a reason', () => {
+    const text = 'file:///etc/passwd\njavascript:alert(1)\ndata:text/html\nftp://example.com/x\nmailto:a@b.c';
+    const { rows } = reconcileRows(text, [], new Set());
+    expect(rows.map((r) => r.url)).toEqual(text.split('\n'));
+    for (const r of rows) expect(r.result).toMatchObject({ ok: false, code: 'UNSUPPORTED_ATS' });
+    expect(newRow(GH).result).toBeUndefined();
+    expect(candidateUrls('metadata:x')).toEqual([]);
+  });
+
+  it('rewrites the textarea when a row is edited, deduping against existing links', () => {
+    const text = `${GH}\n${WK}`;
+    const { rows } = reconcileRows(text, [], new Set());
+    const fixed = 'https://job-boards.greenhouse.io/acme/jobs/1';
+    const next = editRow(text, rows, new Set(), rows[0]!, fixed);
+    expect(next.text).toBe(`${fixed}\n${WK}`);
+    expect(next.rows.map((r) => r.url)).toEqual([fixed, WK]);
+    expect(editRow(text, rows, new Set(), rows[0]!, WK).rows).toHaveLength(1);
+    const junk = editRow(text, rows, new Set(), rows[0]!, 'javascript:alert(1)');
+    expect(junk.text).toContain('javascript:alert(1)');
+    expect(junk.rows[0]!.result).toMatchObject({ ok: false });
   });
 
   it('strips zero-width characters and trailing punctuation from pasted links', () => {

@@ -30,3 +30,6 @@ export async function saveProfileData(key: string, value: unknown): Promise<void
   if (!section) throw new Error('Unknown profile section');
   setProfileData(await saveProfile(ProfileSaveSchema.parse({ section, value })));
 }
+
+/** True while the loaded profile has not finished (or skipped) onboarding; false when no profile is loaded (web preview). */
+export const onboardingPending = (): boolean => !!window.jobpilot && data.onboardingCompletedAt === null;

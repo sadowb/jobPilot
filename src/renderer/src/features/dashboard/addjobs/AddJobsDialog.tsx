@@ -9,7 +9,7 @@ import { V17StatusChip } from '../../../components/V17StatusChip';
 import { AppButton } from '../components/AppButton';
 import { useCreateApplication, useIngestPosting } from '../../../lib/api';
 
-import { candidateUrls, nextRowId, reconcileRows, type Row } from './rows';
+import { candidateUrls, editRow, isWebUrl, newRow, reconcileRows, type Row } from './rows';
 
 const atsNames = {
   greenhouse: 'Greenhouse',
@@ -66,6 +66,8 @@ export function AddJobsDialog({
   }, [rows, ingest]);
 
   const ready = rows.filter((row) => row.result?.ok && !row.result.alreadyTracked && !row.added);
+  // Variants of one job share a posting; only one application is created for them.
+  const readyCount = new Set(ready.flatMap((row) => (row.result?.ok ? [row.result.posting.postingId] : []))).size;
   const readingCount = rows.filter((row) => !row.result).length;
   const reading = readingCount > 0;
   const tracked = rows.filter((row) => row.result?.ok && row.result.alreadyTracked).length;
@@ -75,7 +77,7 @@ export function AddJobsDialog({
   const failed = rows.filter(
     (row) => row.addError || (row.result && !row.result.ok && row.result.code !== 'UNSUPPORTED_ATS'),
   ).length;
-  const summary = `${ready.length} ready · ${tracked} already in your list · ${unsupported} unsupported${failed ? ` · ${failed} failed` : ''}`;
+  const summary = `${readyCount} ready · ${tracked} already in your list · ${unsupported} unsupported${failed ? ` · ${failed} failed` : ''}`;
 
   const remove = (index: number) => {
     if (busy) return;
@@ -88,11 +90,16 @@ export function AddJobsDialog({
       remaining?.[Math.min(index, remaining.length - 1)]?.focus();
     });
   };
-  const retry = (row: Row, url = row.url) => {
+  const retry = (row: Row) => {
     setEditing(null);
-    setRows((current) =>
-      current.map((item) => (item.id === row.id ? { id: nextRowId(), source: item.source, url } : item)),
-    );
+    setRows((current) => current.map((item) => (item.id === row.id ? newRow(item.source, item.url) : item)));
+  };
+  const edit = (row: Row, url: string) => {
+    setEditing(null);
+    const next = editRow(text, rows, dismissed.current, row, url);
+    dismissed.current = next.dismissed;
+    setText(next.text);
+    setRows(next.rows);
   };
 
   const submit = async () => {
@@ -159,11 +166,11 @@ export function AddJobsDialog({
           variant="primary"
           size="sm"
           type="submit"
-          aria-label={`Add ${ready.length} ${ready.length === 1 ? 'job' : 'jobs'}`}
+          aria-label={`Add ${readyCount} ${readyCount === 1 ? 'job' : 'jobs'}`}
           className={cn('min-w-40 tabular-nums', controlFocus)}
           disabled={busy || reading || !ready.length}
         >
-          {busy ? 'Adding…' : `Add ${ready.length} ${ready.length === 1 ? 'job' : 'jobs'}`} <V17Kbd>⌘↵</V17Kbd>
+          {busy ? 'Adding…' : `Add ${readyCount} ${readyCount === 1 ? 'job' : 'jobs'}`} <V17Kbd>⌘↵</V17Kbd>
         </AppButton>
       }
     >
@@ -241,7 +248,7 @@ export function AddJobsDialog({
                         ? 'Failed'
                         : 'Ready';
               const reason = row.addError ?? (result && !result.ok ? result.message : '');
-              const link = URL.parse(row.url);
+              const link = isWebUrl(row.url) ? URL.parse(row.url) : null;
               return (
                 <li
                   key={row.id}
@@ -295,7 +302,7 @@ export function AddJobsDialog({
                         onBlur={(event) => {
                           const url = event.target.value.trim();
                           setEditing(null);
-                          if (url && url !== row.url) retry(row, url);
+                          if (url && url !== row.url) edit(row, url);
                         }}
                       />
                     ) : (
@@ -311,7 +318,9 @@ export function AddJobsDialog({
                               {posting
                                 ? `${posting.company} — ${posting.title}`
                                 : unsupported
-                                  ? 'Unsupported job site'
+                                  ? isWebUrl(row.url)
+                                    ? 'Unsupported job site'
+                                    : 'Unsupported link'
                                   : 'Could not read job'}
                             </div>
                             <div
@@ -325,7 +334,9 @@ export function AddJobsDialog({
                               {failed || unsupported
                                 ? link
                                   ? `${link.host}${link.pathname}`
-                                  : row.url
+                                  : isWebUrl(row.url)
+                                    ? row.url
+                                    : `${row.url} · ${reason}`
                                 : posting &&
                                   [
                                     posting.ats === 'custom'

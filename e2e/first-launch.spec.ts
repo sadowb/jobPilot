@@ -26,6 +26,9 @@ test('fresh profile opens onboarding and contains only real empty states', async
     await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/1');
     expect((await window.evaluate(() => window.jobpilot!.profile.get())).personal).toBeNull();
     expect(await window.evaluate(() => window.jobpilot!.applications.list())).toEqual([]);
+    // A typed route must not skip setup on a fresh profile.
+    await window.evaluate(() => (location.hash = '#/inbox'));
+    await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/1');
     await window.setViewportSize({ width: 1280, height: 800 });
     await window.emulateMedia({ reducedMotion: 'reduce' });
     const capture = async (name: string) => {
