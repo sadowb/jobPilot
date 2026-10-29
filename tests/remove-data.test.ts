@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RemoveAllDataSchema } from '../src/shared/dto';
-import { keychainCommand, removeKeychainItem } from '../src/main/platform/secrets/keychain';
+import { keychainCommand, removeKeychainItem, usesOsKeychain } from '../src/main/platform/secrets/keychain';
 import { removeAllData, type RemoveAllDataSteps } from '../src/main/modules/settings/remove-data.service';
 
 function steps(order: string[], overrides: Partial<RemoveAllDataSteps> = {}): RemoveAllDataSteps {
@@ -58,6 +58,19 @@ describe('keychain removal', () => {
       args: ['clear', 'application', 'JobPilot'],
     });
     expect(keychainCommand('win32', 'JobPilot')).toBeUndefined();
+  });
+
+  it('leaves the OS item alone when safeStorage runs on a mock or basic store', () => {
+    const line = (switches: Record<string, string>) => ({
+      hasSwitch: (name: string) => name in switches,
+      getSwitchValue: (name: string) => switches[name] ?? '',
+    });
+    expect(usesOsKeychain('darwin', line({}))).toBe(true);
+    expect(usesOsKeychain('darwin', line({ 'use-mock-keychain': '' }))).toBe(false);
+    expect(usesOsKeychain('linux', line({}))).toBe(true);
+    expect(usesOsKeychain('linux', line({ 'password-store': 'gnome-libsecret' }))).toBe(true);
+    expect(usesOsKeychain('linux', line({ 'password-store': 'basic' }))).toBe(false);
+    expect(usesOsKeychain('win32', line({ 'use-mock-keychain': '' }))).toBe(true);
   });
 
   const fake = (error: unknown) =>
