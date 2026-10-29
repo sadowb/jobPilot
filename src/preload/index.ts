@@ -104,6 +104,9 @@ const bridge: JobPilotBridge = {
     async create(postingId) {
       return ApplicationListItemSchema.parse(await invoke(Channels.createApplication, { postingId }));
     },
+    async setStatus(input) {
+      return ApplicationListItemSchema.parse(await invoke(Channels.setApplicationStatus, input));
+    },
   },
   platform: process.platform,
   profile: {

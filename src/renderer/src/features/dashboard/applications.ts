@@ -11,7 +11,7 @@ const ATS_HOSTS: [string, string][] = [
   ['bamboohr.com', 'BambooHR'],
 ];
 /** ATS display name for known hosts, the raw host otherwise. */
-const siteName = (url: string) => {
+export const siteName = (url: string) => {
   const host = new URL(url).hostname;
   return ATS_HOSTS.find(([domain]) => host === domain || host.endsWith(`.${domain}`))?.[1] ?? host;
 };

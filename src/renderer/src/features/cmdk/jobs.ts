@@ -3,6 +3,10 @@ import type { CritterState } from '../../components/critterState';
 export const JOB_STATUSES = ['Submitted', 'Screening', 'Interview', 'Offer', 'Rejected', 'Withdrawn'] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
+/** What a command can set: the owner outcomes main accepts (OwnerStatus). Screening has no stored status yet. */
+export type SettableStatus = Exclude<JobStatus, 'Screening'>;
+export const SETTABLE_STATUSES = JOB_STATUSES.filter((s): s is SettableStatus => s !== 'Screening');
+
 export interface JobRecord {
   id: string;
   company: string;
@@ -20,7 +24,7 @@ export interface JobRecord {
   emails?: number;
 }
 
-/** Sample records behind the command box (the V17 dashboard rows). Replaced by the API later. */
+/** Fixture records for tests (the V17 dashboard rows). The app builds real ones in ./applications.ts. */
 export const SAMPLE_JOBS: readonly JobRecord[] = [
   {
     id: 'perpay',
@@ -132,8 +136,8 @@ export const SAMPLE_JOBS: readonly JobRecord[] = [
 /** Chip colours: the boards' own for five statuses; Offer is not drawn anywhere, so it borrows the brand wash. */
 export const STATUS_CHIP: Record<JobStatus, { color: string; background: string }> = {
   Submitted: { color: 'var(--ink-2)', background: 'var(--line)' },
-  Screening: { color: '#0F766E', background: 'rgba(15,118,110,.14)' },
   Interview: { color: '#B45309', background: 'rgba(180,83,9,.16)' },
+  Screening: { color: '#0F766E', background: 'rgba(15,118,110,.14)' },
   Offer: { color: 'var(--brand-text)', background: 'var(--brand-tint)' },
   Rejected: { color: '#B5412F', background: 'rgba(181,65,47,.14)' },
   Withdrawn: { color: 'var(--muted)', background: 'var(--line)' },

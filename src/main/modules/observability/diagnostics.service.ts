@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, st
 import { release } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { flushLogs, logsDirectory, loggerFor, scrub } from './log.service';
+import { flushLogs, logsDirectory, loggerFor, scrub, scrubIdentity } from './log.service';
 
 const crashDirectory = (): string => join(app.getPath('userData'), 'crashes');
 const markerPath = (): string => join(logsDirectory(), 'session.lock');
@@ -65,7 +65,9 @@ function filesIn(directory: string, pattern: RegExp): string[] {
 export function buildDiagnostics(): Uint8Array {
   const logs = logsDirectory();
   const files: Record<string, Uint8Array> = {};
-  for (const name of filesIn(logs, /^main(\.\d+)?\.log$/)) files[`logs/${name}`] = readFileSync(join(logs, name));
+  // Lines are scrubbed when written, but logs from older builds still hold the owner's home path.
+  for (const name of filesIn(logs, /^main(\.\d+)?\.log$/))
+    files[`logs/${name}`] = strToU8(scrubIdentity(readFileSync(join(logs, name), 'utf8')));
   const runs = filesIn(join(logs, 'runs'), /\.jsonl$/)
     .map((name) => ({ name, mtime: statSync(join(logs, 'runs', name)).mtimeMs }))
     .sort((a, b) => b.mtime - a.mtime)
@@ -77,7 +79,7 @@ export function buildDiagnostics(): Uint8Array {
     for (const line of readFileSync(join(logs, 'runs', name), 'utf8').split('\n')) {
       if (!line) continue;
       try {
-        kept.push(JSON.stringify(scrub(JSON.parse(line) as object)));
+        kept.push(scrubIdentity(JSON.stringify(scrub(JSON.parse(line) as object))));
       } catch {
         droppedTraceLines++;
       }

@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import pino, { type Logger } from 'pino';
 import { chmodSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { redact } from './redact';
@@ -16,9 +17,33 @@ const personalPatterns: [RegExp, string][] = [
   [/\+\d[\d\s().-]{6,}\d|\(\d{2,4}\)[\s.-]?\d[\d\s.-]{5,}\d|\b\d{3}[\s.-]\d{3}[\s.-]\d{4}\b/g, '[PHONE]'],
 ];
 
+function accountName(): string {
+  try {
+    return userInfo().username;
+  } catch {
+    return ''; // no passwd entry (some containers): the home path is still scrubbed
+  }
+}
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Replaces the account's home directory (also its JSON-escaped form, for raw log lines) with `~` and the
+ * username with `<user>`, so shared text does not name the owner. Usernames under three characters are skipped:
+ * they would mangle unrelated words.
+ */
+export function scrubIdentity(text: string, home = homedir(), username = accountName()): string {
+  let result = text;
+  for (const path of new Set([home, JSON.stringify(home).slice(1, -1)]))
+    if (path.length > 1) result = result.replace(new RegExp(escapeRegExp(path), 'g'), '~');
+  return username.length < 3
+    ? result
+    : result.replace(new RegExp(`(?<![\\w.-])${escapeRegExp(username)}(?![\\w-])`, 'gi'), '<user>');
+}
+
 function scrubStrings(value: unknown): unknown {
   if (typeof value === 'string')
-    return personalPatterns.reduce((text, [pattern, mask]) => text.replace(pattern, mask), value);
+    return personalPatterns.reduce((text, [pattern, mask]) => text.replace(pattern, mask), scrubIdentity(value));
   if (Array.isArray(value)) return value.map(scrubStrings);
   if (value !== null && typeof value === 'object')
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrubStrings(item)]));

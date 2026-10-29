@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type FormEventHandler, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type FormEventHandler, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 import { controlFocus } from './controlStyles';
@@ -14,6 +14,25 @@ function lockBody() {
   return () => {
     if (--scrollLocks === 0 && !bodyWasLocked) document.body.classList.remove('overflow-hidden!');
   };
+}
+
+/**
+ * Opens a native <dialog> modally while `open`: the platform makes the rest of the page inert, traps Tab and
+ * labels it aria-modal. Locks body scroll and puts focus back on the opener when it closes.
+ */
+export function useModalDialog(ref: RefObject<HTMLDialogElement | null>, open = true): void {
+  useEffect(() => {
+    const element = ref.current;
+    if (!open || !element) return;
+    const opener = document.activeElement;
+    element.showModal();
+    const unlock = lockBody();
+    return () => {
+      if (element.open) element.close();
+      unlock();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [ref, open]);
 }
 
 export interface DialogProps {
@@ -55,18 +74,7 @@ export function Dialog({
   const descriptionId = useId();
   const backdropPress = useRef(false);
 
-  useEffect(() => {
-    const element = dialog.current;
-    if (!open || !element) return;
-    const opener = document.activeElement;
-    element.showModal();
-    const unlock = lockBody();
-    return () => {
-      if (element.open) element.close();
-      unlock();
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
-    };
-  }, [open]);
+  useModalDialog(dialog, open);
 
   // SSR emits no modal; useId is still called in the same order during hydration.
   if (typeof document === 'undefined') return null;

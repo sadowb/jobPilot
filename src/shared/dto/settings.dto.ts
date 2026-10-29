@@ -17,9 +17,14 @@ export type SettingsLimits = z.infer<typeof SettingsLimitsSchema>;
 export const SitesConfigSchema = z.record(z.string().min(1).max(64), SiteModeSchema);
 export type SitesConfig = z.infer<typeof SitesConfigSchema>;
 
+/** ADR 0016 rule 5: parallel runs default to six, configurable 1 to 64. */
+export const CREW_DEFAULT = 6;
+export const CREW_MAX = 64;
+
+// Autopilot is not built yet. Main is the trust boundary: it never stores or reports `true` until the feature ships.
 export const AppSettingsSchema = z.object({
-  autopilot: z.boolean().default(false),
-  crew: z.number().int().min(1).max(32).default(4),
+  autopilot: z.literal(false).default(false),
+  crew: z.number().int().min(1).max(CREW_MAX).default(CREW_DEFAULT),
   submitMode: SubmitModeSchema.default('review'),
   sites: SitesConfigSchema.default({}),
   limits: SettingsLimitsSchema.default({
@@ -32,8 +37,8 @@ export const AppSettingsSchema = z.object({
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 export const UpdateSettingsSchema = z.object({
-  autopilot: z.boolean().optional(),
-  crew: z.number().int().min(1).max(32).optional(),
+  autopilot: z.literal(false).optional(),
+  crew: z.number().int().min(1).max(CREW_MAX).optional(),
   submitMode: SubmitModeSchema.optional(),
   sites: SitesConfigSchema.optional(),
   limits: SettingsLimitsSchema.partial().optional(),

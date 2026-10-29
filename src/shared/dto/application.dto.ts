@@ -21,4 +21,9 @@ export const ApplicationListItemSchema = z.object({
   latestRunAgent: AgentId.schema.nullable(),
 });
 export type ApplicationListItem = z.infer<typeof ApplicationListItemSchema>;
+/** Outcomes the owner can record on an application that was already submitted. */
+export const OwnerStatusSchema = z.enum(['applied', 'interviewing', 'offer', 'rejected', 'withdrawn']);
+export type OwnerStatus = z.infer<typeof OwnerStatusSchema>;
+export const SetApplicationStatusSchema = z.object({ id: z.ulid(), status: OwnerStatusSchema });
+export type SetApplicationStatusInput = z.infer<typeof SetApplicationStatusSchema>;
 export const CreateApplicationSchema = z.object({ postingId: z.ulid() });

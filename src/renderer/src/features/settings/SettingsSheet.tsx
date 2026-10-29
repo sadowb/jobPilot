@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { KbdKey } from '../../components/KbdKey';
-import { Button, cn, Segmented } from '../../components/ui';
+import { Button, cn, Dialog, Segmented } from '../../components/ui';
+import { useModalDialog } from '../../components/ui/Dialog';
 import { useExportRecoveryKey, useSettings, useUpdateSettings } from '../../lib/api';
 import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
@@ -11,7 +12,7 @@ import { CrewSlider } from './CrewSlider';
 import { DEFAULT_SETTINGS, SUBMIT_MODES } from './data';
 import { MemoryCard } from './MemoryCard';
 import { LimitField } from './LimitField';
-import { LIMIT_SPECS } from './model';
+import { CREW_MAX, LIMIT_SPECS, type SubmitMode } from './model';
 
 const THEMES: readonly { value: ThemeSource; label: string }[] = [
   { value: 'light', label: 'Light' },
@@ -57,12 +58,28 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const submitMode = settings?.submitMode ?? DEFAULT_SETTINGS.submitMode;
   const limits = settings?.limits ?? DEFAULT_SETTINGS.limits;
   const [advancedOpen, setAdvancedOpen] = useState(true);
+  const [confirmAuto, setConfirmAuto] = useState(false);
+  const sheet = useRef<HTMLDialogElement>(null);
+  // Same primitive as Add jobs: native modal <dialog> (inert background, Tab trap, focus restored on close).
+  useModalDialog(sheet);
+
+  // Auto submits applications without a review, so it never switches on with one click.
+  const pickSubmitMode = (mode: SubmitMode) => {
+    if (mode === submitMode) return;
+    if (mode === 'auto') setConfirmAuto(true);
+    else updateSettings.mutate({ submitMode: mode });
+  };
 
   return (
-    <aside
-      role="dialog"
+    <dialog
+      ref={sheet}
       aria-label="Settings"
-      className="fixed top-0 right-0 bottom-0 z-2 flex w-[584px] animate-[v17Slide_0.3s_cubic-bezier(0.2,0.8,0.2,1)_both] flex-col overflow-hidden border-l border-line bg-bg shadow-float motion-reduce:animate-none in-[html[data-platform=darwin]]:top-(--app-toolbar-height)"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed top-0 right-0 bottom-0 left-auto m-0 h-auto max-h-none w-[584px] max-w-none flex-col overflow-hidden border-0 border-l border-line bg-bg p-0 text-ink shadow-float backdrop:bg-black/25 backdrop:backdrop-blur-[8px] open:flex open:animate-[v17Slide_0.3s_cubic-bezier(0.2,0.8,0.2,1)_both] motion-reduce:animate-none dark:backdrop:bg-black/45 in-[html[data-platform=darwin]]:top-(--app-toolbar-height)"
     >
       <div className="flex flex-none items-center justify-between gap-3 border-b border-line px-7 pt-[22px] pb-[18px]">
         <div className="flex items-center gap-3.5">
@@ -118,7 +135,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </Section>
         <Section
           title="Crew size"
-          desc="Jobs in flight at once, up to 32"
+          desc={`Jobs in flight at once, up to ${CREW_MAX}`}
           aside={
             <span className={cn(V17N, 'text-[34px]')} aria-live="polite">
               {crew}
@@ -137,10 +154,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   role="radio"
                   aria-checked={on}
                   tabIndex={0}
-                  onClick={() => updateSettings.mutate({ submitMode: m.value })}
+                  onClick={() => pickSubmitMode(m.value)}
                   onKeyDown={(e) =>
-                    (e.key === ' ' || e.key === 'Enter') &&
-                    (e.preventDefault(), updateSettings.mutate({ submitMode: m.value }))
+                    (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), pickSubmitMode(m.value))
                   }
                   className={cn(
                     'flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 rounded-2xl px-[15px] py-[13px]',
@@ -245,6 +261,33 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <KbdKey>Esc</KbdKey>
         </button>
       </div>
-    </aside>
+      <Dialog
+        open={confirmAuto}
+        onClose={() => setConfirmAuto(false)}
+        eyebrow="Submit mode"
+        title="Submit without review?"
+        closeLabel="Cancel"
+        className="w-[min(520px,calc(100vw-32px))]"
+        onSubmit={() => {
+          updateSettings.mutate({ submitMode: 'auto' });
+          setConfirmAuto(false);
+        }}
+        actions={
+          <>
+            <Button type="button" size="sm" onClick={() => setConfirmAuto(false)}>
+              Keep review
+            </Button>
+            <Button type="submit" variant="primary" size="sm">
+              Submit automatically
+            </Button>
+          </>
+        }
+      >
+        <p className="m-0 text-[14px] leading-normal">
+          In Auto with limits the crew presses the final Submit button itself once every answer is set. Nothing is shown
+          to you first. The hard limits under Advanced still apply.
+        </p>
+      </Dialog>
+    </dialog>
   );
 }

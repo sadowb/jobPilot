@@ -20,6 +20,10 @@
     "schema": "z.void()"
   },
   {
+    "channel": "applications:set-status",
+    "schema": "SetApplicationStatusSchema"
+  },
+  {
     "channel": "documents:save",
     "schema": "SaveDocumentInputSchema"
   },

@@ -10,7 +10,7 @@ import { MetricRow } from './components/MetricRow';
 import { Pagination, usePaging } from './components/Pagination';
 import { PeekPanel } from './components/PeekPanel';
 import { SearchField } from './components/SearchField';
-import { TabSwitch, type DashboardTab } from './components/TabSwitch';
+import { panelId, tabId, TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { countByFilter } from './filter';
 import { canUndo, selectedApp, visibleApps, type DashboardAction, type DashboardState } from './state';
 import { STATUS_MENU_ORDER } from './status';
@@ -90,48 +90,55 @@ export function AppliedView({
             <span className="ml-2 font-mono text-[12px] opacity-60">⌘V</span>
           </AppButton>
         </div>
-        <MetricRow
-          stats={[
-            { label: 'APPLIED', value: String(state.apps.length), sub: 'Applications sent' },
-            { label: 'INTERVIEWS', value: String(unfiltered.interview), sub: 'Scheduled' },
-            { label: 'OFFERS', value: String(unfiltered.offer), sub: 'Received' },
-          ]}
-        />
-        <div className="flex min-w-0 flex-nowrap items-center justify-between gap-3 [@media(width<=1194px)]:flex-wrap [@media(width<=1194px)]:items-stretch [@media(width<=1194px)]:[&>[role=group]]:w-full">
-          <SearchField ref={searchRef} value={state.query} onChange={(query) => dispatch({ type: 'query', query })} />
-          <FilterChips
-            counts={counts}
-            active={state.filter}
-            onChange={(filter) => dispatch({ type: 'filter', filter })}
+        <div
+          role="tabpanel"
+          id={panelId('dashboard', 'applied')}
+          aria-labelledby={tabId('dashboard', 'applied')}
+          className="contents"
+        >
+          <MetricRow
+            stats={[
+              { label: 'APPLIED', value: String(state.apps.length), sub: 'Applications sent' },
+              { label: 'INTERVIEWS', value: String(unfiltered.interview), sub: 'Scheduled' },
+              { label: 'OFFERS', value: String(unfiltered.offer), sub: 'Received' },
+            ]}
           />
-        </div>
-        {rows.length === 0 ? (
-          <EmptyResults
-            query={state.query.trim()}
-            appliedTotal={state.apps.length}
-            upNextCompany={upNextCompany(state.query.toLowerCase().split(/\s+/).filter(Boolean))}
-            onClear={() => {
-              dispatch({ type: 'query', query: '' });
-              dispatch({ type: 'filter', filter: 'all' });
-            }}
-            onOpenUpNext={() => onTab('up-next')}
-          />
-        ) : (
-          <>
-            <ApplicationsTable
-              rows={rows.slice(paging.start, paging.start + paging.size)}
-              query={state.query}
-              selectedId={state.selectedId}
-              statusMenu={state.statusMenu}
-              onSelect={(id) => dispatch({ type: 'select', id, peek: true })}
-              onOpenStatus={(id) => dispatch({ type: 'openStatus', id })}
-              onPickStatus={pickStatus}
-              onCloseStatus={() => dispatch({ type: 'closeStatus' })}
+          <div className="flex min-w-0 flex-nowrap items-center justify-between gap-3 [@media(width<=1194px)]:flex-wrap [@media(width<=1194px)]:items-stretch [@media(width<=1194px)]:[&>[role=group]]:w-full">
+            <SearchField ref={searchRef} value={state.query} onChange={(query) => dispatch({ type: 'query', query })} />
+            <FilterChips
+              counts={counts}
+              active={state.filter}
+              onChange={(filter) => dispatch({ type: 'filter', filter })}
             />
-            <Pagination paging={paging} />
-          </>
-        )}
-        <KeyHints mode={hintMode} />
+          </div>
+          {rows.length === 0 ? (
+            <EmptyResults
+              query={state.query.trim()}
+              appliedTotal={state.apps.length}
+              upNextCompany={upNextCompany(state.query.toLowerCase().split(/\s+/).filter(Boolean))}
+              onClear={() => {
+                dispatch({ type: 'query', query: '' });
+                dispatch({ type: 'filter', filter: 'all' });
+              }}
+              onOpenUpNext={() => onTab('up-next')}
+            />
+          ) : (
+            <>
+              <ApplicationsTable
+                rows={rows.slice(paging.start, paging.start + paging.size)}
+                query={state.query}
+                selectedId={state.selectedId}
+                statusMenu={state.statusMenu}
+                onSelect={(id) => dispatch({ type: 'select', id, peek: true })}
+                onOpenStatus={(id) => dispatch({ type: 'openStatus', id })}
+                onPickStatus={pickStatus}
+                onCloseStatus={() => dispatch({ type: 'closeStatus' })}
+              />
+              <Pagination paging={paging} />
+            </>
+          )}
+          <KeyHints mode={hintMode} />
+        </div>
       </main>
       {state.peekOpen && selected && (
         <PeekPanel

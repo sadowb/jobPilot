@@ -28,7 +28,13 @@ export interface QueueKeyEvent {
  */
 export function queueKeyToResult(e: QueueKeyEvent, s: QueueState, inText: boolean): QueueKeyResult | null {
   const mod = e.metaKey || e.ctrlKey;
-  if (inText) return e.key === 'Escape' ? { effect: 'blurSearch', preventDefault: true } : null;
+  if (inText) {
+    if (e.key !== 'Escape') return null;
+    // First Esc empties the search text and keeps focus in the field; the next one (field empty) leaves it.
+    return s.query !== ''
+      ? { action: { type: 'query', query: '' }, preventDefault: true }
+      : { effect: 'blurSearch', preventDefault: true };
+  }
   if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) return { undo: true, preventDefault: true };
   if (mod || e.altKey) return null;
   const k = e.key;
