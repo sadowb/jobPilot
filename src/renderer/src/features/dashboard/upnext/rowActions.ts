@@ -21,5 +21,5 @@ export function cancellableRuns(runs: readonly RunSummaryDto[] | undefined): Map
 /** Electron wraps main's thrown message as "Error invoking remote method 'x': Error: msg"; show only msg. */
 export const runErrorMessage = (err: unknown, fallback: string): string => {
   const raw = err instanceof Error ? err.message : '';
-  return raw.replace(/^Error invoking remote method '[^']*': (?:Error: )?/, '').trim() || fallback;
+  return raw.replace(/^Error invoking remote method '[^']*': (?:(?:User[A-Za-z]*)?Error: )?/, '').trim() || fallback;
 };

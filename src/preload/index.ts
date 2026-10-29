@@ -30,6 +30,7 @@ import {
   UpdateSettingsSchema,
   RemoveAllDataSchema,
 } from '../shared/dto';
+import { parseInput } from '../shared/invalid-request';
 
 async function invoke(channel: string, ...args: unknown[]): Promise<unknown> {
   const result: unknown = await ipcRenderer.invoke(channel, ...args);
@@ -51,7 +52,7 @@ const bridge: JobPilotBridge = {
       return AgentStateSchema.parse(await invoke(Channels.chooseAgentPath));
     },
     async save(input) {
-      return AgentStateSchema.parse(await invoke(Channels.saveAgent, SaveAgentSchema.parse(input)));
+      return AgentStateSchema.parse(await invoke(Channels.saveAgent, parseInput(SaveAgentSchema, input)));
     },
   },
   claudeKey: {
@@ -132,10 +133,10 @@ const bridge: JobPilotBridge = {
       return ProfileDataSchema.parse(await invoke(Channels.getProfile));
     },
     async save(input) {
-      return ProfileDataSchema.parse(await invoke(Channels.saveProfile, ProfileSaveSchema.parse(input)));
+      return ProfileDataSchema.parse(await invoke(Channels.saveProfile, parseInput(ProfileSaveSchema, input)));
     },
     async migrate(input) {
-      return ProfileDataSchema.parse(await invoke(Channels.migrateProfile, ProfileDataSchema.parse(input)));
+      return ProfileDataSchema.parse(await invoke(Channels.migrateProfile, parseInput(ProfileDataSchema, input)));
     },
   },
   recovery: {
@@ -158,7 +159,7 @@ const bridge: JobPilotBridge = {
     },
   },
   async reportRendererError(error) {
-    await invoke(Channels.rendererError, RendererErrorInputSchema.parse(error));
+    await invoke(Channels.rendererError, parseInput(RendererErrorInputSchema, error));
   },
   documents: {
     async save(name, bytes) {
@@ -183,10 +184,10 @@ const bridge: JobPilotBridge = {
       return AppSettingsSchema.parse(await invoke(Channels.getSettings));
     },
     async update(input) {
-      return AppSettingsSchema.parse(await invoke(Channels.updateSettings, UpdateSettingsSchema.parse(input)));
+      return AppSettingsSchema.parse(await invoke(Channels.updateSettings, parseInput(UpdateSettingsSchema, input)));
     },
     async removeAllData(input) {
-      await invoke(Channels.removeAllData, RemoveAllDataSchema.parse(input));
+      await invoke(Channels.removeAllData, parseInput(RemoveAllDataSchema, input));
     },
   },
   onDataChanged(listener) {

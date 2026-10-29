@@ -3,6 +3,7 @@ import { ZodError, type z } from 'zod';
 import type { Logger } from 'pino';
 import { UserFacingError } from './user-facing-error';
 import type { IpcValidationError } from '../../../shared/ipc';
+import { invalidRequestMessage } from '../../../shared/invalid-request';
 
 type IpcLogger = Pick<Logger, 'debug' | 'warn' | 'error'>;
 
@@ -23,11 +24,10 @@ export interface IpcHandler {
  */
 function publicError(error: unknown): Error {
   if (error instanceof ZodError) {
-    const issue = error.issues[0];
-    const where = issue?.path.map(String).join('.');
-    return new Error(issue ? `Invalid request: ${where ? `${where}: ` : ''}${issue.message}` : 'Invalid request.');
+    return new Error(invalidRequestMessage(error));
   }
-  if (error instanceof UserFacingError) return error;
+  // A subclass would cross IPC as "UserFacingError: msg"; send a plain Error so only the message arrives.
+  if (error instanceof UserFacingError) return new Error(error.message);
   return new Error('Something went wrong. Try again.');
 }
 

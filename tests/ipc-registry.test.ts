@@ -24,6 +24,13 @@ describe('defineHandler error boundary (F4, L3)', () => {
     );
   });
 
+  it('sends a plain Error so the class name never crosses IPC', async () => {
+    const error = await call(() => {
+      throw new UserFacingError('Confirm first.');
+    }).catch((e: unknown) => e);
+    expect(error).toMatchObject({ name: 'Error', message: 'Confirm first.' });
+  });
+
   it('hides SQLite and system error text, logging the original', async () => {
     const sqlite = new Database(':memory:');
     sqlite.exec(

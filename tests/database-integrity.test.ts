@@ -44,6 +44,7 @@ import {
   openDatabase,
   pruneBackups,
   restoreBackup,
+  startDailyBackups,
 } from '../src/main/platform/db/database';
 
 const logger = { error: vi.fn() };
@@ -186,5 +187,42 @@ describe('backupAndCloseDatabase (PERS-N3)', () => {
     expect(readFileSync(join(backups(), today())).equals(before)).toBe(true);
     expect(logger.error).toHaveBeenCalled();
     expect(db.$client.open).toBe(false);
+  });
+});
+
+describe('hourly backup refresh (N3)', () => {
+  const todayFile = () => join(backups(), `jobpilot-${new Date().toISOString().slice(0, 10)}.db`);
+  const tick = async () => {
+    const { timer, stop } = startDailyBackups(logger);
+    try {
+      await (timer as unknown as { _onTimeout: () => Promise<void> })._onTimeout();
+    } finally {
+      stop();
+    }
+  };
+  const write = (value: string) =>
+    db.$client.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('note', ?, 0)").run(value);
+
+  it('refreshes after a change, skips when unchanged, and keeps a good backup when damaged', async () => {
+    await openDatabase(logger);
+    const opened = readFileSync(todayFile());
+    await tick();
+    expect(readFileSync(todayFile()).equals(opened)).toBe(true); // unchanged: not rewritten
+
+    write('sara');
+    await tick();
+    const refreshed = readFileSync(todayFile());
+    expect(refreshed.equals(opened)).toBe(false);
+    await tick();
+    expect(readFileSync(todayFile()).equals(refreshed)).toBe(true); // unchanged since refresh
+
+    write('sara2');
+    db.$client.pragma('wal_checkpoint(TRUNCATE)');
+    db.$client.pragma('cache_size = 0');
+    overwrite(file(), 8192, randomBytes(2048));
+    await tick();
+    expect(readFileSync(todayFile()).equals(refreshed)).toBe(true);
+    expect(logger.error).toHaveBeenCalled();
+    db.$client.close();
   });
 });
