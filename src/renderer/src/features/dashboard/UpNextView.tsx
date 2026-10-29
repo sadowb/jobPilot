@@ -8,7 +8,15 @@ import { SearchField } from './components/SearchField';
 import { panelId, tabId, TabSwitch, type DashboardTab } from './components/TabSwitch';
 import { clockTime } from './format';
 import { BulkBar } from './upnext/BulkBar';
-import { useConfirmPosting, useRunsState, useSetRunsPaused, useSettings } from '../../lib/api';
+import {
+  useCancelRun,
+  useConfirmPosting,
+  useRuns,
+  useRunsState,
+  useSetRunsPaused,
+  useSettings,
+  useStartRun,
+} from '../../lib/api';
 import { CREW_DEFAULT } from '../../../../shared/dto';
 import {
   formatCrewTime,
@@ -21,6 +29,7 @@ import {
   type QueueState,
 } from './upnext/queue';
 import { actionTargets, queueKeyToResult } from './upnext/queueKeys';
+import { cancellableRuns, runErrorMessage } from './upnext/rowActions';
 import { QUEUE_GRID, QueueRow } from './upnext/QueueRow';
 import { UndoToast } from './upnext/UndoToast';
 
@@ -88,6 +97,30 @@ export function UpNextView({
   const setPaused = useSetRunsPaused();
   const togglePause = useCallback(() => setPaused.mutate(!paused), [setPaused, paused]);
 
+  const startRun = useStartRun();
+  const cancelRun = useCancelRun();
+  const { data: runs } = useRuns();
+  const cancelIds = useMemo(() => cancellableRuns(runs), [runs]);
+  const [runError, setRunError] = useState<string | null>(null);
+  const runBusy = startRun.isPending || cancelRun.isPending;
+  // Main enforces the trust gate and the pause flag; a refusal arrives as a short message we show as-is.
+  const start = useCallback(
+    async (ids: string[]) => {
+      setRunError(null);
+      const results = await Promise.allSettled(ids.map((id) => startRun.mutateAsync(id)));
+      const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (failed) setRunError(runErrorMessage(failed.reason, 'Could not start the run.'));
+    },
+    [startRun],
+  );
+  const cancel = useCallback(
+    (runId: string) => {
+      setRunError(null);
+      cancelRun.mutate(runId, { onError: (e) => setRunError(runErrorMessage(e, 'Could not cancel the run.')) });
+    },
+    [cancelRun],
+  );
+
   const remove = useCallback((ids: string[]) => dispatch({ type: 'remove', ids, now: Date.now() }), [dispatch]);
   const hold = useCallback((ids: string[]) => dispatch({ type: 'hold', ids, at: clockTime() }), [dispatch]);
 
@@ -114,6 +147,7 @@ export function UpNextView({
 
   const { data: settings } = useSettings();
   const confirmPosting = useConfirmPosting();
+  const startable = state.items.filter((i) => state.selected.includes(i.id) && i.stage === 'queued').map((i) => i.id);
   const crewSize = settings?.crew ?? CREW_DEFAULT;
 
   const crew = paused
@@ -171,6 +205,17 @@ export function UpNextView({
               {runsState.reason === 'quit'
                 ? 'Paused after JobPilot closed with jobs in progress. Resume when ready.'
                 : 'Paused because JobPilot stopped unexpectedly with jobs in progress. Resume when ready.'}
+            </div>
+          ) : null}
+          {runError ? (
+            <div role="alert" className="rounded-lg border border-line-2 px-3.5 py-2.5 text-[13.5px] text-need">
+              {runError}
+              {runError.includes('unverified') ? ' Use “Looks right” on the row to confirm it.' : ''}
+            </div>
+          ) : null}
+          {paused ? (
+            <div role="status" className="-mt-1.5 text-[13.5px] text-muted">
+              The queue is paused: Start queues a job, and it opens when you resume.
             </div>
           ) : null}
           <div className="-mt-1.5 text-[13.5px] text-muted">
@@ -249,6 +294,9 @@ export function UpNextView({
                 onMoveToTop={() => dispatch({ type: 'moveToTop', ids: [item.id] })}
                 onHold={() => hold([item.id])}
                 onRemove={() => remove([item.id])}
+                onStart={() => void start([item.id])}
+                onCancel={cancelIds.has(item.id) ? () => cancel(cancelIds.get(item.id)!) : undefined}
+                runBusy={runBusy}
                 onOpenInbox={onOpenInbox}
                 onConfirm={(postingId) => confirmPosting(postingId)}
                 onDragStart={() => {
@@ -268,6 +316,9 @@ export function UpNextView({
       {state.selected.length > 0 && (
         <BulkBar
           count={state.selected.length}
+          startable={startable.length}
+          runBusy={runBusy}
+          onStart={() => void start(startable)}
           onRemove={() => remove(state.selected)}
           onHold={() => hold(state.selected)}
           onMoveToTop={() => dispatch({ type: 'moveToTop', ids: state.selected })}

@@ -416,6 +416,19 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
           ).length,
       )
       .toBe(3);
+
+    // Run controls in the UI: Start a queued row, then Cancel it once a worker has it (no bridge calls).
+    const runStatus = async () =>
+      (await configured.evaluate(() => window.jobpilot!.runs.list())).find(
+        (row) => row.applicationId === applicationIds[15],
+      )?.status;
+    const row = configured.getByRole('row').filter({ hasText: 'Fake job 16' });
+    await row.hover();
+    await row.getByRole('button', { name: 'Start Fake employer Fake job 16 application' }).click();
+    await expect.poll(runStatus).toMatch(/^(queued|running|awaiting_approval)$/);
+    await row.hover();
+    await row.getByRole('button', { name: 'Cancel Fake employer Fake job 16 application' }).click();
+    await expect.poll(runStatus).toBe('cancelled');
   } finally {
     await app?.close();
     rmSync(userData, { recursive: true, force: true });

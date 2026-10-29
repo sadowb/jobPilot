@@ -1,10 +1,13 @@
+import { useRef } from 'react';
 import { cn } from '../../../components/ui';
+import { controlFocus } from '../../../components/ui/controlStyles';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
 import { V17StatusChip } from '../../../components/V17StatusChip';
 import { isReorderable, type QueueItem } from './queue';
+import { rowRunActions } from './rowActions';
 
-export const QUEUE_GRID = 'grid-cols-[36px_56px_minmax(0,2.6fr)_minmax(0,1.15fr)_80px_100px_184px]';
+export const QUEUE_GRID = 'grid-cols-[36px_56px_minmax(0,2.6fr)_minmax(0,1.15fr)_80px_100px_240px]';
 
 export interface QueueRowProps {
   item: QueueItem;
@@ -18,6 +21,10 @@ export interface QueueRowProps {
   onMoveToTop: () => void;
   onHold: () => void;
   onRemove: () => void;
+  /** Start (queued) or cancel (running / waiting) this job's run; the row hides the button while one is in flight. */
+  onStart: () => void;
+  onCancel?: () => void;
+  runBusy: boolean;
   onOpenInbox: () => void;
   onConfirm?: (postingId: string) => void;
   onDragStart: () => void;
@@ -38,11 +45,36 @@ export function QueueRow(p: QueueRowProps) {
   const draggable = isReorderable(item);
   const tag = stageTag(item);
   const showActions = (p.cursor || p.selected) && draggable;
+  const runAction = rowRunActions(item)[0];
+  const rowRef = useRef<HTMLDivElement>(null);
+  const runLabel = `${runAction === 'start' ? 'Start' : 'Cancel'} ${item.company} ${item.role} application`;
+  // The button unmounts when the row changes stage; park focus on the row so keyboard users keep their place.
+  const runClick = () => {
+    rowRef.current?.focus();
+    (runAction === 'start' ? p.onStart : p.onCancel)?.();
+  };
+  const runButton = runAction && (p.cursor || p.selected) && (
+    <button
+      type="button"
+      className={cn(
+        'h-[30px] flex-none cursor-pointer rounded-[9px] border border-line bg-bg px-2.5 text-[12.5px]! font-semibold! text-ink-2! disabled:cursor-default disabled:opacity-50',
+        controlFocus,
+      )}
+      aria-label={runLabel}
+      disabled={p.runBusy || (runAction === 'cancel' && !p.onCancel)}
+      onClick={runClick}
+    >
+      {runAction === 'start' ? 'Start' : 'Cancel'}
+    </button>
+  );
   const iconBtn =
     'inline-grid size-[30px] flex-none cursor-pointer place-items-center rounded-[9px] border border-line bg-bg p-0 text-ink-2!';
 
   return (
     <div
+      ref={rowRef}
+      tabIndex={-1}
+      onFocus={p.onCursor}
       role="row"
       aria-selected={p.selected}
       className={cn(
@@ -133,9 +165,10 @@ export function QueueRow(p: QueueRowProps) {
         {running && (
           <span className="flex flex-nowrap items-center gap-1.5 text-[12.5px] whitespace-nowrap text-muted">
             <V17Icon name="lock" />
-            running · can’t remove
+            running
           </span>
         )}
+        {!draggable && runButton}
         {item.stage === 'waiting' && (
           <span className="flex flex-nowrap items-center gap-2.5 whitespace-nowrap">
             <span className="inline-block rounded-full bg-[var(--st-amber-bg)] px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap text-[var(--st-amber-fg)]">
@@ -153,6 +186,7 @@ export function QueueRow(p: QueueRowProps) {
         )}
         {draggable && (
           <div className={cn('flex flex-nowrap items-center justify-end', showActions ? 'gap-1.5' : 'gap-0')}>
+            {runButton}
             {showActions && item.stage === 'queued' && (
               <button
                 type="button"

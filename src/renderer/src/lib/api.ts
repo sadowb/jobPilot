@@ -36,6 +36,21 @@ export const useSetRunsPaused = () =>
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.state() }),
   });
 
+export const useRuns = () => useQuery({ queryKey: queryKeys.runs.list(), queryFn: () => bridge().runs.list() });
+
+/** Main enforces the trust gate and idempotency; both mutations just refetch what a run change touches. */
+const invalidateRuns = () =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.runs.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+  ]);
+
+export const useStartRun = () =>
+  useMutation({ mutationFn: (applicationId: string) => bridge().runs.start(applicationId), onSettled: invalidateRuns });
+
+export const useCancelRun = () =>
+  useMutation({ mutationFn: (runId: string) => bridge().runs.cancel(runId), onSettled: invalidateRuns });
+
 export const useApplications = () =>
   useQuery({ queryKey: queryKeys.applications.list(), queryFn: () => bridge().applications.list() });
 
