@@ -422,6 +422,8 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       (await configured.evaluate(() => window.jobpilot!.runs.list())).find(
         (row) => row.applicationId === applicationIds[15],
       )?.status;
+    // Up next pages its rows; find the job the way the owner would.
+    await configured.getByPlaceholder('Search company, role, site').fill('Fake job 16');
     const row = configured.getByRole('row').filter({ hasText: 'Fake job 16' });
     await row.hover();
     await row.getByRole('button', { name: 'Start Fake employer Fake job 16 application' }).click();
