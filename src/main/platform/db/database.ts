@@ -150,6 +150,11 @@ export function startDailyBackups(logger: Pick<Logger, 'error'>): { timer: NodeJ
   };
 }
 
+/** Releases the SQLite handle (and WAL) before the data directory is deleted. */
+export function closeDatabase(): void {
+  db?.$client.close();
+}
+
 /** The stored key (or the file header) did not open the file: a wrong key and a damaged header look identical. */
 export class DatabaseUnlockError extends Error {}
 

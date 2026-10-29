@@ -120,6 +120,10 @@
     "schema": "z.void()"
   },
   {
+    "channel": "settings:removeAllData",
+    "schema": "RemoveAllDataSchema"
+  },
+  {
     "channel": "settings:update",
     "schema": "UpdateSettingsSchema"
   },
