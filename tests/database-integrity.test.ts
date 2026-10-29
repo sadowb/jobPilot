@@ -37,6 +37,7 @@ vi.mock('../src/main/platform/secrets/db-key', () => ({
 
 import {
   backupAndCloseDatabase,
+  closeDatabase,
   DatabaseDamagedError,
   DatabaseUnlockError,
   db,
@@ -223,6 +224,18 @@ describe('hourly backup refresh (N3)', () => {
     await tick();
     expect(readFileSync(todayFile()).equals(refreshed)).toBe(true);
     expect(logger.error).toHaveBeenCalled();
+    db.$client.close();
+  });
+
+  it('refreshes a same-day backup left stale by a crashed session on the first tick after relaunch', async () => {
+    await openDatabase(logger);
+    const opened = readFileSync(todayFile());
+    write('crash-session');
+    closeDatabase(); // crash: no quit-time refresh
+    await openDatabase(logger); // today's backup exists, so open does not rewrite it
+    expect(readFileSync(todayFile()).equals(opened)).toBe(true);
+    await tick();
+    expect(readFileSync(todayFile()).equals(opened)).toBe(false);
     db.$client.close();
   });
 });

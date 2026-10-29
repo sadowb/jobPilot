@@ -121,8 +121,11 @@ async function backupToday(
 ): Promise<void> {
   if (!existsSync(join(backupDirectory(), `jobpilot-${today}.db`))) {
     await createBackup(sqlite, key, today, logger);
+    backedUpChanges = changeCount(sqlite);
+  } else {
+    // An existing backup may predate writes from a session that crashed; the first tick refreshes it.
+    backedUpChanges = -1;
   }
-  backedUpChanges = changeCount(sqlite);
   pruneBackups();
 }
 
