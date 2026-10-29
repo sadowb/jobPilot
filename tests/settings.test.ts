@@ -205,3 +205,11 @@ describe('issue 137: crew size in queue module', () => {
     expect('CREW_SIZE' in queueModule).toBe(false);
   });
 });
+
+describe('sites bound (F5)', () => {
+  it('rejects more than SITES_MAX keys on write', () => {
+    const sites = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`s${i}`, 'auto' as const]));
+    expect(UpdateSettingsSchema.safeParse({ sites: sites(500) }).success).toBe(true);
+    expect(UpdateSettingsSchema.safeParse({ sites: sites(501) }).success).toBe(false);
+  });
+});

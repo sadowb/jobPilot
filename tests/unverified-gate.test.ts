@@ -79,3 +79,20 @@ describe('unverified postings', () => {
     expect(() => new PostingsRepository(db).confirm('01ARZ3NDEKTSV4RRFFQ69G5FAV')).toThrow('Posting is unavailable');
   });
 });
+
+describe('re-ingesting a saved posting', () => {
+  it('keeps the stored url and canonical url when the same job arrives as another variant', () => {
+    const repo = new PostingsRepository(db);
+    const first = {
+      ...form(true),
+      ats: 'lever' as const,
+      ats_job_id: '42',
+      canonical_url: 'https://jobs.lever.co/acme/42',
+    };
+    const id = repo.ingest(first);
+    expect(repo.ingest({ ...first, canonical_url: 'https://jobs.lever.co/acme/42/apply' })).toBe(id);
+    expect(sqlite.prepare('SELECT url, canonical_url FROM job_posting').all()).toEqual([
+      { url: 'https://jobs.lever.co/acme/42', canonical_url: 'https://jobs.lever.co/acme/42' },
+    ]);
+  });
+});

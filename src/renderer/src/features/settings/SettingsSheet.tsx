@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { KbdKey } from '../../components/KbdKey';
-import { Button, cn, Dialog, Segmented } from '../../components/ui';
+import { Button, cn, Segmented } from '../../components/ui';
 import { useModalDialog } from '../../components/ui/Dialog';
 import { useExportRecoveryKey, useSettings, useUpdateSettings } from '../../lib/api';
 import { useTheme } from '../../lib/theme';
@@ -60,16 +60,13 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const submitMode = settings?.submitMode ?? DEFAULT_SETTINGS.submitMode;
   const limits = settings?.limits ?? DEFAULT_SETTINGS.limits;
   const [advancedOpen, setAdvancedOpen] = useState(true);
-  const [confirmAuto, setConfirmAuto] = useState(false);
   const sheet = useRef<HTMLDialogElement>(null);
   // Same primitive as Add jobs: native modal <dialog> (inert background, Tab trap, focus restored on close).
   useModalDialog(sheet);
 
-  // Auto submits applications without a review, so it never switches on with one click.
+  // Switching to Auto is confirmed by a native dialog in main; a declined request leaves the mode on Review.
   const pickSubmitMode = (mode: SubmitMode) => {
-    if (mode === submitMode) return;
-    if (mode === 'auto') setConfirmAuto(true);
-    else updateSettings.mutate({ submitMode: mode });
+    if (mode !== submitMode) updateSettings.mutate({ submitMode: mode });
   };
 
   return (
@@ -273,33 +270,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <KbdKey>Esc</KbdKey>
         </button>
       </div>
-      <Dialog
-        open={confirmAuto}
-        onClose={() => setConfirmAuto(false)}
-        eyebrow="Submit mode"
-        title="Submit without review?"
-        closeLabel="Cancel"
-        className="w-[min(520px,calc(100vw-32px))]"
-        onSubmit={() => {
-          updateSettings.mutate({ submitMode: 'auto' });
-          setConfirmAuto(false);
-        }}
-        actions={
-          <>
-            <Button type="button" size="sm" onClick={() => setConfirmAuto(false)}>
-              Keep review
-            </Button>
-            <Button type="submit" variant="primary" size="sm">
-              Submit automatically
-            </Button>
-          </>
-        }
-      >
-        <p className="m-0 text-[14px] leading-normal">
-          In Auto with limits the crew presses the final Submit button itself once every answer is set. Nothing is shown
-          to you first. The hard limits under Advanced still apply.
-        </p>
-      </Dialog>
     </dialog>
   );
 }

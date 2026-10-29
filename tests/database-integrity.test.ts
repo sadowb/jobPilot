@@ -36,6 +36,7 @@ vi.mock('../src/main/platform/secrets/db-key', () => ({
 }));
 
 import {
+  backupAndCloseDatabase,
   DatabaseDamagedError,
   DatabaseUnlockError,
   db,
@@ -155,5 +156,35 @@ describe('restoreBackup', () => {
 
   it('rejects names that are not backups', async () => {
     await expect(restoreBackup('../jobpilot.db')).rejects.toThrow('Unknown backup.');
+  });
+});
+
+describe('backupAndCloseDatabase (PERS-N3)', () => {
+  const today = () => `jobpilot-${new Date().toISOString().slice(0, 10)}.db`;
+  const note = () =>
+    db.$client.prepare("SELECT value FROM settings WHERE key = 'note'").pluck().get() as string | undefined;
+
+  it("refreshes today backup on close so a same-day restore keeps the day's writes", async () => {
+    await openDatabase(logger);
+    db.$client.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('note', 'sara', 0)").run();
+    await backupAndCloseDatabase(logger);
+    expect(readdirSync(backups()).filter((n) => n.endsWith('.tmp'))).toEqual([]);
+
+    await restoreBackup(today());
+    await openDatabase(logger);
+    expect(note()).toBe('sara');
+    db.$client.close();
+  });
+
+  it('leaves the existing backup untouched when the database fails its integrity check', async () => {
+    await openDatabase(logger);
+    const before = readFileSync(join(backups(), today()));
+    db.$client.pragma('wal_checkpoint(TRUNCATE)');
+    db.$client.pragma('cache_size = 0'); // force quick_check to read the damaged pages from disk
+    overwrite(file(), 8192, randomBytes(2048));
+    await backupAndCloseDatabase(logger);
+    expect(readFileSync(join(backups(), today())).equals(before)).toBe(true);
+    expect(logger.error).toHaveBeenCalled();
+    expect(db.$client.open).toBe(false);
   });
 });

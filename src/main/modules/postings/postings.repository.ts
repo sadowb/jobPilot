@@ -4,6 +4,7 @@ import type { FillPlanDto, PostingFormDto } from '../../../shared/dto';
 import * as schema from '../../platform/db/schema';
 import { canonicalKey } from './canonical';
 import { answerLibrary, company, jobPosting, postingQuestion } from './postings.entity';
+import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 export type PostingsDb = BetterSQLite3Database<typeof schema>;
 
@@ -12,7 +13,7 @@ export class PostingsRepository {
 
   get(postingId: string) {
     const posting = this.db.select().from(jobPosting).where(eq(jobPosting.id, postingId)).get();
-    if (!posting || posting.deletedAt !== null) throw new Error('Posting is unavailable.');
+    if (!posting || posting.deletedAt !== null) throw new UserFacingError('Posting is unavailable.');
     return posting;
   }
 
@@ -24,7 +25,7 @@ export class PostingsRepository {
       .where(and(eq(jobPosting.id, postingId), isNull(jobPosting.deletedAt)))
       .returning({ id: jobPosting.id })
       .get();
-    if (!done) throw new Error('Posting is unavailable.');
+    if (!done) throw new UserFacingError('Posting is unavailable.');
   }
 
   ingest(form: PostingFormDto): string {
@@ -54,6 +55,7 @@ export class PostingsRepository {
         .values({
           companyId: companyRow.id,
           url: form.canonical_url,
+          // A re-paste (tracking params, trailing slash) must not rewrite the stored url or canonical url.
           canonicalUrl: existing?.canonicalUrl ?? form.canonical_url,
           ats: form.ats,
           atsJobId: form.ats_job_id,
@@ -71,7 +73,6 @@ export class PostingsRepository {
           target: jobPosting.canonicalUrl,
           set: {
             companyId: companyRow.id,
-            url: form.canonical_url,
             ats: form.ats,
             atsJobId: form.ats_job_id,
             title: form.title,

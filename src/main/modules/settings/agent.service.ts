@@ -10,6 +10,7 @@ import { loggerFor } from '../observability/log.service';
 import { redact } from '../observability/redact';
 import { SettingsRepository } from './settings.repository';
 import { claudeKeyService } from './settings.service';
+import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 export class AgentSettingsService implements AgentProvider {
   readonly id = 'claude' as const;
@@ -74,15 +75,20 @@ export class AgentSettingsService implements AgentProvider {
     return this.state();
   }
 
-  /** Auto-discovery only: the renderer cannot name a path. */
+  /**
+   * Auto-discovery only: the renderer cannot name a path. A confirmed choice survives unless that executable is
+   * gone or no longer verifies as Claude Code.
+   */
   async detect() {
+    const saved = this.preferences();
+    if (saved.confirmed && saved.path && (await detectClaude(saved.path))) return this.state();
     return this.adopt(await detectClaude());
   }
 
   /** `filePath` comes from the native picker in main; a file that is not Claude Code leaves settings untouched. */
   async chooseCandidate(filePath: string) {
     const detected = await detectClaude(filePath);
-    if (!detected) throw new Error('That file is not Claude Code.');
+    if (!detected) throw new UserFacingError('That file is not Claude Code.');
     return this.adopt(detected);
   }
 
@@ -91,7 +97,7 @@ export class AgentSettingsService implements AgentProvider {
     const parsed = SaveAgentSchema.parse(input);
     const saved = this.preferences();
     const candidate = this.detected ?? (saved.confirmed && saved.path ? await detectClaude(saved.path) : null);
-    if (!candidate) throw new Error('No Claude candidate to confirm. Find or choose Claude first.');
+    if (!candidate) throw new UserFacingError('No Claude candidate to confirm. Find or choose Claude first.');
     this.detected = candidate;
     this.repository.storeAgentPreferences({ ...parsed, ...candidate, confirmed: true });
     this.login = 'unknown';
@@ -100,7 +106,7 @@ export class AgentSettingsService implements AgentProvider {
 
   async prepare(): Promise<void> {
     const saved = this.preferences();
-    if (!saved.confirmed || !saved.path) throw new Error('Confirm the Claude path in Settings → Agent.');
+    if (!saved.confirmed || !saved.path) throw new UserFacingError('Confirm the Claude path in Settings → Agent.');
     const state = await this.state();
     if (state.status !== 'ready') throw new Error(state.status);
   }

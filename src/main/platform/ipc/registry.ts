@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
-import type { z } from 'zod';
+import { ZodError, type z } from 'zod';
 import type { Logger } from 'pino';
+import { UserFacingError } from './user-facing-error';
 import type { IpcValidationError } from '../../../shared/ipc';
 
 type IpcLogger = Pick<Logger, 'debug' | 'warn' | 'error'>;
@@ -14,6 +15,20 @@ export interface IpcContext {
 export interface IpcHandler {
   channel: string;
   register(isTrustedSender: (event: IpcMainInvokeEvent) => boolean, logger: IpcLogger): void;
+}
+
+/**
+ * What the renderer may learn about a failure. Details go to the log only.
+ * Only UserFacingError (and the validation summary) keeps its text; everything else is generic.
+ */
+function publicError(error: unknown): Error {
+  if (error instanceof ZodError) {
+    const issue = error.issues[0];
+    const where = issue?.path.map(String).join('.');
+    return new Error(issue ? `Invalid request: ${where ? `${where}: ` : ''}${issue.message}` : 'Invalid request.');
+  }
+  if (error instanceof UserFacingError) return error;
+  return new Error('Something went wrong. Try again.');
 }
 
 /** channel -> zod input schema -> handler. The renderer sends one payload argument (or none for `z.void()`). */
@@ -40,7 +55,7 @@ export function defineHandler<S extends z.ZodType, R>(
           return await run(parsed.data, { event, window: BrowserWindow.fromWebContents(event.sender) });
         } catch (error) {
           logger.error({ channel, err: error }, 'IPC handler failed');
-          throw error;
+          throw publicError(error);
         }
       });
     },

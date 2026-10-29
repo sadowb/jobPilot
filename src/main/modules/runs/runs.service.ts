@@ -16,13 +16,14 @@ import { applyConcurrency, runPreferences, runsPauseReason, storeRunsPause } fro
 import { PostingService } from '../postings/postings.service';
 import { getProfile } from '../profile/profile.service';
 import { RunsRepository } from './runs.repository';
+import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 const MAX_ATTEMPTS = 3;
 /** Cap on the agent's structured result before it is parsed and stored. */
 const MAX_RESULT_BYTES = 256 * 1024;
 
 /** A failure whose message is safe and useful to show the owner. */
-class RunInputError extends Error {}
+class RunInputError extends UserFacingError {}
 
 /** Defense in depth: ingest only stores https URLs, but the run layer must not hand anything else to a browser. */
 function assertBrowsableUrl(raw: string): void {
@@ -152,9 +153,9 @@ export class RunsService {
     if (!this.agent || !this.browser) throw new Error('No application provider is configured.');
     await this.agent.prepare?.();
     const application = new ApplicationsService(this.db).list().find((row) => row.id === applicationId);
-    if (!application) throw new Error('Application is unavailable.');
+    if (!application) throw new UserFacingError('Application is unavailable.');
     // Trust gate: a page accepted on apply-form evidence alone needs the owner's one-time confirmation first.
-    if (!application.verified) throw new Error('Confirm this unverified page before starting a run.');
+    if (!application.verified) throw new UserFacingError('Confirm this unverified page before starting a run.');
     const agent = this.agent.id;
     const browser = this.browser.id;
     const previous = this.repository.latest(applicationId);
@@ -185,7 +186,7 @@ export class RunsService {
         });
       }
       const result = created ?? this.repository.active(applicationId);
-      if (!result) throw new Error('Run could not be queued.');
+      if (!result) throw new UserFacingError('Run could not be queued.');
       return result;
     });
     emitDataChanged({ entity: 'run', id: row.id });
@@ -282,7 +283,7 @@ export class RunsService {
       const row = this.repository.get(runId);
       if (row.status !== 'running' || !row.sessionId) return;
       const application = new ApplicationsService(this.db).list().find((item) => item.id === row.applicationId);
-      if (!application) throw new Error('Application is unavailable.');
+      if (!application) throw new UserFacingError('Application is unavailable.');
       const postings = new PostingService(this.db, loggerFor('postings'));
       const posting = postings.get(application.postingId);
       const fillPlan = postings.resolveFillPlan(application.id);
