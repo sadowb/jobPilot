@@ -6,11 +6,10 @@ import { app, BrowserWindow, nativeTheme } from 'electron';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Channels } from '../../../shared/ipc';
+import { loggerFor } from '../observability/log.service';
 import {
   AgentPreferencesSchema,
   AppSettingsSchema,
-  CREW_DEFAULT,
-  CREW_MAX,
   SettingsLimitsSchema,
   ThemeSourceSchema,
   UpdateSettingsSchema,
@@ -58,14 +57,24 @@ export function markProfileMigrated(database: JobPilotDb): void {
   new SettingsRepository(database).markProfileMigrated();
 }
 
+/**
+ * Stored values come from disk (hand edits, other builds), so reads never throw: an invalid value logs a warning
+ * and falls back to the default. Writes stay strict (UpdateSettingsSchema).
+ */
+function tolerantRead<S extends z.ZodType>(schema: S, raw: unknown, empty: unknown, name: string): z.output<S> {
+  const parsed = schema.safeParse(raw ?? empty);
+  if (parsed.success) return parsed.data;
+  loggerFor('settings').warn({ setting: name }, 'Stored setting is invalid; using the default');
+  return schema.parse(empty);
+}
+
 export function applyConcurrency(database: JobPilotDb): number {
-  return z
-    .number()
-    .int()
-    .min(1)
-    .max(CREW_MAX)
-    .default(CREW_DEFAULT)
-    .parse(new SettingsRepository(database).applyConcurrency());
+  return tolerantRead(
+    AppSettingsSchema.shape.crew,
+    new SettingsRepository(database).applyConcurrency(),
+    undefined,
+    'runs.concurrency',
+  );
 }
 
 export function getSettings(database: JobPilotDb = db): AppSettings {
@@ -74,9 +83,9 @@ export function getSettings(database: JobPilotDb = db): AppSettings {
     // Normalised on read: a `true` stored by an older build or a direct write must not reach the app.
     autopilot: false,
     crew: applyConcurrency(database),
-    submitMode: repository.submitMode(),
-    sites: repository.sites(),
-    limits: repository.limits(),
+    submitMode: tolerantRead(AppSettingsSchema.shape.submitMode, repository.submitMode(), undefined, 'runs.submitMode'),
+    sites: tolerantRead(AppSettingsSchema.shape.sites, repository.sites(), undefined, 'runs.sites'),
+    limits: tolerantRead(SettingsLimitsSchema, repository.limits(), {}, 'runs.limits'),
   });
 }
 
@@ -109,12 +118,21 @@ export function updateSettings(input: UpdateSettingsInput, database: JobPilotDb 
 
 export function runPreferences(database: JobPilotDb) {
   const repository = new SettingsRepository(database);
-  const limits = SettingsLimitsSchema.parse(repository.limits() ?? {});
+  const limits = tolerantRead(SettingsLimitsSchema, repository.limits(), {}, 'runs.limits');
   return {
-    model: AgentPreferencesSchema.parse(repository.agentPreferences() ?? {}).model,
+    model: tolerantRead(AgentPreferencesSchema, repository.agentPreferences(), {}, 'agents.claude').model,
     timeoutMs: limits.runSeconds * 1000,
     stuckMs: limits.stuckSeconds * 1000,
   };
+}
+
+/** The owner's queue pause survives relaunch; anything but a stored `true` reads as not paused. */
+export function runsPaused(database: JobPilotDb): boolean {
+  return new SettingsRepository(database).runsPaused() === true;
+}
+
+export function storeRunsPaused(database: JobPilotDb, paused: boolean): void {
+  new SettingsRepository(database).storeRunsPaused(paused);
 }
 
 export function claudeKeyService(database: JobPilotDb): AnthropicKeyStore {

@@ -51,6 +51,14 @@ export class SettingsRepository {
     this.setSetting('runs.concurrency', value);
   }
 
+  runsPaused(): unknown {
+    return this.getSetting('runs.paused');
+  }
+
+  storeRunsPaused(value: boolean): void {
+    this.setSetting('runs.paused', value);
+  }
+
   autopilot(): unknown {
     return this.getSetting('runs.autopilot');
   }

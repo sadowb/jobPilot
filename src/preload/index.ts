@@ -80,10 +80,15 @@ const bridge: JobPilotBridge = {
   },
   runs: {
     async start(applicationId) {
-      return RunSummarySchema.parse(await invoke(Channels.startRun, StartRunSchema.parse({ applicationId })));
+      // Short message only: a zod issue would leak the id regex to the renderer.
+      const parsed = StartRunSchema.safeParse({ applicationId });
+      if (!parsed.success) throw new TypeError('That application id is not valid.');
+      return RunSummarySchema.parse(await invoke(Channels.startRun, parsed.data));
     },
     async cancel(runId) {
-      return RunSummarySchema.parse(await invoke(Channels.cancelRun, CancelRunSchema.parse({ runId })));
+      const parsed = CancelRunSchema.safeParse({ runId });
+      if (!parsed.success) throw new TypeError('That run id is not valid.');
+      return RunSummarySchema.parse(await invoke(Channels.cancelRun, parsed.data));
     },
     async list() {
       return z.array(RunSummarySchema).parse(await invoke(Channels.listRuns));

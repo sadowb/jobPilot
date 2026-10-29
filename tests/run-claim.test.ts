@@ -68,11 +68,11 @@ describe('RunsService.initialize', () => {
     const service = new RunsService(db, dir);
     await service.initialize();
     await service.stop();
-    // Requeued (audited) and re-claimed by the resumed pump; it only fails afterwards because the test has no provider.
+    // Requeued (audited) and left queued: the queue starts paused until the owner resumes.
     expect(AuditService.record).toHaveBeenCalledWith(
       expect.objectContaining({ runId: fresh.id, fromStatus: 'running', toStatus: 'queued' }),
     );
-    expect(repository.get(fresh.id).attempts).toBe(2);
+    expect(repository.get(fresh.id)).toMatchObject({ status: 'queued', attempts: 1 });
     expect(existsSync(join(dir, 'apply-queue.db'))).toBe(false);
     expect(repository.get(worn.id)).toMatchObject({ status: 'failed', error: 'interrupted repeatedly' });
   });

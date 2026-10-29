@@ -12,16 +12,34 @@ import { ApplyWorker } from '../../platform/queue/apply';
 import { ApplicationsService } from '../applications/applications.service';
 import { AuditService, RunTraceService } from '../observability/observability.service';
 import { loggerFor } from '../observability/log.service';
-import { applyConcurrency, runPreferences } from '../settings/settings.service';
+import { applyConcurrency, runPreferences, runsPaused, storeRunsPaused } from '../settings/settings.service';
 import { PostingService } from '../postings/postings.service';
 import { getProfile } from '../profile/profile.service';
 import { RunsRepository } from './runs.repository';
 
 const MAX_ATTEMPTS = 3;
+/** Cap on the agent's structured result before it is parsed and stored. */
+const MAX_RESULT_BYTES = 256 * 1024;
+
+/** A failure whose message is safe and useful to show the owner. */
+class RunInputError extends Error {}
+
+/** Defense in depth: ingest only stores https URLs, but the run layer must not hand anything else to a browser. */
+function assertBrowsableUrl(raw: string): void {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new RunInputError('The posting URL is not valid.');
+  }
+  if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password)
+    throw new RunInputError('The posting URL must be a plain http(s) address.');
+}
 
 export class RunsService {
   private readonly repository: RunsRepository;
   private readonly worker: ApplyWorker;
+  private stopping = false;
 
   constructor(
     private readonly db: JobPilotDb,
@@ -57,12 +75,19 @@ export class RunsService {
     for (const name of readdirSync(this.userData))
       if (/^(apply|memory)-queue\.db/.test(name)) rmSync(join(this.userData, name), { force: true });
     // JobPilot is single-instance, so a `running` row at startup belongs to a dead process.
+    let interrupted = 0;
     for (const row of this.repository.list()) {
       if (row.status !== 'running') continue;
-      if (row.attempts < MAX_ATTEMPTS) this.requeue(row.id);
+      interrupted++;
+      if (row.attempts < MAX_ATTEMPTS) this.requeue(row.id, 'app restarted');
       else this.transition(row.id, 'failed', { error: 'interrupted repeatedly' });
     }
-    this.resume();
+    // Gentle footprint (ADR 0016): the owner's pause survives relaunch, and interrupted work waits for an explicit resume.
+    if (interrupted > 0) {
+      storeRunsPaused(this.db, true);
+      loggerFor('runs').warn({ interrupted }, 'Interrupted runs found; queue starts paused');
+    }
+    if (!runsPaused(this.db)) this.worker.resume();
   }
 
   /** Slot claim: the run table is the queue (ADR 0017). Returns the claimed run id. */
@@ -95,7 +120,7 @@ export class RunsService {
     return row.id;
   }
 
-  private requeue(runId: string): void {
+  private requeue(runId: string, reason: string): void {
     this.db.transaction(() => {
       const row = this.repository.update(runId, { status: 'queued' });
       AuditService.record({
@@ -105,7 +130,7 @@ export class RunsService {
         actor: 'system',
         fromStatus: 'running',
         toStatus: 'queued',
-        payload: { reason: 'app restarted' },
+        payload: { reason },
       });
     });
     emitDataChanged({ entity: 'run', id: runId });
@@ -121,6 +146,9 @@ export class RunsService {
       this.worker.enqueue();
       return RunSummarySchema.parse(existing);
     }
+    // Idempotent: an unreviewed approval is never discarded by a stray start. Cancel it first to redo the run.
+    const awaiting = this.repository.latest(applicationId);
+    if (awaiting?.status === 'awaiting_approval') return RunSummarySchema.parse(awaiting);
     if (!this.agent || !this.browser) throw new Error('No application provider is configured.');
     await this.agent.prepare?.();
     const application = new ApplicationsService(this.db).list().find((row) => row.id === applicationId);
@@ -131,13 +159,12 @@ export class RunsService {
     const browser = this.browser.id;
     const previous = this.repository.latest(applicationId);
     const attempt = previous ? previous.attempt + 1 : 1;
-    // A new attempt retires a run still waiting on the owner, so one application never holds two live approvals or tabs.
-    const replaced =
-      previous && (previous.status === 'awaiting_approval' || previous.status === 'needs_you') ? previous : undefined;
+    // A new attempt retires a run stuck in needs_you, so one application never holds two live approvals or tabs.
+    const replaced = previous?.status === 'needs_you' ? previous : undefined;
     const row = this.db.transaction(() => {
       if (replaced) {
         this.transition(replaced.id, 'failed', { error: 'Replaced by a new attempt' });
-        this.repository.expireApprovals(replaced.id);
+        this.repository.closeApprovals(replaced.id, 'expired');
       }
       const created = this.repository.create({
         applicationId,
@@ -170,17 +197,25 @@ export class RunsService {
   async cancel(runId: string) {
     const row = this.repository.get(runId);
     if (row.status === 'queued' || row.status === 'running') this.transition(runId, 'cancelled');
+    else if (row.status === 'awaiting_approval' || row.status === 'needs_you')
+      this.db.transaction(() => {
+        this.transition(runId, 'cancelled');
+        this.repository.closeApprovals(runId, 'rejected');
+      });
     await this.worker.cancel(runId);
     return RunSummarySchema.parse(this.repository.get(runId));
   }
 
   pause() {
+    storeRunsPaused(this.db, true);
     return this.worker.pause();
   }
   resume() {
+    storeRunsPaused(this.db, false);
     return this.worker.resume();
   }
   async stop(): Promise<void> {
+    this.stopping = true;
     await this.worker.stop();
     await Promise.allSettled(
       this.repository
@@ -203,7 +238,7 @@ export class RunsService {
           : row.status === 'running'
             ? ['awaiting_approval', 'needs_you', 'failed', 'cancelled']
             : row.status === 'awaiting_approval' || row.status === 'needs_you'
-              ? ['failed'] // docs/architecture.md run state machine
+              ? ['failed', 'cancelled'] // docs/architecture.md run state machine
               : [];
       if (!allowed.includes(status)) throw new Error(`Invalid run transition: ${row.status} -> ${status}`);
       const updated = this.repository.update(runId, {
@@ -241,6 +276,7 @@ export class RunsService {
       const postings = new PostingService(this.db, loggerFor('postings'));
       const posting = postings.get(application.postingId);
       const fillPlan = postings.resolveFillPlan(application.id);
+      assertBrowsableUrl(posting.canonicalUrl);
       const tab = await this.browser.openTab(runId, posting.canonicalUrl);
       signal.throwIfAborted();
       this.repository.update(runId, { tabId: tab.tabId });
@@ -310,6 +346,7 @@ export class RunsService {
           }
         })(),
       ]);
+      if (JSON.stringify(raw).length > MAX_RESULT_BYTES) throw new RunInputError('The agent result is too large.');
       const result = RunResultSchema.parse(raw);
       if (this.repository.get(runId).status !== 'running') return;
       signal.throwIfAborted();
@@ -338,14 +375,20 @@ export class RunsService {
         'Run execution failed',
       );
       const current = this.repository.get(runId);
-      if (current.status === 'running' || current.status === 'queued') {
+      if (current.status === 'running' && signal.aborted && this.stopping) {
+        // Quitting is an interruption, not a failure: re-queue it and keep the queue paused for the next launch.
+        this.requeue(runId, 'app quit');
+        storeRunsPaused(this.db, true);
+      } else if (current.status === 'running' || current.status === 'queued') {
         const setup = error instanceof Error && ['not_logged_in', 'tool_not_installed'].includes(error.message);
         this.transition(runId, setup && current.status === 'running' ? 'needs_you' : 'failed', {
           error: setup
             ? 'Open Settings → Agent to configure Claude.'
             : signal.aborted
               ? 'Run aborted'
-              : 'Provider failed or returned an invalid result',
+              : error instanceof RunInputError
+                ? error.message
+                : 'Provider failed or returned an invalid result',
         });
       }
     } finally {
