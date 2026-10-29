@@ -3,7 +3,7 @@ import { readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { JobPilotDb } from '../../platform/db/database';
-import { type RunStatus, RunSummarySchema } from '../../../shared/dto';
+import { type RunsPauseReason, type RunsState, type RunStatus, RunSummarySchema } from '../../../shared/dto';
 import { RunEventSchema, RunResultSchema, type AgentProvider, type RunResult } from '../../platform/agents/types';
 import type { BrowserProvider } from '../../platform/browsers/types';
 import { MEMORY_TOOLS, type MemoryProvider } from '../../platform/memory/types';
@@ -12,7 +12,7 @@ import { ApplyWorker } from '../../platform/queue/apply';
 import { ApplicationsService } from '../applications/applications.service';
 import { AuditService, RunTraceService } from '../observability/observability.service';
 import { loggerFor } from '../observability/log.service';
-import { applyConcurrency, runPreferences, runsPaused, storeRunsPaused } from '../settings/settings.service';
+import { applyConcurrency, runPreferences, runsPauseReason, storeRunsPause } from '../settings/settings.service';
 import { PostingService } from '../postings/postings.service';
 import { getProfile } from '../profile/profile.service';
 import { RunsRepository } from './runs.repository';
@@ -84,10 +84,10 @@ export class RunsService {
     }
     // Gentle footprint (ADR 0016): the owner's pause survives relaunch, and interrupted work waits for an explicit resume.
     if (interrupted > 0) {
-      storeRunsPaused(this.db, true);
+      this.setPause('interrupted');
       loggerFor('runs').warn({ interrupted }, 'Interrupted runs found; queue starts paused');
     }
-    if (!runsPaused(this.db)) this.worker.resume();
+    if (!runsPauseReason(this.db)) this.worker.resume();
   }
 
   /** Slot claim: the run table is the queue (ADR 0017). Returns the claimed run id. */
@@ -206,12 +206,22 @@ export class RunsService {
     return RunSummarySchema.parse(this.repository.get(runId));
   }
 
+  state(): RunsState {
+    const reason = runsPauseReason(this.db);
+    return { paused: reason !== null, reason };
+  }
+  /** Main owns the pause flag; the renderer reads it through `state()` and refetches on this change event. */
+  private setPause(reason: RunsPauseReason | null) {
+    storeRunsPause(this.db, reason);
+    emitDataChanged({ entity: 'run', id: 'queue' });
+  }
   pause() {
-    storeRunsPaused(this.db, true);
+    // An interrupted/quit pause keeps its reason so the owner still sees why.
+    if (!runsPauseReason(this.db)) this.setPause('owner');
     return this.worker.pause();
   }
   resume() {
-    storeRunsPaused(this.db, false);
+    this.setPause(null);
     return this.worker.resume();
   }
   async stop(): Promise<void> {
@@ -378,7 +388,7 @@ export class RunsService {
       if (current.status === 'running' && signal.aborted && this.stopping) {
         // Quitting is an interruption, not a failure: re-queue it and keep the queue paused for the next launch.
         this.requeue(runId, 'app quit');
-        storeRunsPaused(this.db, true);
+        this.setPause('quit');
       } else if (current.status === 'running' || current.status === 'queued') {
         const setup = error instanceof Error && ['not_logged_in', 'tool_not_installed'].includes(error.message);
         this.transition(runId, setup && current.status === 'running' ? 'needs_you' : 'failed', {

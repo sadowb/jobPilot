@@ -51,12 +51,13 @@ export class SettingsRepository {
     this.setSetting('runs.concurrency', value);
   }
 
-  runsPaused(): unknown {
-    return this.getSetting('runs.paused');
+  runsPause(): unknown {
+    return this.getSetting('runs.pause');
   }
 
-  storeRunsPaused(value: boolean): void {
-    this.setSetting('runs.paused', value);
+  /** A pause reason, or `false` when the queue is running (the value column is NOT NULL). */
+  storeRunsPause(value: string | false): void {
+    this.setSetting('runs.pause', value);
   }
 
   autopilot(): unknown {
@@ -96,7 +97,11 @@ export class SettingsRepository {
   }
 
   markProfileMigrated(): void {
-    this.db.insert(settings).values({ key, value: true }).onConflictDoNothing().run();
+    this.db
+      .insert(settings)
+      .values({ key, value: true })
+      .onConflictDoUpdate({ target: settings.key, set: { value: true, updatedAt: Date.now() } })
+      .run();
   }
 
   lastConsolidation(): unknown {

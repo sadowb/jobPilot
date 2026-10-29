@@ -12,6 +12,7 @@ import type {
   ThemeSource,
   ThemeState,
   RunSummaryDto,
+  RunsState,
   AppSettings,
   UpdateSettingsInput,
   SetApplicationStatusInput,
@@ -44,6 +45,7 @@ export const Channels = {
   pauseRuns: 'runs:pause',
   resumeRuns: 'runs:resume',
   listRuns: 'runs:list',
+  getRunsState: 'runs:state',
   ingestPosting: 'postings:ingest',
   confirmPosting: 'postings:confirm',
   listApplications: 'applications:list',
@@ -118,6 +120,7 @@ export interface JobPilotBridge {
     pause(): Promise<boolean>;
     resume(): Promise<boolean>;
     list(): Promise<RunSummaryDto[]>;
+    state(): Promise<RunsState>;
   };
   postings: { ingest(url: string): Promise<IngestResult>; confirm(postingId: string): Promise<boolean> };
   applications: {

@@ -32,7 +32,7 @@ describe('queue keys', () => {
     expect(queueKeyToResult(ev('Backspace'), s0, false)?.remove).toBe(true);
     expect(queueKeyToResult(ev('Delete'), s0, false)?.remove).toBe(true);
     expect(queueKeyToResult(ev('z', { metaKey: true }), s0, false)?.undo).toBe(true);
-    expect(queueKeyToResult(ev('p'), s0, false)?.action).toEqual({ type: 'togglePause' });
+    expect(queueKeyToResult(ev('p'), s0, false)?.togglePause).toBe(true);
   });
   it('Space toggles the cursor row, and does nothing without one', () => {
     expect(queueKeyToResult(ev(' '), s0, false)).toBeNull();

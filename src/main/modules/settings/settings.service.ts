@@ -13,6 +13,8 @@ import {
   SettingsLimitsSchema,
   ThemeSourceSchema,
   UpdateSettingsSchema,
+  RunsPauseReasonSchema,
+  type RunsPauseReason,
   type AppSettings,
   type ThemeSource,
   type ThemeState,
@@ -50,7 +52,8 @@ export function broadcastThemeChanges(): void {
 
 export function profileMigrationDone(database: JobPilotDb): boolean {
   const value = new SettingsRepository(database).profileMigrationValue();
-  return value === undefined ? false : z.literal(true).parse(value);
+  // A corrupt value counts as not migrated; markProfileMigrated overwrites it.
+  return tolerantRead(z.literal(true).optional(), value, undefined, 'profile.localStorageMigration.v1') === true;
 }
 
 export function markProfileMigrated(database: JobPilotDb): void {
@@ -126,13 +129,14 @@ export function runPreferences(database: JobPilotDb) {
   };
 }
 
-/** The owner's queue pause survives relaunch; anything but a stored `true` reads as not paused. */
-export function runsPaused(database: JobPilotDb): boolean {
-  return new SettingsRepository(database).runsPaused() === true;
+/** The queue pause survives relaunch; anything but a stored valid reason reads as not paused. */
+export function runsPauseReason(database: JobPilotDb): RunsPauseReason | null {
+  const parsed = RunsPauseReasonSchema.safeParse(new SettingsRepository(database).runsPause());
+  return parsed.success ? parsed.data : null;
 }
 
-export function storeRunsPaused(database: JobPilotDb, paused: boolean): void {
-  new SettingsRepository(database).storeRunsPaused(paused);
+export function storeRunsPause(database: JobPilotDb, reason: RunsPauseReason | null): void {
+  new SettingsRepository(database).storeRunsPause(reason ?? false);
 }
 
 export function claudeKeyService(database: JobPilotDb): AnthropicKeyStore {
@@ -140,7 +144,12 @@ export function claudeKeyService(database: JobPilotDb): AnthropicKeyStore {
 }
 
 export function lastConsolidation(database: JobPilotDb): number | undefined {
-  return z.number().int().optional().parse(new SettingsRepository(database).lastConsolidation());
+  return tolerantRead(
+    z.number().int().optional(),
+    new SettingsRepository(database).lastConsolidation(),
+    undefined,
+    'memory.lastConsolidatedAt',
+  );
 }
 
 export function markConsolidated(database: JobPilotDb, at: number): void {

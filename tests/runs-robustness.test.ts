@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobPilotDb } from '../src/main/platform/db/database';
 import * as schema from '../src/main/platform/db/schema';
 import type { PostingFormDto } from '../src/shared/dto';
-import { CREW_DEFAULT } from '../src/shared/dto';
+import { CREW_DEFAULT, RunsStateSchema } from '../src/shared/dto';
+import { emitDataChanged } from '../src/main/platform/ipc/events';
 import type { AgentProvider, RunResult, RunSpec } from '../src/main/platform/agents/types';
 import type { BrowserProvider } from '../src/main/platform/browsers/types';
 import { ApplicationsService } from '../src/main/modules/applications/applications.service';
@@ -17,9 +18,11 @@ import { RunsService } from '../src/main/modules/runs/runs.service';
 import { SettingsRepository } from '../src/main/modules/settings/settings.repository';
 import {
   applyConcurrency,
+  lastConsolidation,
+  profileMigrationDone,
   getSettings,
   runPreferences,
-  runsPaused,
+  runsPauseReason,
 } from '../src/main/modules/settings/settings.service';
 
 const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));
@@ -172,7 +175,7 @@ describe('F2 persisted pause', () => {
     const first = service();
     await first.initialize();
     first.pause();
-    expect(runsPaused(db)).toBe(true);
+    expect(runsPauseReason(db)).not.toBeNull();
     const second = service();
     await second.initialize();
     const id = application();
@@ -180,7 +183,7 @@ describe('F2 persisted pause', () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(rows().map((r) => r.status)).toEqual(['queued']);
     second.resume();
-    expect(runsPaused(db)).toBe(false);
+    expect(runsPauseReason(db)).toBeNull();
     await settle(() => rows()[0]?.status === 'awaiting_approval');
   });
 
@@ -198,10 +201,67 @@ describe('F2 persisted pause', () => {
       ['queued', null],
       ['failed', 'interrupted repeatedly'],
     ]);
-    expect(runsPaused(db)).toBe(true);
+    expect(runsPauseReason(db)).not.toBeNull();
     expect(opened).toEqual([]);
     relaunched.resume();
     await settle(() => rows()[0]?.status === 'awaiting_approval');
+  });
+});
+
+describe('runs state (main owns the pause flag)', () => {
+  it('reports the reason and emits a change on pause, resume, interrupted and quit', async () => {
+    const svc = service();
+    expect(svc.state()).toEqual({ paused: false, reason: null });
+    await svc.initialize();
+    svc.pause();
+    expect(RunsStateSchema.parse(svc.state())).toEqual({ paused: true, reason: 'owner' });
+    expect(emitDataChanged).toHaveBeenCalledWith({ entity: 'run', id: 'queue' });
+    svc.resume();
+    expect(svc.state()).toEqual({ paused: false, reason: null });
+  });
+
+  it('keeps the interrupted reason when the owner pauses on top of it', async () => {
+    const a = application();
+    sqlite
+      .prepare(
+        "INSERT INTO run (id, application_id, status, agent, browser, attempts, session_id, created_at, updated_at) VALUES ('01ARZ3NDEKTSV4RRFFQ69G5FA1', ?, 'running', 'claude', 'neo', 1, 's', 1, 1)",
+      )
+      .run(a);
+    const svc = service();
+    await svc.initialize();
+    svc.pause();
+    expect(svc.state()).toEqual({ paused: true, reason: 'interrupted' });
+  });
+
+  it('reports quit after a graceful quit re-queued a run', async () => {
+    let started!: () => void;
+    const running = new Promise<void>((resolve) => (started = resolve));
+    agentResult = () => new Promise(() => undefined);
+    agentStarted = started;
+    const svc = service();
+    await svc.initialize();
+    await svc.start(application());
+    await running;
+    await svc.stop();
+    expect(svc.state()).toEqual({ paused: true, reason: 'quit' });
+  });
+
+  it('reads an invalid stored pause as running', () => {
+    new SettingsRepository(db).setSetting('runs.pause', 'banana');
+    expect(service().state()).toEqual({ paused: false, reason: null });
+  });
+});
+
+describe('other boot reads are tolerant', () => {
+  it('lastConsolidation and profileMigrationDone fall back with a warning', () => {
+    const repo = new SettingsRepository(db);
+    repo.setSetting('memory.lastConsolidatedAt', 'yesterday');
+    repo.setSetting('profile.localStorageMigration.v1', 'maybe');
+    expect(lastConsolidation(db)).toBeUndefined();
+    expect(profileMigrationDone(db)).toBe(false);
+    expect(warn).toHaveBeenCalledTimes(2);
+    repo.markProfileMigrated();
+    expect(profileMigrationDone(db)).toBe(true);
   });
 });
 
@@ -265,7 +325,7 @@ describe('F5 graceful quit', () => {
     await running;
     await svc.stop();
     expect(rows().map((r) => r.status)).toEqual(['queued']);
-    expect(runsPaused(db)).toBe(true);
+    expect(runsPauseReason(db)).not.toBeNull();
 
     agentResult = async () => filled;
     const next = service();

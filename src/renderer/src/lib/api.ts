@@ -27,6 +27,15 @@ export function connectDataEvents(): () => void {
   return window.jobpilot?.onDataChanged((change) => void invalidateForChange(change)) ?? (() => undefined);
 }
 
+/** Main owns the queue pause flag; this reads it and refetches when main emits a run change. */
+export const useRunsState = () => useQuery({ queryKey: queryKeys.runs.state(), queryFn: () => bridge().runs.state() });
+
+export const useSetRunsPaused = () =>
+  useMutation({
+    mutationFn: (paused: boolean) => (paused ? bridge().runs.pause() : bridge().runs.resume()),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.state() }),
+  });
+
 export const useApplications = () =>
   useQuery({ queryKey: queryKeys.applications.list(), queryFn: () => bridge().applications.list() });
 

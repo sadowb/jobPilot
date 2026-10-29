@@ -333,7 +333,11 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     expect(
       (await restarted.evaluate(() => window.jobpilot!.runs.list())).find((row) => row.id === interrupted.id),
     ).toMatchObject({ status: 'queued' });
-    await restarted.evaluate(() => window.jobpilot!.runs.resume());
+    // Main is the source of truth: Up next shows why it is paused, and its button drives main.
+    await restarted.getByRole('tab', { name: /Up next/ }).click();
+    await expect(restarted.getByText(/Paused because JobPilot stopped unexpectedly/)).toBeVisible();
+    await restarted.getByRole('button', { name: /Resume queue/ }).click();
+    await expect(restarted.getByRole('button', { name: /Pause queue/ })).toBeVisible();
     await expect
       .poll(
         async () =>
@@ -391,8 +395,11 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     const configured = await app.firstWindow();
     await skipOnboarding(configured);
     await expect(configured.getByRole('navigation', { name: 'Main' })).toBeVisible();
-    // The pause set before the restart survived it.
-    await configured.evaluate(() => window.jobpilot!.runs.resume());
+    // The owner's pause set before the restart survived it, with no interruption notice.
+    await configured.getByRole('tab', { name: /Up next/ }).click();
+    await expect(configured.getByRole('button', { name: /Resume queue/ })).toBeVisible();
+    await expect(configured.getByText(/Paused (because|after) JobPilot/)).toHaveCount(0);
+    await configured.getByRole('button', { name: /Resume queue/ }).click();
     await expect
       .poll(async () =>
         (await configured.evaluate(() => window.jobpilot!.runs.list()))

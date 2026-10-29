@@ -18,6 +18,7 @@ import {
   ClaudeKeyTestSchema,
   MemoryStatusSchema,
   RunSummarySchema,
+  RunsStateSchema,
   StartRunSchema,
   CancelRunSchema,
   ApplicationListItemSchema,
@@ -92,6 +93,9 @@ const bridge: JobPilotBridge = {
     },
     async list() {
       return z.array(RunSummarySchema).parse(await invoke(Channels.listRuns));
+    },
+    async state() {
+      return RunsStateSchema.parse(await invoke(Channels.getRunsState));
     },
     async pause() {
       return z.boolean().parse(await invoke(Channels.pauseRuns));

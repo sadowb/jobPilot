@@ -108,6 +108,10 @@
     "schema": "StartRunSchema"
   },
   {
+    "channel": "runs:state",
+    "schema": "z.void()"
+  },
+  {
     "channel": "secrets:claude:remove",
     "schema": "z.void()"
   },

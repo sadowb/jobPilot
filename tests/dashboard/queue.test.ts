@@ -123,9 +123,6 @@ describe('reorder, pause, add', () => {
     expect(ids(s).slice(4, 6)).toEqual(['asana', 'duolingo']);
     expect(run([{ type: 'reorder', id: 'asana', beforeId: 'mercury' }]).items).toBe(SAMPLE_QUEUE);
   });
-  it('toggles pause', () => {
-    expect(run([{ type: 'togglePause' }]).paused).toBe(true);
-  });
   it('appends new jobs and skips ids already present', () => {
     const item = { ...SAMPLE_QUEUE[4]!, id: 'new-1', company: 'Coinbase' };
     const s = run([
