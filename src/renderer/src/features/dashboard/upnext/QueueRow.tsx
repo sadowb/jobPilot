@@ -1,6 +1,7 @@
 import { cn } from '../../../components/ui';
 import { V17AgentBot } from '../../../components/V17AgentBot';
 import { V17Icon } from '../../../components/V17Icon';
+import { V17StatusChip } from '../../../components/V17StatusChip';
 import { isReorderable, type QueueItem } from './queue';
 
 export const QUEUE_GRID = 'grid-cols-[36px_56px_minmax(0,2.6fr)_minmax(0,1.15fr)_80px_100px_184px]';
@@ -18,6 +19,7 @@ export interface QueueRowProps {
   onHold: () => void;
   onRemove: () => void;
   onOpenInbox: () => void;
+  onConfirm?: (postingId: string) => void;
   onDragStart: () => void;
   onDropOn: () => void;
 }
@@ -105,6 +107,21 @@ export function QueueRow(p: QueueRowProps) {
       <div className="flex min-w-0 flex-col gap-[3px]">
         <span className="text-[13.5px] text-muted">{item.site}</span>
         {item.siteNote && <span className="text-[11.5px] text-need">{item.siteNote}</span>}
+        {item.unverifiedPostingId && (
+          <span className="flex flex-wrap items-center gap-1.5">
+            <V17StatusChip className="bg-[var(--st-amber-bg)] text-[var(--st-amber-fg)]">Unverified page</V17StatusChip>
+            <button
+              type="button"
+              className="cursor-pointer border-0 bg-transparent p-0 text-[12.5px]! font-semibold! text-brand-text!"
+              onClick={() => p.onConfirm?.(item.unverifiedPostingId!)}
+            >
+              Looks right
+            </button>
+            <span className="w-full text-[11.5px] text-need">
+              Not a confirmed job posting. Confirm before a run starts.
+            </span>
+          </span>
+        )}
       </div>
       <div>{item.estimateMin > 0 && <span className="text-[13px] text-muted">~{item.estimateMin} min</span>}</div>
       <div>

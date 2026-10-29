@@ -124,7 +124,8 @@ export function question(
 }
 
 export function canonicalUrl(input: string): URL {
-  const u = new URL(input);
+  // Pasted text often carries zero-width/format chars (\p{Cf}) and whitespace that the URL parser would percent-encode into the path.
+  const u = new URL(input.replace(/[\p{Cf}\s]/gu, ''));
   if (u.protocol !== 'https:' || u.username || u.password || u.port)
     throw new Error('Only public HTTPS posting URLs without credentials or custom ports are supported');
   u.hostname = u.hostname.replace(/\.$/, '');
@@ -172,7 +173,14 @@ blockedV6.addSubnet('3fff::', 20, 'ipv6');
 const DnsAddresses = z
   .array(z.object({ address: z.union([z.ipv4(), z.ipv6()]), family: z.union([z.literal(4), z.literal(6)]) }))
   .min(1);
-const atsDomains = ['greenhouse.io', 'lever.co', 'ashbyhq.com', 'workable.com', 'smartrecruiters.com', 'bamboohr.com'];
+export const atsDomains = [
+  'greenhouse.io',
+  'lever.co',
+  'ashbyhq.com',
+  'workable.com',
+  'smartrecruiters.com',
+  'bamboohr.com',
+];
 
 export function isNetworkError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
@@ -347,7 +355,9 @@ export async function jsonValue(
   return schema.parse(raw);
 }
 
-export function form(input: Omit<PostingFormDto, 'questions'> & { questions?: PostingQuestionDto[] }): PostingFormDto {
+export function form(
+  input: Omit<PostingFormDto, 'questions' | 'verified'> & { questions?: PostingQuestionDto[]; verified?: boolean },
+): PostingFormDto {
   return PostingFormSchema.parse({ ...input, questions: input.questions ?? [] });
 }
 

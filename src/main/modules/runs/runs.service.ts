@@ -125,6 +125,8 @@ export class RunsService {
     await this.agent.prepare?.();
     const application = new ApplicationsService(this.db).list().find((row) => row.id === applicationId);
     if (!application) throw new Error('Application is unavailable.');
+    // Trust gate: a page accepted on apply-form evidence alone needs the owner's one-time confirmation first.
+    if (!application.verified) throw new Error('Confirm this unverified page before starting a run.');
     const agent = this.agent.id;
     const browser = this.browser.id;
     const previous = this.repository.latest(applicationId);

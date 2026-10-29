@@ -14,6 +14,7 @@ export const ApplicationListItemSchema = z.object({
   title: z.string(),
   location: z.string().nullable(),
   url: z.string(),
+  verified: z.boolean(),
   companyId: z.string(),
   companyName: z.string(),
   latestRunId: z.string().nullable(),

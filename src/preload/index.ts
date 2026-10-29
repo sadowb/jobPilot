@@ -99,6 +99,9 @@ const bridge: JobPilotBridge = {
     async ingest(url) {
       return IngestResultSchema.parse(await invoke(Channels.ingestPosting, url));
     },
+    async confirm(postingId) {
+      return z.boolean().parse(await invoke(Channels.confirmPosting, { postingId }));
+    },
   },
   applications: {
     async list() {

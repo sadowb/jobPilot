@@ -41,6 +41,7 @@ export function queueItem(item: ApplicationListItem): QueueItem {
     estimateMin: 0,
     source: 'Pasted',
     stage: queueStage(item),
+    ...(item.verified ? {} : { unverifiedPostingId: item.postingId }),
     agent: item.latestRunStatus === 'running' ? 'work' : 'idle',
   };
 }

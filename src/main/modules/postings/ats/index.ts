@@ -4,6 +4,7 @@ import type { AtsKind } from '../../../../shared/dto';
 import {
   arr,
   asObject,
+  atsDomains,
   canonicalUrl,
   cleanCompany,
   countryName,
@@ -82,7 +83,7 @@ const greenhouse: Adapter = {
         url: new URL(`https://boards.greenhouse.io/${encodeURIComponent(tenant)}/jobs/${encodeURIComponent(jobId)}`),
       };
     }
-    const m = url.pathname.match(/^\/([A-Za-z0-9][A-Za-z0-9_.-]{0,80})\/jobs\/(\d+)/);
+    const m = url.pathname.match(/^\/([A-Za-z0-9][A-Za-z0-9_.-]{0,80})\/jobs\/(\d+)\/?$/);
     if (!m) return null;
     const canonical = new URL(url);
     canonical.search = '';
@@ -169,7 +170,7 @@ const ASHBY_QUERY =
 const ashby: Adapter = {
   match(url) {
     if (!['jobs.ashbyhq.com', 'jobs.eu.ashbyhq.com'].includes(url.hostname.toLowerCase())) return null;
-    const m = url.pathname.match(/^\/([A-Za-z0-9_.-]{1,80})\/([0-9a-f-]{32,36})/i);
+    const m = url.pathname.match(/^\/([A-Za-z0-9_.-]{1,80})\/([0-9a-f-]{32,36})(?:\/application)?\/?$/i);
     return m ? { ats: 'ashby', tenant: m[1]!, jobId: m[2]!, url } : null;
   },
   async fetch(m) {
@@ -470,6 +471,45 @@ function jsonLdPosting(document: LinkedomDocument): Dict | null {
   return null;
 }
 
+const atsHost = (src: string | null) => {
+  try {
+    const host = new URL(src ?? '', 'https://page.invalid').hostname;
+    return atsDomains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Apply-form evidence for a non-ATS page without JobPosting JSON-LD (any one suffices):
+ * - an iframe/script served from a recognised ATS domain (embedded board or form);
+ * - a <form> with a file input (CV upload);
+ * - a <form> with an email input plus a name-like input (login forms, i.e. with a password input, and
+ *   search boxes never match).
+ * shortcut: heuristic only; a newsletter form with email and name passes, which is why such pages stay unverified.
+ */
+export function hasApplyFormEvidence(document: LinkedomDocument): boolean {
+  if ([...document.querySelectorAll('iframe[src],script[src]')].some((el) => atsHost(el.getAttribute('src'))))
+    return true;
+  const attr = (el: Element, name: string) => el.getAttribute(name) ?? '';
+  return [...document.querySelectorAll('form')].some((formEl) => {
+    const inputs = [...formEl.querySelectorAll('input,textarea')];
+    if (inputs.some((el) => attr(el, 'type').toLowerCase() === 'password')) return false;
+    if (inputs.some((el) => attr(el, 'type').toLowerCase() === 'file')) return true;
+    const email = (el: Element) => attr(el, 'type').toLowerCase() === 'email' || /e-?mail/i.test(attr(el, 'name'));
+    const nameLike = (el: Element) =>
+      !email(el) &&
+      /(^|[^a-z])(first|last|full|given|family)?_?name($|[^a-z])/i.test(`${attr(el, 'name')} ${attr(el, 'id')}`) &&
+      !/user_?name/i.test(attr(el, 'name'));
+    return inputs.some(email) && inputs.some(nameLike);
+  });
+}
+
+/** A custom page that carries no schema.org JobPosting data: search forms, articles and listing pages land here. */
+export class NotAJobPageError extends Error {
+  override readonly name = 'NotAJobPageError';
+}
+
 async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
   const response = await (
     await import('./common')
@@ -479,7 +519,12 @@ async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
   });
   url = response.url;
   const { document } = parseHTML(response.text);
-  const ld = jsonLdPosting(document) ?? {};
+  // Classification: JobPosting JSON-LD -> verified posting. Otherwise apply-form evidence -> accepted but
+  // unverified (runs stay gated until the owner confirms). Neither -> NotAJobPageError.
+  const jsonLd = jsonLdPosting(document);
+  const verified = jsonLd !== null;
+  if (!verified && !hasApplyFormEvidence(document)) throw new NotAJobPageError('Page has no job posting evidence');
+  const ld = jsonLd ?? {};
   const org = asObject(ld.hiringOrganization);
   const location = asObject(asObject(ld.jobLocation).address);
   const salary = asObject(ld.baseSalary);
@@ -519,6 +564,7 @@ async function htmlFallback(url: URL): Promise<ReturnType<typeof form>> {
     ats_tenant: null,
     ats_job_id: str(ld.identifier),
     questions,
+    verified,
   });
 }
 
