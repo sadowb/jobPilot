@@ -108,7 +108,8 @@ export class AgentSettingsService implements AgentProvider {
     const saved = this.preferences();
     if (!saved.confirmed || !saved.path) throw new UserFacingError('Confirm the Claude path in Settings → Agent.');
     const state = await this.state();
-    if (state.status !== 'ready') throw new Error(state.status);
+    if (state.status !== 'ready')
+      throw new UserFacingError(`Claude is not ready (${state.status}). Check Settings → Agent.`);
   }
 
   run(spec: RunSpec): AgentRun {

@@ -150,7 +150,8 @@ export class RunsService {
     // Idempotent: an unreviewed approval is never discarded by a stray start. Cancel it first to redo the run.
     const awaiting = this.repository.latest(applicationId);
     if (awaiting?.status === 'awaiting_approval') return RunSummarySchema.parse(awaiting);
-    if (!this.agent || !this.browser) throw new Error('No application provider is configured.');
+    if (!this.agent || !this.browser)
+      throw new UserFacingError('No agent is set up yet. Choose Claude in Settings → Agent.');
     await this.agent.prepare?.();
     const application = new ApplicationsService(this.db).list().find((row) => row.id === applicationId);
     if (!application) throw new UserFacingError('Application is unavailable.');
@@ -279,7 +280,8 @@ export class RunsService {
 
   private async execute(runId: string, signal: AbortSignal): Promise<void> {
     try {
-      if (!this.agent || !this.browser) throw new Error('No application provider is configured.');
+      if (!this.agent || !this.browser)
+        throw new UserFacingError('No agent is set up yet. Choose Claude in Settings → Agent.');
       const row = this.repository.get(runId);
       if (row.status !== 'running' || !row.sessionId) return;
       const application = new ApplicationsService(this.db).list().find((item) => item.id === row.applicationId);
