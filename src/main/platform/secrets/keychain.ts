@@ -23,6 +23,20 @@ export function keychainCommand(
   return undefined;
 }
 
+/**
+ * Whether safeStorage keeps its key in the OS store for this launch. --use-mock-keychain (macOS) and
+ * --password-store=basic (Linux) keep it elsewhere, so the OS item is not this profile's to delete: it belongs to
+ * the app's normal profile (Chromium os_crypt: one item per app, not per user-data-dir).
+ */
+export function usesOsKeychain(
+  platform: NodeJS.Platform,
+  commandLine: { hasSwitch(name: string): boolean; getSwitchValue(name: string): string },
+): boolean {
+  if (platform === 'darwin') return !commandLine.hasSwitch('use-mock-keychain');
+  if (platform === 'linux') return commandLine.getSwitchValue('password-store') !== 'basic';
+  return true;
+}
+
 /** No shell. macOS exit 44 (errSecItemNotFound) means already gone; a missing secret-tool is skipped, not fatal. */
 export function removeKeychainItem(
   appName: string,

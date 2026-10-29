@@ -26,7 +26,7 @@ import {
 } from '../modules/observability/diagnostics.service';
 import { closeLogs, initLogService, loggerFor } from '../modules/observability/log.service';
 import { removeAllData } from '../modules/settings/remove-data.service';
-import { removeKeychainItem } from '../platform/secrets/keychain';
+import { removeKeychainItem, usesOsKeychain } from '../platform/secrets/keychain';
 import { rm } from 'node:fs/promises';
 import {
   agentHandlers,
@@ -191,7 +191,10 @@ if (!app.requestSingleInstanceLock()) {
           closeLogs,
           deleteUserData: () =>
             rm(app.getPath('userData'), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
-          removeKeychainItem: () => (app.isPackaged ? removeKeychainItem(app.getName()) : Promise.resolve('skipped')),
+          removeKeychainItem: () =>
+            app.isPackaged && usesOsKeychain(process.platform, app.commandLine)
+              ? removeKeychainItem(app.getName())
+              : Promise.resolve('skipped'),
           exit: (code) => app.exit(code),
         });
       app.on('before-quit', (event) => {
