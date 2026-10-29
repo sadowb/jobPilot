@@ -9,6 +9,7 @@ import { PILL, S, shellButton } from '../shared-ui';
 import type { JobRecord } from './jobs';
 import {
   answerFor,
+  noAnswerFor,
   buildResults,
   flatten,
   moveIndex,
@@ -118,10 +119,12 @@ function Hint({ keys, children }: { keys: string; children: ReactNode }) {
 
 function AnswerPane({
   answer,
+  fallback,
   onOpenInbox,
   onRun,
 }: {
   answer: Answer | null;
+  fallback: string;
   onOpenInbox: () => void;
   onRun: (intent: CommandIntent) => void;
 }) {
@@ -137,9 +140,7 @@ function AnswerPane({
             </div>
           </div>
         </div>
-        <p className="m-0 text-[15px] leading-[1.6] text-ink-2">
-          {answer ? answer.intro : 'I can only change statuses so far, for example “set ramp to interview”.'}
-        </p>
+        <p className="m-0 text-[15px] leading-[1.6] text-ink-2">{answer ? answer.intro : fallback}</p>
         {answer && (
           <div className="flex flex-col">
             {answer.rows.map((r) => (
@@ -318,7 +319,7 @@ export function CommandBox({ jobs = [], initialQuery = '', onRun, onOpenInInbox,
           </div>
         </>
       ) : (
-        <AnswerPane answer={answer} onOpenInbox={openInInbox} onRun={run} />
+        <AnswerPane answer={answer} fallback={noAnswerFor(query, jobs)} onOpenInbox={openInInbox} onRun={run} />
       )}
     </dialog>
   );

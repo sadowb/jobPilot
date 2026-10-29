@@ -97,6 +97,14 @@ describe('onboarding completion persistence and migration (#135)', () => {
     ).toThrow();
   });
 
+  it('stores whitespace-only personal fields as empty', () => {
+    const saved = ProfileSaveSchema.parse({
+      section: 'personal',
+      value: { ...EMPTY_PROFILE, firstName: '   ', lastName: ' Benali ' },
+    });
+    expect(saved.section === 'personal' && [saved.value.firstName, saved.value.lastName]).toEqual(['', 'Benali']);
+  });
+
   it('validates onboardingCompletedAt saves via ProfileSaveSchema', () => {
     const timestamp = 1740000000000;
     const savePayload = ProfileSaveSchema.parse({

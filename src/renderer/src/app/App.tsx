@@ -1,6 +1,7 @@
-import { createHashRouter, Navigate, Outlet, RouterProvider, useNavigate } from 'react-router-dom';
+import { createHashRouter, Navigate, Outlet, redirect, RouterProvider, useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { CommandBoxHost, openCommandBox } from '../features/cmdk/CommandBoxHost';
+import { onboardingPending } from '../features/profile/profileStorage';
 import { FirstDay } from '../features/onboarding/FirstDay';
 import { useSettingsShortcut } from '../features/settings/useSettingsShortcut';
 import { useTheme } from '../lib/theme';
@@ -35,6 +36,8 @@ const router = createHashRouter([
   { path: '/extension', element: <Extension />, errorElement: <RouteErrorPage /> },
   {
     element: <Shell />,
+    // Every app route waits for setup; the loader re-runs on each navigation, so a typed hash cannot skip it.
+    loader: () => (onboardingPending() ? redirect('/welcome/1') : null),
     errorElement: <RouteErrorPage />,
     children: [
       { path: '/', element: <Dashboard /> },

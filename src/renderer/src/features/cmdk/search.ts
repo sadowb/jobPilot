@@ -102,7 +102,7 @@ export function buildResults(query: string, jobs: readonly JobRecord[]): ResultS
         id: 'ask',
         kind: 'ask',
         title: `“${query.trim()}”`,
-        subtitle: 'Ask Cap · answers inline, changes nothing',
+        subtitle: 'Ask Cap · answers inline, changes nothing until you confirm',
         intent: { type: 'ask', query: query.trim() },
         hint: '⇥',
       },
@@ -179,4 +179,15 @@ export function answerFor(query: string, jobs: readonly JobRecord[]): Answer | n
       intent: { type: 'set-status', jobId: job.id, status: cmd.status },
     },
   };
+}
+
+/** Why `answerFor` has nothing to offer, in the pane's own voice. */
+export function noAnswerFor(query: string, jobs: readonly JobRecord[]): string {
+  const cmd = parseStatusCommand(query);
+  if (!cmd) return 'I can only change statuses so far, for example “set ramp to interview”.';
+  const job = matchJobs(cmd.companyQuery, jobs)[0];
+  if (!job) {
+    return `No submitted application matches “${cmd.companyQuery}”. Status changes apply to applications you’ve sent.`;
+  }
+  return job.status === cmd.status ? `${job.company} is already ${cmd.status}.` : 'I can’t change that status.';
 }

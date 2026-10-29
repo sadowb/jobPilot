@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SAMPLE_JOBS } from '../src/renderer/src/features/cmdk/jobs';
 import {
   answerFor,
+  noAnswerFor,
   buildResults,
   flatten,
   matchJobs,
@@ -97,5 +98,12 @@ describe('answerFor', () => {
   it('drops the follow-up row when the record has none', () => {
     const a = answerFor('set linear to interview', SAMPLE_JOBS);
     expect(a?.rows.map((r) => r.label)).toEqual(['Status', 'Dashboard']);
+  });
+});
+
+describe('noAnswerFor', () => {
+  it('says honestly when a status change matches no submitted application', () => {
+    expect(noAnswerFor('set nobody to interview', SAMPLE_JOBS)).toMatch(/^No submitted application matches “nobody”/);
+    expect(noAnswerFor('why was perpay rejected', SAMPLE_JOBS)).toMatch(/only change statuses/);
   });
 });
