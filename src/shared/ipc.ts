@@ -14,6 +14,7 @@ import type {
   RunSummaryDto,
   AppSettings,
   UpdateSettingsInput,
+  RemoveAllDataInput,
 } from './dto';
 import { z } from 'zod';
 
@@ -60,6 +61,7 @@ export const Channels = {
   themeChanged: 'theme:changed',
   getSettings: 'settings:get',
   updateSettings: 'settings:update',
+  removeAllData: 'settings:removeAllData',
   dataChanged: 'data:changed',
   rendererError: 'observability:renderer-error',
 } as const;
@@ -140,6 +142,8 @@ export interface JobPilotBridge {
   settings: {
     get(): Promise<AppSettings>;
     update(input: UpdateSettingsInput): Promise<AppSettings>;
+    /** Deletes all JobPilot data and quits; normally the app exits before this resolves. */
+    removeAllData(input: RemoveAllDataInput): Promise<void>;
   };
   onDataChanged(listener: (change: DataChanged) => void): () => void;
 }

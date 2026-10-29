@@ -3,7 +3,13 @@ import type { AgentSettingsService } from './agent.service';
 import type { MemorySettingsService } from './memory.service';
 import { z } from 'zod';
 import { Channels, RecoveryKeySchema, RestoreBackupSchema } from '../../../shared/ipc';
-import { ClaudeApiKeySchema, ThemeSourceSchema, SaveAgentSchema, UpdateSettingsSchema } from '../../../shared/dto';
+import {
+  ClaudeApiKeySchema,
+  ThemeSourceSchema,
+  SaveAgentSchema,
+  UpdateSettingsSchema,
+  RemoveAllDataSchema,
+} from '../../../shared/dto';
 import { defineHandler } from '../../platform/ipc/registry';
 import { exportRecoveryKey, importRecoveryKey, recoveryState, restoreFromBackup } from './recovery.service';
 import { claudeKeyService, getSettings, setTheme, themeState, updateSettings } from './settings.service';
@@ -50,4 +56,8 @@ export function memoryHandlers(service: MemorySettingsService) {
     defineHandler(Channels.installMemory, z.void(), () => service.install()),
     defineHandler(Channels.removeMemory, z.void(), () => service.remove()),
   ];
+}
+
+export function dataHandlers(removeAll: () => Promise<void>) {
+  return [defineHandler(Channels.removeAllData, RemoveAllDataSchema, () => removeAll())];
 }

@@ -24,10 +24,14 @@ import {
   startSession,
   watchContents,
 } from '../modules/observability/diagnostics.service';
-import { initLogService, loggerFor } from '../modules/observability/log.service';
+import { closeLogs, initLogService, loggerFor } from '../modules/observability/log.service';
+import { removeAllData } from '../modules/settings/remove-data.service';
+import { removeKeychainItem } from '../platform/secrets/keychain';
+import { rm } from 'node:fs/promises';
 import {
   agentHandlers,
   claudeKeyHandlers,
+  dataHandlers,
   memoryHandlers,
   recoveryHandlers,
   settingsHandlers,
@@ -40,7 +44,13 @@ import {
   loadTheme,
   markConsolidated,
 } from '../modules/settings/settings.service';
-import { DatabaseDamagedError, DatabaseUnlockError, openDatabase, startDailyBackups } from '../platform/db/database';
+import {
+  closeDatabase,
+  DatabaseDamagedError,
+  DatabaseUnlockError,
+  openDatabase,
+  startDailyBackups,
+} from '../platform/db/database';
 import { originCheck, registerIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
@@ -172,6 +182,18 @@ if (!app.requestSingleInstanceLock()) {
             delay(10_000),
           ]);
         })());
+      // Packaged only: in development the Keychain item belongs to the generic Electron app, not JobPilot.
+      const removeEverything = () =>
+        removeAllData({
+          log: () => logger.warn('Remove all JobPilot data requested'),
+          stopOwnedWork,
+          closeDatabase,
+          closeLogs,
+          deleteUserData: () =>
+            rm(app.getPath('userData'), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
+          removeKeychainItem: () => (app.isPackaged ? removeKeychainItem(app.getName()) : Promise.resolve('skipped')),
+          exit: (code) => app.exit(code),
+        });
       app.on('before-quit', (event) => {
         event.preventDefault();
         // app.exit() emits no further quit events, so the quit is never re-entered.
@@ -188,6 +210,7 @@ if (!app.requestSingleInstanceLock()) {
         [
           ...runsHandlers(runsService),
           ...settingsHandlers,
+          ...dataHandlers(removeEverything),
           ...agentHandlers(agentSettings),
           ...memoryHandlers(new MemorySettingsService(memory)),
           ...claudeKeyHandlers(claudeKeyService(db)),
