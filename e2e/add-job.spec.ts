@@ -546,7 +546,7 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
         .intercept({ path: '/retry' })
         .reply(
           200,
-          '<html><head><title>Retry role</title></head><body><label>Name<input name="name" required></label><label>Email<input type="email" name="email"></label></body></html>',
+          '<html><head><title>Retry role</title></head><body><form><label>Name<input name="name" required></label><label>Email<input type="email" name="email"></label></form></body></html>',
         )
         .persist();
       undici.Agent = class extends undici.Agent {
