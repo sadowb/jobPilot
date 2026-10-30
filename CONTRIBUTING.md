@@ -71,7 +71,8 @@ Use `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci` or `chore`,
 
 ## Review and merge
 
-- Required checks: `static` (types, lint, format, secret scan, audit, Semgrep, Electronegativity, OSV-Scanner, zizmor) and `app` (build, packaged app, journeys) must be green.
+- The required check is `ci-ok`. It passes when `static` (types, lint, format, secret scan, audit, Semgrep, Electronegativity, OSV-Scanner, zizmor) and `app` (build, packaged app, journeys) pass.
+- **Docs-only PRs skip the heavy jobs.** If every changed file is `*.md`, under `docs/`, or `LICENSE`, `static` and `app` are skipped and `ci-ok` passes in seconds. Any other file runs everything. Docs still go through a PR; `main` has no direct pushes.
 - Green CI proves it runs, not that it is right. The reviewer also reads CodeQL alerts, annotations, Dependabot notes and the screenshots before merging.
 - PRs are squash-merged, so the PR title becomes the commit on `main` and must follow Conventional Commits.
 - Keep the PR small and focused. Address review comments with new commits; do not force-push over a review in progress.

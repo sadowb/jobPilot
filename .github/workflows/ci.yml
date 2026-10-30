@@ -10,7 +10,37 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # Docs-only PRs skip the heavy jobs; ci-ok is the single required check.
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # Fail closed: pushes to main, or any diff error, run everything.
+          code=true
+          if [ "$EVENT" = pull_request ] && files=$(git diff --name-only "$BASE...$HEAD"); then
+            if [ -n "$files" ] && ! grep -qvE '(\.md$|^docs/|^LICENSE$)' <<<"$files"; then
+              code=false
+            fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "code=$code"
+
   static:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -43,7 +73,7 @@ jobs:
         run: scripts/security-scan.sh
 
   app:
-    needs: static
+    needs: [changes, static]
     runs-on: macos-14
     timeout-minutes: 12
     steps:
@@ -262,3 +292,23 @@ jobs:
             export XDG_CURRENT_DESKTOP=GNOME
             node scripts/smoke-app.mjs release/*.AppImage --appimage-extract-and-run --password-store=gnome-libsecret
           '
+
+  ci-ok:
+    if: always()
+    needs: [changes, static, app]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          STATIC: ${{ needs.static.result }}
+          APP: ${{ needs.app.result }}
+        run: |
+          echo "changes=$CHANGES code=$CODE static=$STATIC app=$APP"
+          [ "$CHANGES" = success ] || exit 1
+          if [ "$CODE" = true ]; then
+            [ "$STATIC" = success ] && [ "$APP" = success ]
+          else
+            [ "$STATIC" = skipped ] && [ "$APP" = skipped ]
+          fi
