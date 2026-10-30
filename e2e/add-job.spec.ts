@@ -581,6 +581,12 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(rows.nth(4)).toContainText('example.com/about');
     await expect(rows.nth(4).getByTitle(/does not look like a job posting/)).toBeVisible();
     await expect(window.getByRole('button', { name: 'Add 3 jobs', exact: true })).toBeEnabled();
+    // #191: a board URL on a supported host gets its own state, never "Unsupported", and is not fetched.
+    await window.getByLabel('Job links', { exact: true }).fill('https://job-boards.greenhouse.io/perpay');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.nth(0)).toContainText('Job board');
+    await expect(rows.nth(0)).toContainText("This is Perpay's job board.");
+    await expect(rows.nth(0)).not.toContainText('Unsupported');
     await window.setViewportSize({ width: 1280, height: 800 });
     const mixed = [
       ...urls,
