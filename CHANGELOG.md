@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/sadowb/jobPilot/compare/v0.3.0...v0.4.0) (2026-10-29)
+
+
+### Features
+
+* **postings:** read custom career sites with the agent ([#189](https://github.com/sadowb/jobPilot/issues/189)) ([bf2b86f](https://github.com/sadowb/jobPilot/commit/bf2b86f510be913702c2fa698e98fd26ed01f7c8))
+
+
+### Bug Fixes
+
+* hourly backup refresh, clean refusal text, short bridge errors, one consent dialog ([#188](https://github.com/sadowb/jobPilot/issues/188)) ([437cf41](https://github.com/sadowb/jobPilot/commit/437cf4128d15e3c7204c86b458f938a2f2451579))
+
 ## [0.3.0](https://github.com/sadowb/jobPilot/compare/v0.2.1...v0.3.0) (2026-10-29)
 
 
