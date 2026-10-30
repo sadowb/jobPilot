@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/sadowb/jobPilot/compare/v0.4.0...v0.4.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **memory:** install Mnemosyne on Windows and Linux ([#205](https://github.com/sadowb/jobPilot/issues/205)) ([279a19d](https://github.com/sadowb/jobPilot/commit/279a19d523ab5b0eb7fa3b04a7907f83be5e1689))
+* **postings:** show a job board state for board URLs (contract: adds JOB_BOARD to IngestResult) ([#207](https://github.com/sadowb/jobPilot/issues/207)) ([d6a6592](https://github.com/sadowb/jobPilot/commit/d6a6592c79fe6d80a8d0b0750e2f8b2e5e341001))
+
 ## [0.4.0](https://github.com/sadowb/jobPilot/compare/v0.3.0...v0.4.0) (2026-10-29)
 
 
