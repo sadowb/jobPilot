@@ -587,6 +587,12 @@ test('bulk paste streams five previews, adds three new jobs, and retains them af
     await expect(rows.nth(0)).toContainText('Job board');
     await expect(rows.nth(0)).toContainText("This is Perpay's job board.");
     await expect(rows.nth(0)).not.toContainText('Unsupported');
+    const wasDark = await window.evaluate(() => document.documentElement.classList.contains('dark'));
+    await window.evaluate(() => document.documentElement.classList.remove('dark'));
+    await window.screenshot({ path: testInfo.outputPath('board-light.png') });
+    await window.evaluate(() => document.documentElement.classList.add('dark'));
+    await window.screenshot({ path: testInfo.outputPath('board-dark.png') });
+    await window.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), wasDark);
     await window.setViewportSize({ width: 1280, height: 800 });
     const mixed = [
       ...urls,
