@@ -68,6 +68,10 @@ Builds are pre-releases while the app is unfinished and are not notarized, so ea
 
 Early development. The engine (encrypted storage, job readers, parallel run queue, Claude agent) is in place; the first end-to-end application is next. Follow along in [issues](https://github.com/sadowb/jobPilot/issues).
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately per [SECURITY.md](SECURITY.md).
+
 ## License
 
 [MIT](LICENSE)
