@@ -91,10 +91,13 @@ export function AddJobsDialog({
   const unsupported = rows.filter(
     (row) => row.result && !row.result.ok && row.result.code === 'UNSUPPORTED_ATS',
   ).length;
+  const boards = rows.filter((row) => row.result && !row.result.ok && row.result.code === 'JOB_BOARD').length;
   const failed = rows.filter(
-    (row) => row.addError || (row.result && !row.result.ok && row.result.code !== 'UNSUPPORTED_ATS'),
+    (row) =>
+      row.addError ||
+      (row.result && !row.result.ok && row.result.code !== 'UNSUPPORTED_ATS' && row.result.code !== 'JOB_BOARD'),
   ).length;
-  const summary = `${readyCount} ready · ${tracked} already in your list · ${unsupported} unsupported${failed ? ` · ${failed} failed` : ''}`;
+  const summary = `${readyCount} ready · ${tracked} already in your list · ${unsupported} unsupported${boards ? ` · ${boards} job board${boards === 1 ? '' : 's'}` : ''}${failed ? ` · ${failed} failed` : ''}`;
 
   const remove = (index: number) => {
     if (busy) return;
@@ -253,7 +256,8 @@ export function AddJobsDialog({
               const result = row.result;
               const posting = result?.ok ? result.posting : null;
               const unsupported = result && !result.ok && result.code === 'UNSUPPORTED_ATS';
-              const failed = !!row.addError || (result && !result.ok && !unsupported);
+              const board = result && !result.ok && result.code === 'JOB_BOARD';
+              const failed = !!row.addError || (result && !result.ok && !unsupported && !board);
               const neutral = row.added || (result?.ok && result.alreadyTracked);
               const status = row.added
                 ? 'Added'
@@ -265,9 +269,11 @@ export function AddJobsDialog({
                     ? 'Already in your list'
                     : unsupported
                       ? 'Unsupported'
-                      : failed
-                        ? 'Failed'
-                        : 'Ready';
+                      : board
+                        ? 'Job board'
+                        : failed
+                          ? 'Failed'
+                          : 'Ready';
               const reason = row.addError ?? (result && !result.ok ? result.message : '');
               const link = isWebUrl(row.url) ? URL.parse(row.url) : null;
               return (
@@ -338,11 +344,13 @@ export function AddJobsDialog({
                             <div className="truncate text-[14px] leading-tight font-semibold">
                               {posting
                                 ? `${posting.company} — ${posting.title}`
-                                : unsupported
-                                  ? isWebUrl(row.url)
-                                    ? 'Unsupported job site'
-                                    : 'Unsupported link'
-                                  : 'Could not read job'}
+                                : board
+                                  ? 'Job board, not a single job'
+                                  : unsupported
+                                    ? isWebUrl(row.url)
+                                      ? 'Unsupported job site'
+                                      : 'Unsupported link'
+                                    : 'Could not read job'}
                             </div>
                             <div
                               title={failed || unsupported ? row.url : undefined}
@@ -354,26 +362,28 @@ export function AddJobsDialog({
                               {posting &&
                                 !posting.verified &&
                                 `${(result?.ok && result.note) || 'Apply form found, no job data'} · `}
-                              {failed || unsupported
-                                ? link
-                                  ? `${link.host}${link.pathname}`
-                                  : isWebUrl(row.url)
-                                    ? row.url
-                                    : `${row.url} · ${reason}`
-                                : posting &&
-                                  [
-                                    posting.ats === 'custom'
-                                      ? URL.parse(posting.canonical_url)?.host
-                                      : atsNames[posting.ats],
-                                    posting.location,
-                                    posting.country,
-                                    posting.salary,
-                                    posting.questions.length
-                                      ? `${posting.questions.length} question${posting.questions.length === 1 ? '' : 's'}`
-                                      : 'No questions found',
-                                  ]
-                                    .filter(Boolean)
-                                    .join(' · ')}
+                              {board
+                                ? reason
+                                : failed || unsupported
+                                  ? link
+                                    ? `${link.host}${link.pathname}`
+                                    : isWebUrl(row.url)
+                                      ? row.url
+                                      : `${row.url} · ${reason}`
+                                  : posting &&
+                                    [
+                                      posting.ats === 'custom'
+                                        ? URL.parse(posting.canonical_url)?.host
+                                        : atsNames[posting.ats],
+                                      posting.location,
+                                      posting.country,
+                                      posting.salary,
+                                      posting.questions.length
+                                        ? `${posting.questions.length} question${posting.questions.length === 1 ? '' : 's'}`
+                                        : 'No questions found',
+                                    ]
+                                      .filter(Boolean)
+                                      .join(' · ')}
                             </div>
                           </>
                         )}
@@ -417,7 +427,7 @@ export function AddJobsDialog({
                         'font-mono',
                         !result
                           ? 'bg-brand-tint text-brand-text'
-                          : neutral
+                          : neutral || board
                             ? 'bg-line text-ink-2'
                             : failed || unsupported
                               ? 'bg-bad-tint text-bad'

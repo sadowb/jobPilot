@@ -84,7 +84,11 @@ export const IngestResultSchema = z.discriminatedUnion('ok', [
     /** Owner-facing hint shown on the row, e.g. why an unverified page was not read by the agent. */
     note: z.string().max(300).optional(),
   }),
-  z.object({ ok: z.literal(false), code: z.enum(['UNSUPPORTED_ATS', 'FETCH_FAILED']), message: z.string() }),
+  z.object({
+    ok: z.literal(false),
+    code: z.enum(['UNSUPPORTED_ATS', 'JOB_BOARD', 'FETCH_FAILED']),
+    message: z.string(),
+  }),
 ]);
 export type IngestResult = z.infer<typeof IngestResultSchema>;
 

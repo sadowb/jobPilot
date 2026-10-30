@@ -586,6 +586,35 @@ async function htmlFallback(url: URL, readCustom?: CustomPageReader): Promise<Re
   });
 }
 
+const BOARD_HOSTS: Record<string, AtsKind> = {
+  'boards.greenhouse.io': 'greenhouse',
+  'job-boards.greenhouse.io': 'greenhouse',
+  'job-boards.eu.greenhouse.io': 'greenhouse',
+  'jobs.lever.co': 'lever',
+  'jobs.eu.lever.co': 'lever',
+  'jobs.ashbyhq.com': 'ashby',
+  'jobs.eu.ashbyhq.com': 'ashby',
+};
+
+/** A company's whole job board on a supported ATS host (`/<tenant>`, or Greenhouse `/embed/job_board?for=<tenant>`). */
+export function matchBoardUrl(url: URL): { ats: AtsKind; tenant: string } | null {
+  const ats = BOARD_HOSTS[url.hostname.toLowerCase()];
+  if (!ats) return null;
+  const tenant =
+    ats === 'greenhouse' && /^\/embed\/job_board\/?$/.test(url.pathname)
+      ? url.searchParams.get('for')
+      : (url.pathname.match(/^\/([A-Za-z0-9][A-Za-z0-9_.-]{0,80})\/?$/)?.[1] ?? null);
+  return tenant && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,80}$/.test(tenant) ? { ats, tenant } : null;
+}
+
+/** A board URL was pasted where one job is expected. Thrown before any page fetch or agent read. */
+export class BoardUrlError extends Error {
+  override readonly name = 'BoardUrlError';
+  constructor(readonly company: string) {
+    super('Job board URL, not a single job');
+  }
+}
+
 export function matchPostingUrl(url: URL): MatchedPosting | null {
   return adapters.map((adapter) => adapter.match(url)).find((match) => match !== null) ?? null;
 }
@@ -593,5 +622,8 @@ export function matchPostingUrl(url: URL): MatchedPosting | null {
 export async function fetchPosting(rawUrl: string, readCustom?: CustomPageReader): Promise<ReturnType<typeof form>> {
   const url = canonicalUrl(rawUrl);
   const matched = adapters.map((adapter) => ({ adapter, match: adapter.match(url) })).find((x) => x.match);
-  return matched ? matched.adapter.fetch(matched.match!) : htmlFallback(url, readCustom);
+  if (matched) return matched.adapter.fetch(matched.match!);
+  const board = matchBoardUrl(url);
+  if (board) throw new BoardUrlError(titleFrom(board.tenant));
+  return htmlFallback(url, readCustom);
 }
