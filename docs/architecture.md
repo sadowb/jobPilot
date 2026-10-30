@@ -18,7 +18,7 @@ flowchart LR
   Agents --> CLI[CLI adapters via execa]
   Agents --> Browser[BrowserProvider: Neo]
   Agents --> Memory[Mnemosyne MCP via on-demand uv (ADR 0015)]
-  Modules --> Secrets[Keychain / safeStorage: DB key]
+  Modules --> Secrets[safeStorage / OS keystore: DB key]
   Agents --> Vault[Bitwarden MCP: dedicated job-site vault]
   Modules --> Logs[LogService + RunTraceService + AuditService]
   Browser --> Sites[ATS / career sites]
@@ -122,7 +122,7 @@ sequenceDiagram
 - SQLite uses SQLCipher, WAL, foreign keys, STRICT tables, ULID text keys, and Unix-millisecond integer timestamps. Drizzle owns table definitions and migrations. Views are maintained in `drizzle/0001_views.sql` and have typed `.existing()` handles.
 - IPC, agent outputs, ATS/HTTP responses, and imported files are parsed with zod at entry. The main process is the only writer of product state.
 - The renderer has no Node access. The preload exposes named operations only. IPC accepts only the trusted main frame from the app origin (or configured development origin).
-- The SQLCipher key lives in Keychain via Electron `safeStorage`; builds are signed with one stable self-signed certificate so updates keep Keychain access (ADR 0014). Job-site passwords live in a dedicated Bitwarden account reached through the official Bitwarden MCP (ADR 0013). Logs and run traces are redacted.
+- The SQLCipher key lives in the OS keystore (macOS Keychain, Windows DPAPI, Linux libsecret or KWallet) via Electron `safeStorage`; macOS builds are signed with one stable self-signed certificate so updates keep Keychain access (ADR 0014). Job-site passwords live in a dedicated Bitwarden account reached through the official Bitwarden MCP (ADR 0013). Logs and run traces are redacted.
 - Every state change is auditable. Agent events are stored in `run_event` and mirrored to per-run JSONL logs.
 
 ## Logging and diagnostics

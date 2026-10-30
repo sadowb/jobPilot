@@ -2,7 +2,7 @@
 
 - Status: accepted (2026-10-23). Amends ADR 0005 (browser providers), ADR 0006 (Mnemosyne) and ADR 0013 (Bitwarden).
 - Amended by [ADR 0016](0016-gentle-footprint.md): never install or change the owner's tools on their behalf. The Claude provisioning section below is historical where it conflicts; explicit JobPilot-owned MCP installations remain confined to `userData`.
-- Decision: The `.app` ships only JobPilot. Every agent-side tool (a browser MCP, memory, the Bitwarden vault) is chosen by the owner in Settings and installed then, pinned, into `userData/tools/<tool>/`. Nothing the owner did not choose is downloaded.
+- Decision: The packaged app ships only JobPilot. Every agent-side tool (a browser MCP, memory, the Bitwarden vault) is chosen by the owner in Settings and installed then, pinned, into `userData/tools/<tool>/`. Nothing the owner did not choose is downloaded.
 
 ## Why
 
@@ -11,7 +11,7 @@
 
 ## The tools
 
-| Tool               | Kind                                       | How it gets on the Mac                                                                                                                                        |
+| Tool               | Kind                                       | How it gets installed                                                                                                                                         |
 | ------------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Neo (BrowserOS)    | separate app the owner installs            | JobPilot detects its MCP endpoint; if missing, Settings links to the BrowserOS download. JobPilot installs nothing.                                           |
 | Playwright browser | `@playwright/mcp` + Chromium               | installed when the owner selects the Playwright provider; Chromium fetched by `playwright install chromium` into the tool folder (`PLAYWRIGHT_BROWSERS_PATH`) |

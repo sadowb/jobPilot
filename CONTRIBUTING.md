@@ -11,7 +11,7 @@ Thanks for your interest. JobPilot is in early development and is run by one mai
 
 ## Set up
 
-Requirements: macOS on Apple silicon, Node 22.12+, Git. Full command list in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+JobPilot is a cross-platform Electron app (macOS, Windows, Linux). Requirements: any of those, Node 22.12+, Git. Full command list in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ```bash
 git clone https://github.com/sadowb/jobPilot.git
@@ -20,7 +20,7 @@ npm ci            # lefthook installs the git hooks (else: npx lefthook install)
 npm run dev       # Electron with hot reload
 ```
 
-The `app` CI job builds and runs journeys on macOS; Windows and Linux are packaged at release only.
+Every PR builds, packages and boot-tests the app on macOS, Windows and Linux; the Playwright journeys run in the `app` job.
 
 ## Make the change
 
