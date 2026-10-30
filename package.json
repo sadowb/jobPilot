@@ -31,6 +31,7 @@
     "postinstall": "electron-builder install-app-deps",
     "db:generate": "drizzle-kit generate && node scripts/db-strict.mjs",
     "db:check": "drizzle-kit check && node scripts/db-strict.mjs --check",
+    "smoke:memory": "esbuild scripts/smoke-memory.mts --bundle --platform=node --format=esm --packages=external --outfile=out/smoke-memory.mjs && node out/smoke-memory.mjs",
     "smoke:native": "node --input-type=module -e \"import { execa } from 'execa'; await execa('electron', ['scripts/smoke-native.mjs'], { stdio: 'inherit', preferLocal: true, env: { ELECTRON_RUN_AS_NODE: '1' } });\"",
     "postings:probe": "node scripts/probe-postings.mjs",
     "agents:probe": "tsx scripts/probe-claude.mts"

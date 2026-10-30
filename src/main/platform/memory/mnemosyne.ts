@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { chmod, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { setPriority } from 'node:os';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { execa } from 'execa';
+import { unzipSync } from 'fflate';
 import type { Logger } from 'pino';
 import { z } from 'zod';
 import type { MemoryStatus } from '../../../shared/dto';
@@ -19,18 +20,47 @@ export const MNEMOSYNE_VERSION = '4.0.0';
 const PYTHON_VERSION = '3.12';
 // shortcut: transitive deps are frozen by date, not a lockfile; ship a uv.lock in resources/tools when Mnemosyne ships a stable cadence.
 const RESOLVE_CUTOFF = '2026-10-28T00:00:00Z';
-// shortcut: macOS only (tar.gz); add the Windows zip assets with the Windows memory lane.
-const UV_ASSETS: Record<string, { file: string; sha256: string }> = {
+interface UvAsset {
+  file: string;
+  ext: 'tar.gz' | 'zip';
+  sha256: string;
+}
+// SHA-256 values are the release's own `<file>.<ext>.sha256` files for 0.13.6.
+const UV_ASSETS: Record<string, UvAsset> = {
   'darwin-arm64': {
     file: 'uv-aarch64-apple-darwin',
+    ext: 'tar.gz',
     sha256: '60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472',
   },
   'darwin-x64': {
     file: 'uv-x86_64-apple-darwin',
+    ext: 'tar.gz',
     sha256: '63ba17fdda55ad1a230d4b37fc6017ffa10c23688c83818bd3bfdf914c652a02',
   },
+  'linux-arm64': {
+    file: 'uv-aarch64-unknown-linux-gnu',
+    ext: 'tar.gz',
+    sha256: '229e194255c7958d86d56e8790d969a6f74736592133f0dfd0076f754c642c1d',
+  },
+  'linux-x64': {
+    file: 'uv-x86_64-unknown-linux-gnu',
+    ext: 'tar.gz',
+    sha256: 'f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645',
+  },
+  'win32-arm64': {
+    file: 'uv-aarch64-pc-windows-msvc',
+    ext: 'zip',
+    sha256: 'c2426c0c8e28b53d8c440e47a18d96ad4db51e159866c0e81435b196d7f0081c',
+  },
+  'win32-x64': {
+    file: 'uv-x86_64-pc-windows-msvc',
+    ext: 'zip',
+    sha256: 'a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f',
+  },
 };
-const MinimalPath = '/usr/bin:/bin';
+const WINDOWS = process.platform === 'win32';
+const EXE = WINDOWS ? '.exe' : '';
+const MinimalPath = WINDOWS ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32') : '/usr/bin:/bin';
 const MarkerSchema = z.object({ uv: z.literal(UV_VERSION), mnemosyne: z.literal(MNEMOSYNE_VERSION) });
 
 class InstallError extends Error {}
@@ -66,8 +96,8 @@ export class MnemosyneMemory implements MemoryProvider {
     this.root = join(userData, 'tools', 'mnemosyne');
     this.dataDir = join(userData, 'mnemosyne');
     this.marker = join(this.root, 'ready.json');
-    this.uvBin = join(this.root, 'uv', 'uv');
-    this.toolBin = join(this.root, 'bin', 'mnemosyne');
+    this.uvBin = join(this.root, 'uv', `uv${EXE}`);
+    this.toolBin = join(this.root, 'bin', `mnemosyne${EXE}`);
     this.current = this.installed() ? this.set('ready') : this.set('not_installed');
   }
 
@@ -140,12 +170,20 @@ export class MnemosyneMemory implements MemoryProvider {
 
   /** No inherited environment: nothing from the app's env or the owner's shell reaches the memory process. */
   private runtimeEnv(): Record<string, string> {
+    const home = join(this.root, 'home');
+    const tmp = join(this.root, 'tmp');
+    const base = { MNEMOSYNE_DATA_DIR: this.dataDir };
+    if (!WINDOWS) return { ...base, PATH: MinimalPath, HOME: home, TMPDIR: tmp, LANG: 'en_US.UTF-8' };
+    // SystemRoot is required by Winsock/TLS and Python; every profile and temp location is redirected into the tool root.
     return {
-      PATH: MinimalPath,
-      HOME: join(this.root, 'home'),
-      TMPDIR: join(this.root, 'tmp'),
-      LANG: 'en_US.UTF-8',
-      MNEMOSYNE_DATA_DIR: this.dataDir,
+      ...base,
+      Path: MinimalPath,
+      SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
+      USERPROFILE: home,
+      APPDATA: join(home, 'AppData', 'Roaming'),
+      LOCALAPPDATA: join(home, 'AppData', 'Local'),
+      TEMP: tmp,
+      TMP: tmp,
     };
   }
 
@@ -183,21 +221,15 @@ export class MnemosyneMemory implements MemoryProvider {
 
   private async doInstall(signal: AbortSignal): Promise<void> {
     const asset = UV_ASSETS[`${process.platform}-${process.arch}`];
-    if (!asset) throw new InstallError('Memory install supports macOS only for now.');
+    if (!asset) throw new InstallError('Memory install is not supported on this system yet.');
     await rm(this.root, { recursive: true, force: true });
     for (const dir of ['home', 'tmp', 'uv']) await mkdir(join(this.root, dir), { recursive: true, mode: 0o700 });
     await mkdir(this.dataDir, { recursive: true, mode: 0o700 });
 
-    const archive = join(this.root, 'uv.tar.gz');
+    const archive = join(this.root, `uv.${asset.ext}`);
     await this.retry(signal, 3, () => this.download(asset, archive, signal));
     this.set('installing', { step: 'Unpacking uv' });
-    await this.exec(
-      '/usr/bin/tar',
-      ['-xzf', archive, '-C', join(this.root, 'uv'), '--strip-components=1'],
-      { PATH: MinimalPath },
-      signal,
-      60_000,
-    );
+    await this.unpack(asset, archive, join(this.root, 'uv'), signal);
     await rm(archive, { force: true });
     if (!(await stat(this.uvBin).catch(() => undefined)))
       throw new InstallError('The uv download was unusable. Try again.');
@@ -230,6 +262,31 @@ export class MnemosyneMemory implements MemoryProvider {
     await writeFile(this.marker, JSON.stringify({ uv: UV_VERSION, mnemosyne: MNEMOSYNE_VERSION }), { mode: 0o600 });
   }
 
+  private async unpack(asset: UvAsset, archive: string, into: string, signal: AbortSignal): Promise<void> {
+    if (asset.ext === 'tar.gz') {
+      // The tarball has one top-level directory; the archive is hash-verified before this runs.
+      await this.exec(
+        '/usr/bin/tar',
+        ['-xzf', archive, '-C', into, '--strip-components=1'],
+        { PATH: MinimalPath },
+        signal,
+        60_000,
+      );
+      return;
+    }
+    // The Windows zip is flat (uv.exe, uvx.exe, uvw.exe). Defence in depth even though the hash is pinned.
+    const entries = unzipSync(new Uint8Array(await readFile(archive)));
+    for (const [name, data] of Object.entries(entries)) {
+      if (name.endsWith('/')) continue;
+      const target = resolve(into, name);
+      const rel = relative(into, target);
+      if (isAbsolute(name) || /^[a-z]:/i.test(name) || rel.startsWith('..') || isAbsolute(rel))
+        throw new InstallError('The uv download was unusable. Try again.');
+      await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+      await writeFile(target, data, { mode: 0o700 });
+    }
+  }
+
   private async retry(signal: AbortSignal, attempts: number, task: () => Promise<unknown>): Promise<void> {
     for (let attempt = 1; ; attempt++) {
       try {
@@ -250,8 +307,8 @@ export class MnemosyneMemory implements MemoryProvider {
     }
   }
 
-  private async download(asset: { file: string; sha256: string }, to: string, signal: AbortSignal): Promise<void> {
-    const url = `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${asset.file}.tar.gz`;
+  private async download(asset: UvAsset, to: string, signal: AbortSignal): Promise<void> {
+    const url = `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${asset.file}.${asset.ext}`;
     const response = await (this.options.fetchImpl ?? fetch)(url, { signal });
     if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
     const total = Number(response.headers.get('content-length')) || 0;
