@@ -1,5 +1,5 @@
 import { PostingFormSchema, type FillPlanDto, type IngestResult } from '../../../shared/dto';
-import { fetchPosting, NotAJobPageError, type CustomPageReader } from './ats';
+import { BoardUrlError, fetchPosting, NotAJobPageError, type CustomPageReader } from './ats';
 import { ApplicationsService } from '../applications/applications.service';
 import { toPostingForm, type PostingReader } from './posting-reader.service';
 import { PostingsRepository, type PostingsDb } from './postings.repository';
@@ -65,6 +65,12 @@ export class PostingService {
         ...(note && !parsed.verified ? { note } : {}),
       };
     } catch (error) {
+      if (error instanceof BoardUrlError)
+        return {
+          ok: false,
+          code: 'JOB_BOARD',
+          message: `This is ${error.company}'s job board. Paste a link to one job from it.`,
+        };
       if (error instanceof NotAJobPageError)
         return {
           ok: false,
