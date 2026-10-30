@@ -15,7 +15,7 @@
 | ------------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Neo (BrowserOS)    | separate app the owner installs            | JobPilot detects its MCP endpoint; if missing, Settings links to the BrowserOS download. JobPilot installs nothing.                                           |
 | Playwright browser | `@playwright/mcp` + Chromium               | installed when the owner selects the Playwright provider; Chromium fetched by `playwright install chromium` into the tool folder (`PLAYWRIGHT_BROWSERS_PATH`) |
-| Mnemosyne          | Python package                             | pinned `uv` (ADR 0006) installs it on first enable                                                                                                            |
+| Mnemosyne          | Python package                             | pinned `uv` (ADR 0006; macOS, Linux and Windows, x64 and arm64, SHA-256 pinned per asset) installs it on first enable                                         |
 | Bitwarden          | `@bitwarden/cli` + `@bitwarden/mcp-server` | installed when the owner connects the job vault (ADR 0013)                                                                                                    |
 
 ## Node runtime for npm-based tools

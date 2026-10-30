@@ -254,6 +254,8 @@ jobs:
       - run: npx electron-builder --win nsis --x64
       - name: Boot-test Windows installer
         run: node scripts/smoke-windows-installer.mjs
+      - name: Install Mnemosyne for real (network)
+        run: npm run smoke:memory
 
   linux:
     needs: static
@@ -281,6 +283,8 @@ jobs:
         run: npx electron-builder --linux deb AppImage --x64
       - name: Install and boot-test Linux deb package
         run: scripts/smoke-linux-deb.sh
+      - name: Install Mnemosyne for real (network)
+        run: npm run smoke:memory
       - name: Boot packaged Linux AppImage
         run: |
           # Chromium's sandbox needs unprivileged user namespaces; Ubuntu 24.04 runners restrict them via AppArmor.
