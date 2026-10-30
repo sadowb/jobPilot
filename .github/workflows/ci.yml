@@ -74,7 +74,7 @@ jobs:
 
   app:
     needs: [changes, static]
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 12
     steps:
       - name: Start macOS timer
