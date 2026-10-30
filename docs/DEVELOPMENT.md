@@ -1,6 +1,6 @@
 # Development
 
-Requires macOS on Apple Silicon and Node 22.
+JobPilot is a cross-platform Electron app. Develop on macOS, Windows or Linux with Node 22.12+.
 
 ```bash
 npm ci
@@ -39,7 +39,7 @@ Rules for contributors and agents: [AGENTS.md](../AGENTS.md). Architecture: [arc
 
 - Renderer: `contextIsolation`, `sandbox`, no Node, served from `app://jobpilot/` (not `file://`), strict CSP, navigation and `window.open` locked, only `https:` links open in the system browser, single instance.
 - Electron fuses: RunAsNode, `NODE_OPTIONS`, `--inspect` and file-protocol privileges off; cookie encryption and asar integrity on. With the inspect fuse off, Playwright cannot attach to the packaged app, so dev journeys run against `electron .`.
-- Data: SQLCipher database with its key in the macOS Keychain. Every IPC payload, agent output and HTTP response is validated with zod. Outbound fetches are SSRF-checked (https only, DNS-pinned, private ranges blocked).
+- Data: SQLCipher database with its key in the OS keystore (macOS Keychain, Windows DPAPI, Linux libsecret or KWallet) via Electron `safeStorage`. Every IPC payload, agent output and HTTP response is validated with zod. Outbound fetches are SSRF-checked (https only, DNS-pinned, private ranges blocked).
 - CI: gitleaks, zizmor, `npm audit`, CodeQL and secret-scanning push protection.
 
 ## Visual regression

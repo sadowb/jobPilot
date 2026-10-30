@@ -19,8 +19,8 @@
 ## Consequences and risks
 
 - **The agent sees the plaintext password** (that is how the MCP returns it), so it reaches the model provider. Accepted by the owner. RunTraceService must redact Bitwarden tool results (`password`, `totp`, `notes`, custom hidden fields) before writing `run_event` or JSONL; the E2E redaction assertion (ADR 0012) covers it.
-- **Licence:** the MCP server is GPL-3.0. It is installed at runtime as a separate process, not bundled into the `.app`, so JobPilot is not a derivative work. Do not vendor it into the build.
+- **Licence:** the MCP server is GPL-3.0. It is installed at runtime as a separate process, not bundled into the packaged app, so JobPilot is not a derivative work. Do not vendor it into the build.
 - **TOTP generation** needs Bitwarden Premium on the dedicated account; without it, email codes stay on the agent's Gmail connector (Phase 6).
 - **Vault locked** means runs that need a login pause with `blocked` + reason `vault_locked` instead of failing.
 - **Not chosen:** the owner's main vault (blast radius); Bitwarden Agent Access / `aac` (early preview, no MCP, CLI pairing; revisit when stable); our own `safeStorage` store (custom crypto code, no sync).
-- The SQLCipher database key stays in Keychain via `safeStorage` (ADR 0001); it must be readable at boot before any vault is unlocked. Its prompt-on-update problem is ADR 0014.
+- The SQLCipher database key stays in the OS keystore via `safeStorage` (ADR 0001); it must be readable at boot before any vault is unlocked. Its prompt-on-update problem is ADR 0014.
