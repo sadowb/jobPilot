@@ -170,31 +170,31 @@ Layout is **fixed per device frame**, not fluid CSS: V17 defines no `max-width` 
 
 Desktop boards (each exists as `_L` and `_D`, except Flow map, Handoff and Motion, which are single):
 
-| Board                           | Size            | Screen                               |
-| ------------------------------- | --------------- | ------------------------------------ |
-| `Dash_Applied`                  | 1440×960        | Dashboard, Applied view (landing)    |
-| `Dash_Peek`                     | 1440×960        | Peek panel open on a row             |
-| `Dash_Status`                   | 1440×960        | Status picker, search filter         |
-| `Dash_Empty`                    | 1440×960        | Empty search result                  |
-| `CV_Viewer`                     | 1440×960        | CV viewer, exact sent version        |
-| `UpNext`                        | 1440×1080       | Up next queue                        |
-| `AddJobs`                       | 1440×960        | Add jobs sheet                       |
-| `Extension`                     | 1440×1024       | Browser extension popup              |
-| `Fixes`                         | 1440×1250       | Manual control (states)              |
-| `Inbox`                         | 1440×1000       | Inbox                                |
-| `Inbox_Pilot`                   | 1440×1270       | Cap pilot thread                     |
-| `Inbox_Clear`                   | 1440×900        | All clear                            |
-| `TakeOver`                      | 1440×1000       | Take over a tab                      |
-| `CmdK`                          | 1440×960        | Command box                          |
-| `CmdK_Answer`                   | 1440×720        | Command box answer                   |
-| `Analytics`                     | 1440×1135       | Analytics                            |
-| `Settings`                      | 1440×1260       | Settings sheet                       |
-| `Profile`                       | 1440×1546       | Profile and documents                |
-| `On1_Welcome` ... `On5_Liftoff` | 1440×760 to 900 | Onboarding, 5 steps                  |
-| `On_Empty`                      | 1440×900        | Dashboard, first day                 |
-| `FlowMap`                       | 1440×1120       | Screen map and clicks-per-task table |
-| `Handoff`                       | 1440×744        | What the design needs underneath     |
-| `Motion`                        | 1440×3950       | Motion spec (light only)             |
+| Board                                                 | Size      | Screen                                                   |
+| ----------------------------------------------------- | --------- | -------------------------------------------------------- |
+| `Dash_Applied`                                        | 1440×960  | Dashboard, Applied view (landing)                        |
+| `Dash_Peek`                                           | 1440×960  | Peek panel open on a row                                 |
+| `Dash_Status`                                         | 1440×960  | Status picker, search filter                             |
+| `Dash_Empty`                                          | 1440×960  | Empty search result                                      |
+| `CV_Viewer`                                           | 1440×960  | CV viewer, exact sent version                            |
+| `UpNext`                                              | 1440×1080 | Up next queue                                            |
+| `AddJobs`                                             | 1440×960  | Add jobs sheet                                           |
+| `Extension`                                           | 1440×1024 | Browser extension popup                                  |
+| `Fixes`                                               | 1440×1250 | Manual control (states)                                  |
+| `Inbox`                                               | 1440×1000 | Inbox                                                    |
+| `Inbox_Pilot`                                         | 1440×1270 | Cap pilot thread                                         |
+| `Inbox_Clear`                                         | 1440×900  | All clear                                                |
+| `TakeOver`                                            | 1440×1000 | Take over a tab                                          |
+| `CmdK`                                                | 1440×960  | Command box                                              |
+| `CmdK_Answer`                                         | 1440×720  | Command box answer                                       |
+| `Analytics`                                           | 1440×1135 | Analytics                                                |
+| `Settings`                                            | 1440×1260 | Settings sheet                                           |
+| `Profile`                                             | 1440×1546 | Profile and documents                                    |
+| `P1_Preflight`, `P2_AboutYou`, `P3_Takeoff`, `Motion` | 1280×800  | Onboarding v5, 3 steps and motion kit (`--animate-ob-*`) |
+| `On_Empty`                                            | 1440×900  | Dashboard, first day                                     |
+| `FlowMap`                                             | 1440×1120 | Screen map and clicks-per-task table                     |
+| `Handoff`                                             | 1440×744  | What the design needs underneath                         |
+| `Motion`                                              | 1440×3950 | Motion spec (light only)                                 |
 
 Navigation (from `FlowMap`): Dashboard, Inbox and Analytics sit in the top bar on every screen; **⌘K Ask Cap** reaches the rest; Settings and the account menu are the gear and avatar. Landing = Dashboard · Applied.
 
