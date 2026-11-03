@@ -1,5 +1,7 @@
 import type { FakeMemoryProvider } from '../memory/fake';
 import type { z } from 'zod';
+import type { AgentState } from '../../../shared/dto';
+import type { AgentModel } from './models';
 import type { AgentProvider, AgentRun, RunResultSchema, RunSpec } from './types';
 
 export class FakeAgentProvider implements AgentProvider {
@@ -36,6 +38,11 @@ export class FakeAgentProvider implements AgentProvider {
     this.pending.get(runId)?.(result);
   }
 
+  /** No scripted reply: a plain acknowledgement for tool-less calls (connection test), the default run result otherwise. */
+  private fallback(spec: RunSpec<z.ZodType>): unknown {
+    return Object.keys(spec.mcpServers).length === 0 ? { ok: true } : undefined;
+  }
+
   run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
     const host = /"url":"https?:\/\/([^/"]+)/.exec(spec.prompt)?.[1] ?? '';
     const attached = 'memory' in spec.mcpServers && this.memory !== undefined;
@@ -58,7 +65,7 @@ export class FakeAgentProvider implements AgentProvider {
       rejectRun = reject;
       this.pending.set(spec.runId, resolve);
       signal.addEventListener('abort', abort, { once: true });
-      timer = setTimeout(() => this.complete(spec.runId, this.reply?.(spec)), this.delayMs);
+      timer = setTimeout(() => this.complete(spec.runId, this.reply?.(spec) ?? this.fallback(spec)), this.delayMs);
       if (signal.aborted) abort();
     })
       .then((value) => spec.outputSchema.parse(value) as z.infer<S>)
@@ -80,3 +87,22 @@ export class FakeAgentProvider implements AgentProvider {
     return { events: events(), result };
   }
 }
+
+/** What setup asks of "Claude" in fake-provider E2E runs: always installed, ready, with two listed models. */
+export const fakeClaudeControl = {
+  state: async (): Promise<AgentState> => ({
+    tool: 'claude',
+    status: 'ready',
+    login: 'ok',
+    path: '/fake/claude',
+    version: '0.0.0 (Claude Code)',
+    confirmed: true,
+    model: 'haiku',
+    auth: 'login',
+  }),
+  models: async (): Promise<AgentModel[]> => [
+    { value: 'haiku', label: 'Haiku' },
+    { value: 'sonnet', label: 'Sonnet' },
+  ],
+  save: async (): Promise<AgentState> => fakeClaudeControl.state(),
+};

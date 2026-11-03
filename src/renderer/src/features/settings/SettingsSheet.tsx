@@ -7,6 +7,7 @@ import { useTheme } from '../../lib/theme';
 import type { ThemeSource } from '../../../../shared/ipc';
 import { IT, S, V17N, V17X, shellButton } from '../shared-ui';
 import { AgentCard } from './AgentCard';
+import { ConnectionsCard } from './ConnectionsCard';
 import { ClaudeKeyField } from './ClaudeKeyField';
 import { CrewSlider } from './CrewSlider';
 import { DEFAULT_SETTINGS, SUBMIT_MODES } from './data';
@@ -109,6 +110,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-7">
+        <ConnectionsCard />
         <AgentCard />
         <MemoryCard />
         <ClaudeKeyField />

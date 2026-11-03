@@ -3,7 +3,7 @@ import { url as inspectorUrl } from 'node:inspector';
 import { db } from '../platform/db/database';
 import { AgentSettingsService } from '../modules/settings/agent.service';
 import { NeoBrowserProvider } from '../platform/browsers/neo';
-import { FakeAgentProvider } from '../platform/agents/fake';
+import { FakeAgentProvider, fakeClaudeControl } from '../platform/agents/fake';
 import { GrantsService } from '../modules/grants/grants.service';
 import { gateProviders } from '../modules/grants/grants.gate';
 import { grantsHandlers } from '../modules/grants/grants.controller';
@@ -190,7 +190,14 @@ if (logsError) {
       // Nothing runs, reads a posting or reads a CV without the owner's grants: the gate wraps the providers once, here.
       const rawBrowser = fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser'));
       const { agent, browser } = gateProviders(grants, fakeAgent ?? agentSettings, rawBrowser);
-      const preflight = new PreflightService(grants, agentSettings, agent, rawBrowser, new SettingsRepository(db));
+      const preflight = new PreflightService(
+        grants,
+        fakeAgent ? fakeClaudeControl : agentSettings,
+        agent,
+        rawBrowser,
+        new SettingsRepository(db),
+        fakeAgent ? () => Promise.resolve(null) : undefined,
+      );
       runsService = new RunsService(db, app.getPath('userData'), agent, browser, memory);
       const postingReader = new PostingReader(agent, browser);
       await runsService.initialize();

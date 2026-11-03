@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import { z } from 'zod';
 import type {
+  AgentState,
   AgentTool,
   AllowConnectionsInput,
   AllowConnectionsResult,
@@ -8,14 +9,21 @@ import type {
   Preflight,
 } from '../../../shared/dto';
 import { detectCodex } from '../../platform/agents/detect';
+import type { AgentModel } from '../../platform/agents/models';
 import { fingerprint } from '../../platform/agents/fingerprint';
 import type { AgentProvider } from '../../platform/agents/types';
 import type { BrowserProvider } from '../../platform/browsers/types';
 import { UserFacingError } from '../../platform/ipc/user-facing-error';
 import type { GrantsService } from '../grants/grants.service';
-import type { AgentSettingsService } from '../settings/agent.service';
 import type { SettingsRepository } from '../settings/settings.repository';
 import { structuredCall } from './structured-call';
+
+/** The slice of Claude settings that setup needs. `AgentSettingsService` is the real one; E2E passes a fake. */
+export interface ClaudeControl {
+  state(): Promise<AgentState>;
+  models(): Promise<AgentModel[]>;
+  save(input: { model: string; auth: AgentState['auth'] }): Promise<AgentState>;
+}
 
 const CUSTOM_KEY = 'agents.custom';
 const CustomAgentSchema = z.object({ path: z.string().min(1).max(4096) });
@@ -47,11 +55,12 @@ async function browserTools(browser: BrowserProvider): Promise<BrowserTool[]> {
 export class PreflightService {
   constructor(
     private readonly grants: GrantsService,
-    private readonly claude: AgentSettingsService,
+    private readonly claude: ClaudeControl,
     /** The gated agent: the test call below proves the grant check works. */
     private readonly agent: AgentProvider,
     private readonly browser: BrowserProvider,
     private readonly settings: SettingsRepository,
+    private readonly findCodex: typeof detectCodex = detectCodex,
   ) {}
 
   private customCandidate(): z.infer<typeof CustomAgentSchema> | null {
@@ -73,7 +82,7 @@ export class PreflightService {
   async detect(): Promise<Preflight> {
     const [claudeState, codex, models] = await Promise.all([
       this.claude.state(),
-      detectCodex().catch(() => null),
+      this.findCodex().catch(() => null),
       this.claude.models(),
     ]);
     const claudeFound = claudeState.status !== 'tool_not_installed';
