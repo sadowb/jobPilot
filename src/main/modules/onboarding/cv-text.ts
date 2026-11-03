@@ -5,11 +5,14 @@ import { extractText, getDocumentProxy } from 'unpdf';
 export const CV_TEXT_MAX = 60_000;
 const DOCX_ENTRY_MAX = 20 * 1024 * 1024;
 
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+// `&lt;`/`&gt;` stay as written: decoding them after the tag strip below could re-create markup (CodeQL js/incomplete-multi-character-sanitization). The text only feeds an LLM prompt, which reads them fine.
+const ENTITIES: Record<string, string> = { amp: '&', quot: '"', apos: "'" };
 const decode = (text: string) =>
-  text.replace(/&(amp|lt|gt|quot|apos);|&#(\d{1,6});/g, (_m, name: string | undefined, code: string | undefined) =>
-    name ? ENTITIES[name]! : String.fromCodePoint(Math.min(Number(code), 0x10ffff)),
-  );
+  text.replace(/&(amp|quot|apos);|&#(\d{1,6});/g, (match, name: string | undefined, code: string | undefined) => {
+    if (name) return ENTITIES[name]!;
+    const point = Math.min(Number(code), 0x10ffff);
+    return point === 0x3c || point === 0x3e ? match : String.fromCodePoint(point);
+  });
 
 /** Plain text of a DOCX body. Only `word/document.xml` is inflated, and only if it declares a sane size (zip-bomb guard). */
 export function docxText(bytes: Uint8Array): string {
@@ -23,7 +26,7 @@ export function docxText(bytes: Uint8Array): string {
       .decode(xml)
       .replace(/<w:tab\s*\/>/g, '\t')
       .replace(/<\/w:p>/g, '\n')
-      .replace(/<[^>]+>/g, ''),
+      .replace(/<[^>]*>/g, ''),
   );
 }
 
