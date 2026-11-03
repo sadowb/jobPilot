@@ -102,12 +102,54 @@ async function script(app: ElectronApplication) {
     const require = process.getBuiltinModule('node:module')!.createRequire(path.join(app.getAppPath(), 'package.json'));
     const main = require(path.join(app.getAppPath(), 'out/main/index.js')) as Main;
     main.fakeAgent!.delayMs = 150;
-    main.fakeAgent!.reply = (spec) =>
-      spec.prompt.includes('<cv>')
-        ? extraction
-        : spec.prompt.includes('<owner_answer>')
-          ? { reply: 'Got it, I added that.', facts: [{ kind: 'nationality', code: 'FR' }] }
-          : undefined;
+    // A scripted conversation: the CV prompt carries <cv>, chat turns are matched on the owner's message.
+    const prompts: string[] = [];
+    (globalThis as { __prompts?: string[] }).__prompts = prompts;
+    const turn = (reply: string, facts: object[] = [], settled: string[] = [], suggestions: string[] = []) => ({
+      reply,
+      facts,
+      settled,
+      suggestions,
+    });
+    main.fakeAgent!.reply = (spec) => {
+      const { prompt } = spec;
+      if (!prompt.startsWith('Reply with the JSON')) prompts.push(prompt); // not the connection test
+      if (prompt.includes('<cv>')) return extraction;
+      if (prompt.includes('has not said anything yet'))
+        return turn(
+          'Hi Sara, I read your CV. Is +212 6 12 34 56 78 still the right number?',
+          [],
+          [],
+          ['Yes, that is right'],
+        );
+      if (prompt.includes('<owner_message>Yes, that is right'))
+        return turn('Thanks. How well do you speak French?', [], ['phone'], ['Fluent', 'Basic']);
+      if (prompt.includes('<owner_message>Fluent'))
+        return turn(
+          'Noted, French is fluent. Is sara.benali@example.com the best email for applications?',
+          [{ kind: 'language', language: 'French', level: 'Fluent' }],
+          ['lang:' + /lang:([^:\n]+):/.exec(prompt)?.[1]],
+        );
+      if (prompt.includes('<owner_message>Actually'))
+        return turn('Updated your email. Which passports do you hold, and where do you want to work?', [
+          { kind: 'personal', field: 'email', value: 'sara@benali.dev' },
+        ]);
+      if (prompt.includes('<owner_message>I hold'))
+        return turn(
+          'Perfect, you are all set. Paste job links now or later from the dashboard, then press Ready for take-off.',
+          [
+            { kind: 'nationality', code: 'MA' },
+            { kind: 'nationality', code: 'FR' },
+            { kind: 'market', code: 'ES' },
+            { kind: 'market', code: 'MA', remove: true },
+            { kind: 'work_auth', code: 'FR', value: 'authorized' },
+            { kind: 'work_auth', code: 'ES', value: 'sponsorship' },
+            { kind: 'personal', field: 'email', value: 'not-an-email' },
+          ],
+          ['nationality', 'markets', 'rights:FR', 'rights:ES', 'rights:XX'],
+        );
+      return undefined;
+    };
     // Two queued jobs for the Take-off board; fixtures only, everything else goes through the real IPC.
     const db = main.db.$client;
     const id = (n: number) => String(n).padStart(26, '0');
@@ -185,23 +227,46 @@ test('onboarding v5: Pre-flight, About you and Take-off with fake providers (red
     expect((await window.evaluate(() => window.jobpilot!.profile.get())).personal).toBeNull();
     await expect(window.getByText('Drop your CV first')).toHaveCount(0);
 
-    const question = window.getByRole('group', { name: 'Cap’s question' });
-    await question.getByRole('button', { name: /looks right/ }).click();
-    await question.getByRole('button', { name: 'Fluent' }).click();
-    await capture(window, testInfo, 'p2-markets');
-    await expect(question.getByRole('button', { name: /France/ })).toHaveAttribute('aria-pressed', 'true');
-    await question.getByRole('button', { name: 'That’s it' }).click();
-    await expect(window.getByText(/Can you work in France without a visa/)).toBeVisible();
-    await question.getByRole('button', { name: 'No, I’d need sponsorship' }).click();
-    await expect(window.getByText(/paste jobs you want/)).toBeVisible();
+    // The agent opens the conversation; the app, not the agent, counts what is left.
+    await expect(window.getByText('Hi Sara, I read your CV.')).toBeVisible();
+    await expect(window.getByText('4 things left')).toBeVisible();
+    await expect(window.getByRole('group', { name: 'Cap’s question' })).toHaveCount(0);
+    await capture(window, testInfo, 'p2-opener');
+    // A tapped suggestion is sent as the owner's message.
+    await window
+      .getByRole('group', { name: 'Quick replies' })
+      .getByRole('button', { name: 'Yes, that is right' })
+      .click();
+    await expect(window.getByText('Thanks. How well do you speak French?')).toBeVisible();
+    await expect(window.getByText('3 things left')).toBeVisible();
+    await window.getByRole('group', { name: 'Quick replies' }).getByRole('button', { name: 'Fluent' }).click();
+    await expect(window.getByText('Noted, French is fluent.')).toBeVisible();
+    await expect(window.getByText('2 things left')).toBeVisible();
+    // An owner correction wins over the CV value.
+    await window.getByLabel('Message Cap').fill('Actually my email is sara@benali.dev');
+    await window.getByRole('button', { name: 'Send' }).click();
+    await expect(window.getByText('Updated your email.')).toBeVisible();
+    await expect(profile.getByRole('button', { name: 'Edit email' })).toHaveText('sara@benali.dev');
+    await capture(window, testInfo, 'p2-chat');
+    // One multi-part answer: two passports, new target countries and per-country rights; the invalid email fact is dropped.
+    await window
+      .getByLabel('Message Cap')
+      .fill(
+        'I hold a Moroccan and a French passport. I want France and Spain, not Morocco. France is fine, Spain needs a visa.',
+      );
+    await window.getByRole('button', { name: 'Send' }).click();
+    await expect(window.getByText('Perfect, you are all set.')).toBeVisible();
+    await expect(profile.getByRole('button', { name: 'Edit email' })).toHaveText('sara@benali.dev');
+    await expect(window.getByRole('button', { name: 'Ready for take-off →' })).toBeEnabled();
     // Market-neutral copy: no currency or distance defaults anywhere on the screen.
     await expect(window.locator('body')).not.toContainText(/\$|USD|miles|green card/i);
-    // Free text goes through Cap and only touches the draft.
-    await window.getByLabel('Message Cap').fill('I also hold a French passport');
-    await window.getByRole('button', { name: 'Send' }).click();
-    await expect(window.getByText('Got it, I added that.')).toBeVisible();
-    await window.getByRole('group', { name: 'Cap’s question' }).getByRole('button', { name: 'Later' }).click();
+    // Nothing is saved before the last button, and the agent saw the app's open items, not a fixed script.
     expect((await window.evaluate(() => window.jobpilot!.profile.get())).personal).toBeNull();
+    const prompts = await app.evaluate(() => (globalThis as { __prompts?: string[] }).__prompts ?? []);
+    expect(prompts).toHaveLength(6);
+    expect(prompts[1]).toMatch(/<missing>[\s\S]*phone:[\s\S]*rights:FR[\s\S]*<\/missing>/);
+    expect(prompts[1]).not.toContain('rights:MA');
+    expect(prompts[5]).toContain('Owner: Actually my email is sara@benali.dev');
     await capture(window, testInfo, 'p2-done');
     await window.getByRole('button', { name: 'Ready for take-off →' }).click();
 
@@ -215,10 +280,12 @@ test('onboarding v5: Pre-flight, About you and Take-off with fake providers (red
     expect(saved.personal).toMatchObject({
       firstName: 'Sara',
       lastName: 'Benali',
+      email: 'sara@benali.dev',
       countryCode: 'MA',
       phone: '+212612345678',
     });
-    expect(saved.markets.map((m) => `${m.code}:${m.workAuth}`)).toEqual(['MA:authorized', 'FR:sponsorship']);
+    expect(saved.personal?.languages.find((l) => l.language === 'fr')?.level).toBe('Fluent');
+    expect(saved.markets.map((m) => `${m.code}:${m.workAuth}`)).toEqual(['FR:authorized', 'ES:sponsorship']);
     expect(saved.answers?.find((a) => a.id === 'nationality')?.default).toBe('Morocco, France');
     await expect(window.getByLabel('Acme Labs').first()).toBeVisible();
     await expect(window.getByLabel('BOARDING')).toBeVisible();
