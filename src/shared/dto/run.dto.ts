@@ -17,6 +17,7 @@ export const RunSummarySchema = z.object({
   status: RunStatus.schema,
   startedAt: z.number().int().nullable(),
   finishedAt: z.number().int().nullable(),
+  error: z.string().nullable().optional(),
 });
 export type RunSummaryDto = z.infer<typeof RunSummarySchema>;
 /** Why the queue is paused: the owner did it, or JobPilot closed/crashed with jobs in progress. */

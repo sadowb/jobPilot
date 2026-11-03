@@ -29,12 +29,16 @@ export interface QueueRowProps {
   onConfirm?: (postingId: string) => void;
   onDragStart: () => void;
   onDropOn: () => void;
+  canStart?: boolean;
+  startDisabledReason?: string;
+  onFixPreflight?: () => void;
 }
 
 const stageTag = (item: QueueItem): { label: string; color: string } | null => {
   if (item.stage === 'running') return { label: 'NOW', color: 'text-work' };
   if (item.stage === 'waiting') return { label: 'WAIT', color: 'text-need' };
   if (item.stage === 'held') return { label: 'HOLD', color: 'text-need' };
+  if (item.lastError) return { label: 'FAILED', color: 'text-need' };
   return null;
 };
 
@@ -48,8 +52,17 @@ export function QueueRow(p: QueueRowProps) {
   const runAction = rowRunActions(item)[0];
   const rowRef = useRef<HTMLDivElement>(null);
   const runLabel = `${runAction === 'start' ? 'Start' : 'Cancel'} ${item.company} ${item.role} application`;
+  const isStart = runAction === 'start';
+  const startBlocked = isStart && p.canStart === false;
+  const runDisabled = p.runBusy || startBlocked || (runAction === 'cancel' && !p.onCancel);
+  const runTitle = startBlocked ? p.startDisabledReason : undefined;
+  const runAria = startBlocked && p.startDisabledReason ? `${runLabel}: ${p.startDisabledReason}` : runLabel;
   // The button unmounts when the row changes stage; park focus on the row so keyboard users keep their place.
   const runClick = () => {
+    if (startBlocked && p.onFixPreflight) {
+      p.onFixPreflight();
+      return;
+    }
     rowRef.current?.focus();
     (runAction === 'start' ? p.onStart : p.onCancel)?.();
   };
@@ -60,8 +73,9 @@ export function QueueRow(p: QueueRowProps) {
         'h-[30px] flex-none cursor-pointer rounded-[9px] border border-line bg-bg px-2.5 text-[12.5px]! font-semibold! text-ink-2! disabled:cursor-default disabled:opacity-50',
         controlFocus,
       )}
-      aria-label={runLabel}
-      disabled={p.runBusy || (runAction === 'cancel' && !p.onCancel)}
+      aria-label={runAria}
+      title={runTitle}
+      disabled={runDisabled}
       onClick={runClick}
     >
       {runAction === 'start' ? 'Start' : 'Cancel'}
@@ -127,6 +141,41 @@ export function QueueRow(p: QueueRowProps) {
             <div title={item.hint} className="max-w-full truncate text-[13px] text-muted">
               {item.role}
             </div>
+            {item.lastError && (
+              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-need">
+                <span className="inline-block rounded-full bg-need/15 px-2 py-[1px] font-mono text-[11px] font-semibold tracking-[0.04em] text-need">
+                  Failed
+                </span>
+                <span title={item.lastError} className="max-w-[280px] truncate">
+                  {item.lastError}
+                </span>
+              </span>
+            )}
+            {item.runHistory && item.runHistory.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                <span className="font-mono text-[10.5px] tracking-wider text-muted uppercase">History:</span>
+                {item.runHistory.map((run, idx) => {
+                  const attemptNum = item.runHistory!.length - idx;
+                  const isFailed = run.status === 'failed';
+                  return (
+                    <span
+                      key={run.id}
+                      title={
+                        run.error ? `Attempt #${attemptNum}: ${run.error}` : `Attempt #${attemptNum}: ${run.status}`
+                      }
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10.5px]',
+                        isFailed ? 'bg-need/10 text-need' : 'bg-hover text-muted',
+                      )}
+                    >
+                      <span>#{attemptNum}</span>
+                      <span>{run.status}</span>
+                      {run.error && <span className="max-w-[140px] truncate">({run.error})</span>}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             {item.stage === 'held' && item.heldAt && (
               <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-line-2 py-[3px] pr-[9px] pl-[7px] font-mono text-[11px] whitespace-nowrap text-ink-2">
                 <i className="size-1.5 flex-none rounded-full bg-brand" />
