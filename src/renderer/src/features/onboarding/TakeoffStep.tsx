@@ -8,7 +8,7 @@ import { MARKETS_KEY, readMarkets } from '../profile/markets';
 import { PROFILE_KEY, readProfile } from '../profile/personal';
 import { onboardingPending, readProfileData, saveProfileData } from '../profile/profileStorage';
 import { OnboardingHeader } from './OnboardingHeader';
-import { Cap, HALO, OkDot, PRESS, Spinner } from './parts';
+import { Cap, OkDot, PRESS, Spinner } from './parts';
 import { SplitFlap } from './SplitFlap';
 
 const ROWS = 4;
@@ -193,11 +193,7 @@ export function TakeoffStep() {
 
         <div className={cn('flex flex-wrap items-center gap-[22px]', A_RISE, '[--d:1.4s]')}>
           {first && !launched && (
-            <Button
-              variant="primary"
-              onClick={launch}
-              className={cn('h-12 px-6 text-[15px] font-semibold', HALO, PRESS)}
-            >
+            <Button variant="primary" onClick={launch} className={cn('h-12 px-6 text-[15px] font-semibold', PRESS)}>
               Start the first job
             </Button>
           )}
@@ -213,7 +209,7 @@ export function TakeoffStep() {
           <Button
             variant={first ? 'ghost' : 'primary'}
             onClick={() => void navigate('/')}
-            className={cn(!first && cn('h-12 px-6 text-[15px] font-semibold', HALO), PRESS)}
+            className={cn(!first && 'h-12 px-6 text-[15px] font-semibold', PRESS)}
           >
             {launched ? 'Go to my dashboard' : first ? 'Go to my dashboard' : 'Go to my dashboard →'}
           </Button>

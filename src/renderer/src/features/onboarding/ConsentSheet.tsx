@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AgentTool, BrowserTool } from '../../../../shared/dto';
-import { Button, Dialog, cn } from '../../components/ui';
+import { Button, Dialog } from '../../components/ui';
 import { Cap, ToolTile } from './parts';
-
-const BARS = [3, 1, 2, 1, 4, 1, 1, 3, 2, 1, 1, 4, 2, 1, 3, 1, 2, 2, 1, 3, 1, 4];
 
 /** Exactly what each connection can and cannot do. Kept next to the grant scopes in `shared/dto/enums.ts`: a wider scope needs new copy here. */
 const AGENT_CAN = ['Read job pages and your profile', 'Write answers you approve'];
@@ -26,8 +24,6 @@ function Stub({
   sub,
   can,
   cannot,
-  stamped,
-  stampDelay,
   children,
 }: {
   caption: string;
@@ -36,12 +32,10 @@ function Stub({
   sub: string;
   can: readonly string[];
   cannot: readonly string[];
-  stamped: boolean;
-  stampDelay?: string;
   children?: ReactNode;
 }) {
   return (
-    <section className="relative flex min-w-0 flex-1 flex-col gap-3.5 p-1" aria-label={caption}>
+    <section className="flex min-w-0 flex-1 flex-col gap-3.5 p-1" aria-label={caption}>
       <Cap>{caption}</Cap>
       <div className="flex items-center gap-3">
         <ToolTile size={40}>{mono}</ToolTile>
@@ -69,21 +63,12 @@ function Stub({
           </li>
         ))}
       </ul>
-      {stamped && (
-        <span
-          aria-hidden="true"
-          style={{ ['--d' as string]: stampDelay }}
-          className="absolute top-0 right-0 -rotate-10 animate-ob-stamp rounded-lg border-[2.5px] border-brand bg-brand-tint/70 px-3.5 py-1.5 font-mono text-[17px] font-semibold tracking-[0.14em] text-brand motion-reduce:animate-none"
-        >
-          ALLOWED
-        </span>
-      )}
     </section>
   );
 }
 
 /**
- * The boarding-pass consent sheet. One Allow covers every connection shown on it; the grant is written by main
+ * The consent sheet. One Allow covers every connection shown on it; the grant is written by main
  * when `onAllow` runs, and nothing connects before that. Custom agents show the resolved path they will run.
  */
 export function ConsentSheet({
@@ -91,8 +76,6 @@ export function ConsentSheet({
   agent,
   model,
   browser,
-  stamped,
-  leaving,
   busy,
   onAllow,
   onClose,
@@ -101,8 +84,6 @@ export function ConsentSheet({
   agent?: AgentTool;
   model?: string;
   browser?: BrowserTool;
-  stamped: boolean;
-  leaving: boolean;
   busy: boolean;
   onAllow: () => void;
   onClose: () => void;
@@ -112,22 +93,11 @@ export function ConsentSheet({
     <Dialog
       open={open}
       onClose={onClose}
-      eyebrow={`JobPilot · Boarding pass · ${count} connection${count === 1 ? '' : 's'}`}
+      eyebrow={`JobPilot · ${count} connection${count === 1 ? '' : 's'}`}
       title={count === 1 ? 'Allow this one?' : 'Allow these two?'}
-      titleAdornment={
-        <span aria-hidden="true" className="flex items-end gap-0.5">
-          {BARS.map((w, i) => (
-            <span key={i} className="inline-block h-6 bg-line-2" style={{ width: w }} />
-          ))}
-        </span>
-      }
       note="Turn either off any time in Settings."
       closeLabel="Not now"
-      className={cn(
-        'w-[min(720px,calc(100vw-32px))]',
-        leaving && 'animate-ob-leave! motion-reduce:animate-none!',
-        stamped && !leaving && 'animate-ob-thud!',
-      )}
+      className="w-[min(720px,calc(100vw-32px))]"
       bodyClassName="flex flex-col gap-6 sm:flex-row"
       onSubmit={() => !busy && onAllow()}
       actions={
@@ -135,7 +105,7 @@ export function ConsentSheet({
           <Button size="sm" onClick={onClose} disabled={busy}>
             Not now
           </Button>
-          <Button type="submit" variant="primary" size="sm" disabled={busy || stamped}>
+          <Button type="submit" variant="primary" size="sm" disabled={busy}>
             {count === 1 ? 'Allow' : 'Allow both'}
           </Button>
         </>
@@ -149,7 +119,6 @@ export function ConsentSheet({
           sub={`${model ?? 'default model'} · uses your own plan`}
           can={AGENT_CAN}
           cannot={AGENT_CANNOT}
-          stamped={stamped}
         >
           {agent.id === 'custom' && agent.path && (
             <div className="flex flex-col gap-1.5">
@@ -169,8 +138,6 @@ export function ConsentSheet({
           sub="Found automatically · MCP"
           can={BROWSER_CAN}
           cannot={BROWSER_CANNOT}
-          stamped={stamped}
-          stampDelay=".14s"
         />
       )}
     </Dialog>

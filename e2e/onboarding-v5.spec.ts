@@ -278,7 +278,7 @@ test('onboarding v5: with motion on, the stamp plays and the flow still reaches 
       )
       .toBe(0);
     await window.getByRole('dialog').getByRole('button', { name: 'Allow both' }).click();
-    await expect(window.getByRole('dialog').getByText('ALLOWED').first()).toBeVisible();
+    await expect(window.getByRole('dialog')).toHaveCount(0);
     await expect(window.getByRole('button', { name: 'Next: about you →' })).toBeVisible({ timeout: 20_000 });
   } finally {
     await app.close();

@@ -4,16 +4,13 @@ import type { AgentTool, AllowConnectionsResult, BrowserTool } from '../../../..
 import { CapDartArt } from '../../components/CapDartArt';
 import { Button, Select, cn } from '../../components/ui';
 import { useAllowConnections, useBrowserTools, useChooseCustomAgent, usePreflight } from '../../lib/api';
-import { usePrefersReducedMotion } from '../../lib/motion';
 import { A_RISE, BUBBLE, H1, IT, REDUCE_ALL } from '../shared-ui';
 import { ConsentSheet } from './ConsentSheet';
 import { OnboardingHeader } from './OnboardingHeader';
-import { Cap, HALO, OkDot, PRESS, Spinner, ToolTile } from './parts';
+import { Cap, OkDot, PRESS, Spinner, ToolTile } from './parts';
 import { stepPath } from './steps';
 
 type Phase = 'pick' | 'testing' | 'ok' | 'error';
-const STAMP_MS = 800;
-const LEAVE_MS = 350;
 
 const monoOf = (tool: AgentTool) => (tool.id === 'claude' ? 'CC' : tool.id === 'codex' ? 'CX' : '>_');
 const browserMono = (tool: BrowserTool) =>
@@ -203,7 +200,6 @@ function RouteMap({
 /** P1 Pre-flight: Cap finds an AI and a browser tool on this computer, the owner presses one Allow. */
 export function ConnectStep() {
   const navigate = useNavigate();
-  const reduced = usePrefersReducedMotion();
   const preflight = usePreflight();
   const chooseCustom = useChooseCustomAgent();
   const allow = useAllowConnections();
@@ -212,8 +208,7 @@ export function ConnectStep() {
   const [pickedBrowser, setBrowserId] = useState<BrowserTool['id'] | null>(null);
   const [models, setModels] = useState<Record<string, string>>({});
   const [sheet, setSheet] = useState(false);
-  const [stamped, setStamped] = useState(false);
-  const [leaving, setLeaving] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<AllowConnectionsResult | null>(null);
 
   const agents = useMemo(() => preflight.data?.agents ?? [], [preflight.data]);
@@ -268,23 +263,17 @@ export function ConnectStep() {
           : 'Change my picks if you like.';
 
   const runAllow = async () => {
-    if (!ai || !browser || stamped) return;
-    setStamped(true);
-    const pace = reduced ? 0 : STAMP_MS;
-    const request = allow
+    if (!ai || !browser || busy) return;
+    setBusy(true);
+    setSheet(false);
+    setPhase('testing');
+    const outcome = await allow
       .mutateAsync({ agent: { id: ai.id, model }, browser: { id: browser.id } })
       .catch((error: unknown): AllowConnectionsResult => ({
         agent: { ok: false, ms: null, message: error instanceof Error ? error.message : 'Could not allow.' },
         browser: null,
       }));
-    await new Promise((resolve) => setTimeout(resolve, pace));
-    setLeaving(true);
-    await new Promise((resolve) => setTimeout(resolve, reduced ? 0 : LEAVE_MS));
-    setSheet(false);
-    setLeaving(false);
-    setStamped(false);
-    setPhase('testing');
-    const outcome = await request;
+    setBusy(false);
     setResult(outcome);
     setPhase(outcome.agent?.ok !== false && outcome.browser?.ok !== false ? 'ok' : 'error');
   };
@@ -450,7 +439,7 @@ export function ConnectStep() {
             {phase === 'ok' ? (
               <Button
                 variant="primary"
-                className={cn('h-12 px-6 text-[15px] font-semibold', HALO, PRESS)}
+                className={cn('h-12 px-6 text-[15px] font-semibold', PRESS)}
                 onClick={() => void navigate(stepPath(2))}
               >
                 Next: about you →
@@ -470,7 +459,7 @@ export function ConnectStep() {
                     setPhase('pick');
                     setSheet(true);
                   }}
-                  className={cn('h-12 px-6 text-[15px] font-semibold', canAllow && HALO, PRESS)}
+                  className={cn('h-12 px-6 text-[15px] font-semibold', PRESS)}
                 >
                   {scanning ? 'Looking…' : `Allow ${ai?.name ?? 'AI'} + ${browser?.name ?? 'browser'}`}
                 </Button>
@@ -508,11 +497,9 @@ export function ConnectStep() {
         agent={ai}
         model={modelLabel ?? model ?? undefined}
         browser={browser}
-        stamped={stamped}
-        leaving={leaving}
-        busy={stamped}
+        busy={busy}
         onAllow={() => void runAllow()}
-        onClose={() => !stamped && setSheet(false)}
+        onClose={() => !busy && setSheet(false)}
       />
     </>
   );

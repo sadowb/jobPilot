@@ -72,4 +72,3 @@ export function CapAvatar({ size = 32 }: { size?: number }) {
 
 export const PRESS = 'active:scale-[0.97] motion-reduce:active:scale-100';
 /** The one button that is the next step gets the halo. */
-export const HALO = 'animate-ob-halo motion-reduce:animate-none';

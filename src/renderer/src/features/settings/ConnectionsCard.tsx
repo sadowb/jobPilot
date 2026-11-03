@@ -121,8 +121,6 @@ export function ConnectionsCard() {
         open={target !== null}
         agent={target && 'agent' in target ? target.agent : undefined}
         browser={target && 'browser' in target ? target.browser : undefined}
-        stamped={allow.isPending}
-        leaving={false}
         busy={allow.isPending}
         onAllow={() => void submit()}
         onClose={() => !allow.isPending && setTarget(null)}

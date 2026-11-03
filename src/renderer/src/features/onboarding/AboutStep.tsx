@@ -27,7 +27,7 @@ import {
   type Draft,
 } from './draft';
 import { OnboardingHeader } from './OnboardingHeader';
-import { CapAvatar, HALO, PRESS, Spinner } from './parts';
+import { CapAvatar, PRESS, Spinner } from './parts';
 import { ProfilePanel } from './ProfilePanel';
 import { stepPath } from './steps';
 
@@ -252,7 +252,7 @@ export function AboutStep() {
         variant="primary"
         disabled={saving}
         onClick={() => void confirm()}
-        className={cn('h-12 w-full text-[15px] font-semibold', HALO, PRESS)}
+        className={cn('h-12 w-full text-[15px] font-semibold', PRESS)}
       >
         {saving ? <Spinner className="border-on-pri/40 border-t-on-pri" /> : null}
         Ready for take-off →
