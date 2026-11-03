@@ -168,3 +168,43 @@ export const useUpdateSettings = () =>
 
 /** Not a hook: the profile lives in a module cache (`profileStorage`) read synchronously by the editors. */
 export const saveProfile = (input: ProfileSave): Promise<ProfileData> => bridge().profile.save(input);
+
+/**
+ * Setup's local detection (agents, browser tools). It reads the machine, so it re-reads on mount.
+ * `useBrowserTools` is the one place the browser status enters the UI: when the MCP discovery (#196) lists more
+ * tools, the list just grows; the UI never sees a port or URL.
+ */
+export const usePreflight = () =>
+  useQuery({ queryKey: queryKeys.preflight.all, queryFn: () => bridge().onboarding.preflight(), staleTime: 0 });
+export const useBrowserTools = () =>
+  useQuery({
+    queryKey: queryKeys.preflight.all,
+    queryFn: () => bridge().onboarding.preflight(),
+    staleTime: 0,
+    select: (preflight) => preflight.browsers,
+  });
+
+export const useChooseCustomAgent = () =>
+  useMutation({
+    mutationFn: () => bridge().onboarding.chooseCustomAgent(),
+    onSuccess: (preflight) => queryClient.setQueryData(queryKeys.preflight.all, preflight),
+  });
+
+const refreshGrants = () => queryClient.invalidateQueries({ queryKey: queryKeys.grants.all });
+
+export const useGrants = () => useQuery({ queryKey: queryKeys.grants.all, queryFn: () => bridge().grants.list() });
+export const useAllowConnections = () =>
+  useMutation({
+    mutationFn: (input: Parameters<JobPilotBridge['onboarding']['allow']>[0]) => bridge().onboarding.allow(input),
+    onSettled: () =>
+      Promise.all([refreshGrants(), queryClient.invalidateQueries({ queryKey: queryKeys.agent.state() })]),
+  });
+export const useRevokeGrant = () =>
+  useMutation({ mutationFn: (id: string) => bridge().grants.revoke(id), onSettled: refreshGrants });
+
+export const useExtractCv = () =>
+  useMutation({
+    mutationFn: (cv: { name: string; bytes: Uint8Array }) => bridge().onboarding.extractCv(cv.name, cv.bytes),
+  });
+export const useCapTurn = () =>
+  useMutation({ mutationFn: (input: { question: string; text: string }) => bridge().onboarding.capTurn(input) });

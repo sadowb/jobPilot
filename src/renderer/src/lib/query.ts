@@ -15,6 +15,8 @@ export const queryKeys = {
   runs: { all: ['runs'] as const, state: () => ['runs', 'state'] as const, list: () => ['runs', 'list'] as const },
   recovery: { state: () => ['recovery', 'state'] as const },
   agent: { state: () => ['agent', 'state'] as const },
+  preflight: { all: ['preflight'] as const },
+  grants: { all: ['grants'] as const },
   claudeKey: { status: () => ['claude-key', 'status'] as const },
   settings: { all: ['settings'] as const, current: () => [...queryKeys.settings.all, 'current'] as const },
 };
