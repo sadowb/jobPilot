@@ -69,7 +69,6 @@ test('Up next updates live, with no reload, as two runs change state', async ({}
     await window.setViewportSize({ width: 1280, height: 800 });
     await window.reload();
     await skipOnboarding(window);
-    await allowFakeConnections(window);
     await window.evaluate(() => {
       location.hash = '#/?tab=up-next';
     });

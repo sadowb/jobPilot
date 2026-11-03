@@ -94,6 +94,8 @@ test('Claude key persists encrypted, stays write-only, tests in main, and can be
       const original = globalThis.fetch;
       let calls = 0;
       globalThis.fetch = (async (url, init) => {
+        // Settings also probes the browser tool (Connections); only the Anthropic key test is scripted here.
+        if (url !== 'https://api.anthropic.com/v1/models?limit=1') return original(url, init);
         calls++;
         if (
           url !== 'https://api.anthropic.com/v1/models?limit=1' ||
