@@ -32,6 +32,14 @@
     "schema": "SaveDocumentInputSchema"
   },
   {
+    "channel": "grants:list",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "grants:revoke",
+    "schema": "RevokeGrantSchema"
+  },
+  {
     "channel": "memory:install",
     "schema": "z.void()"
   },
@@ -46,6 +54,26 @@
   {
     "channel": "observability:renderer-error",
     "schema": "RendererErrorInputSchema"
+  },
+  {
+    "channel": "onboarding:allow",
+    "schema": "AllowConnectionsSchema"
+  },
+  {
+    "channel": "onboarding:cap-turn",
+    "schema": "CapTurnInputSchema"
+  },
+  {
+    "channel": "onboarding:choose-custom-agent",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "onboarding:extract-cv",
+    "schema": "ExtractCvSchema"
+  },
+  {
+    "channel": "onboarding:preflight",
+    "schema": "z.void()"
   },
   {
     "channel": "postings:cancel-ingest",

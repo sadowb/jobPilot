@@ -18,6 +18,12 @@ import type {
   UpdateSettingsInput,
   SetApplicationStatusInput,
   RemoveAllDataInput,
+  Grant,
+  Preflight,
+  AllowConnectionsInput,
+  AllowConnectionsResult,
+  CvExtraction,
+  CapTurn,
 } from './dto';
 import { z } from 'zod';
 
@@ -69,6 +75,13 @@ export const Channels = {
   getSettings: 'settings:get',
   updateSettings: 'settings:update',
   removeAllData: 'settings:removeAllData',
+  listGrants: 'grants:list',
+  revokeGrant: 'grants:revoke',
+  preflight: 'onboarding:preflight',
+  chooseCustomAgent: 'onboarding:choose-custom-agent',
+  allowConnections: 'onboarding:allow',
+  extractCv: 'onboarding:extract-cv',
+  capTurn: 'onboarding:cap-turn',
   dataChanged: 'data:changed',
   rendererError: 'observability:renderer-error',
 } as const;
@@ -163,6 +176,20 @@ export interface JobPilotBridge {
     update(input: UpdateSettingsInput): Promise<AppSettings>;
     /** Deletes all JobPilot data and quits; normally the app exits before this resolves. */
     removeAllData(input: RemoveAllDataInput): Promise<void>;
+  };
+  grants: {
+    list(): Promise<Grant[]>;
+    revoke(id: string): Promise<Grant>;
+  };
+  onboarding: {
+    /** Local, read-only detection of agents and browser tools. No ports or paths other than the resolved agent binary. */
+    preflight(): Promise<Preflight>;
+    /** Main opens the native file picker for "another agent"; the renderer never supplies a path. */
+    chooseCustomAgent(): Promise<Preflight>;
+    allow(input: AllowConnectionsInput): Promise<AllowConnectionsResult>;
+    /** The CV bytes are read in main; nothing is stored. */
+    extractCv(name: string, bytes: Uint8Array): Promise<CvExtraction>;
+    capTurn(input: { question: string; text: string }): Promise<CapTurn>;
   };
   onDataChanged(listener: (change: DataChanged) => void): () => void;
 }
