@@ -6,7 +6,6 @@ import {
   type Page,
   type TestInfo,
 } from '@playwright/test';
-import { strToU8, zipSync } from 'fflate';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -44,30 +43,33 @@ const EXTRACTION = {
   markets: { value: ['MA', 'FR'], confidence: 'low' },
 };
 
-/** A minimal but valid DOCX (content types, package rels, namespaced body), the way Word writes it. */
-const cvDocx = () =>
-  Buffer.from(
-    zipSync({
-      '[Content_Types].xml': strToU8(
-        '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
-      ),
-      '_rels/.rels': strToU8(
-        '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
-      ),
-      'word/document.xml': strToU8(
-        '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
-          [
-            'Sara Benali',
-            'Software engineer · Rabat, Morocco · sara.benali@example.com · +212 6 12 34 56 78',
-            'Education: B.Sc. Computer Science, Mohammed V University, 2022 to 2026',
-            'Languages: Arabic (native), English (fluent), French',
-          ]
-            .map((line) => `<w:p><w:r><w:t>${line}</w:t></w:r></w:p>`)
-            .join('') +
-          '</w:body></w:document>',
-      ),
-    }),
-  );
+/** A minimal valid one-page PDF whose text layer holds the CV lines (Helvetica, no fonts or images to embed). */
+const cvPdf = () => {
+  const lines = [
+    'Sara Benali',
+    'Software engineer - Rabat, Morocco - sara.benali@example.com - +212 6 12 34 56 78',
+    'Education: B.Sc. Computer Science, Mohammed V University, 2022 to 2026',
+    'Languages: Arabic (native), English (fluent), French',
+  ];
+  const stream = `BT /F1 11 Tf 14 TL 40 780 Td ${lines.map((line) => `(${line.replace(/[()\\]/g, '\\$&')}) '`).join(' ')} ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = objects.map((object, i) => {
+    const at = pdf.length;
+    pdf += `${i + 1} 0 obj\n${object}\nendobj\n`;
+    return at;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((at) => `${String(at).padStart(10, '0')} 00000 n \n`).join('')}`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf, 'latin1');
+};
 
 async function capture(window: Page, testInfo: TestInfo, name: string) {
   for (const theme of ['light', 'dark'] as const) {
@@ -173,9 +175,9 @@ test('onboarding v5: Pre-flight, About you and Take-off with fake providers (red
     await expect.poll(() => window.evaluate(() => location.hash)).toBe('#/welcome/2');
     await capture(window, testInfo, 'p2-drop');
     await window.getByLabel('Upload CV').setInputFiles({
-      name: 'Sara_Benali_CV.docx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      buffer: cvDocx(),
+      name: 'Sara_Benali_CV.pdf',
+      mimeType: 'application/pdf',
+      buffer: cvPdf(),
     });
     const profile = window.getByRole('complementary', { name: 'Your profile' });
     await expect(profile.getByRole('button', { name: 'Edit email' })).toHaveText('sara.benali@example.com');
@@ -256,14 +258,14 @@ test('onboarding v5: a revoked grant stops a run, and Allow turns it back on', a
     await window.evaluate(() => window.jobpilot!.onboarding.allow({ agent: { id: 'claude', model: null } }));
     const run = await window.evaluate(() => window.jobpilot!.runs.start('00000000000000000000000101'));
     expect(run.status).toBe('queued');
-    // Hostile input stays in the reader process: not a PDF/DOCX, and a zip that is not a DOCX, are refused cleanly.
+    // Hostile input stays in the reader process: a non-PDF, a zip (DOCX is not supported) and a truncated PDF are all refused cleanly.
     for (const bytes of [
       [1, 2, 3, 4, 5],
       [0x50, 0x4b, 3, 4, 0, 0, 0, 0],
     ]) {
       await expect(
-        window.evaluate((b) => window.jobpilot!.onboarding.extractCv('x.docx', new Uint8Array(b)), bytes),
-      ).rejects.toThrow(/Not a PDF or DOCX|Not a readable DOCX|Could not read/);
+        window.evaluate((b) => window.jobpilot!.onboarding.extractCv('x.pdf', new Uint8Array(b)), bytes),
+      ).rejects.toThrow(/Not a PDF|Not a readable PDF|Could not read|No readable text/);
     }
   } finally {
     await app.close();

@@ -330,12 +330,12 @@ export function AboutStep() {
                   <span className="flex flex-col gap-1 text-[15px] font-semibold">
                     Drop your CV anywhere on this window, or click
                     <span className="text-[13px] font-normal text-muted">
-                      PDF or DOCX · any language · read by your own AI, on this computer
+                      PDF · any language · read by your own AI, on this computer
                     </span>
                   </span>
                   <input
                     type="file"
-                    accept=".pdf,.docx"
+                    accept=".pdf"
                     className="sr-only"
                     aria-label="Upload CV"
                     onChange={(event) => {

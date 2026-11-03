@@ -16,7 +16,7 @@ const running = new Set<Electron.UtilityProcess>();
 app.on('before-quit', () => running.forEach((child) => child.kill()));
 
 /**
- * Text of a PDF or DOCX, read in a short-lived Electron utility process (Electron's recommended home for "untrusted
+ * Text of a PDF, read in a short-lived Electron utility process (Electron's recommended home for "untrusted
  * services" and "crash prone components"): the file is untrusted input and the parsers are third-party code, so a crash,
  * hang or runaway allocation costs one child, not the app. The child gets an empty environment and no stdio.
  * shortcut: a utility process is a fault boundary, not an OS sandbox (it still has Node APIs); upgrade if Electron exposes a sandboxed utility process.
