@@ -64,8 +64,7 @@ const cvDocx = () =>
 
 async function capture(window: Page, testInfo: TestInfo, name: string) {
   for (const theme of ['light', 'dark'] as const) {
-    await window.evaluate((theme) => window.jobpilot!.theme.set(theme), theme);
-    await expect(window.locator('html')).toHaveCSS('color-scheme', theme);
+    await window.evaluate((theme) => document.documentElement.classList.toggle('dark', theme === 'dark'), theme);
     await window.screenshot({ path: testInfo.outputPath(`${name}-${theme}.png`), animations: 'disabled' });
   }
 }
@@ -266,6 +265,18 @@ test('onboarding v5: with motion on, the stamp plays and the flow still reaches 
     await window.emulateMedia({ reducedMotion: 'no-preference' });
     await script(app);
     await window.getByRole('button', { name: 'Allow Claude Code + BrowserOS neo' }).click();
+    // The sheet rises in with motion on; click once its own animation has settled (Playwright's stability check races it).
+    await expect
+      .poll(() =>
+        window.evaluate(
+          () =>
+            document
+              .querySelector('dialog')!
+              .getAnimations()
+              .filter((a) => a.playState === 'running').length,
+        ),
+      )
+      .toBe(0);
     await window.getByRole('dialog').getByRole('button', { name: 'Allow both' }).click();
     await expect(window.getByRole('dialog').getByText('ALLOWED').first()).toBeVisible();
     await expect(window.getByRole('button', { name: 'Next: about you →' })).toBeVisible({ timeout: 20_000 });

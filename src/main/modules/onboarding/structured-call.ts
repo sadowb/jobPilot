@@ -4,7 +4,9 @@ import type { AgentProvider } from '../../platform/agents/types';
 
 /**
  * One tool-less, ephemeral agent call that must answer with `schema` (no MCP servers, so the agent cannot browse or
- * act). It goes through the gated provider, so it needs the owner's agent grant like any run.
+ * act). It goes through the gated provider, so `run` needs the owner's agent grant like any run. `prepare` is skipped on
+ * purpose: the gate's version also demands the browser grant, which a tool-less call does not use (and the connection test
+ * runs before the browser is allowed).
  */
 export async function structuredCall<S extends z.ZodType>(
   agent: AgentProvider,
@@ -12,7 +14,6 @@ export async function structuredCall<S extends z.ZodType>(
   prompt: string,
   options: { timeoutMs: number; signal?: AbortSignal },
 ): Promise<z.infer<S>> {
-  await agent.prepare?.();
   const run = agent.run({
     runId: randomUUID(),
     sessionId: randomUUID(),

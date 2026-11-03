@@ -109,7 +109,9 @@ export function AboutStep() {
     push('cap', 'Now you. Drop your CV and watch: I fill your profile while I read.');
   }, [push]);
 
-  useEffect(() => bottom.current?.scrollIntoView?.({ block: 'end' }), [log, typing, shown]);
+  useEffect(() => {
+    bottom.current?.scrollIntoView?.({ block: 'end' });
+  }, [log, typing, shown]);
 
   const ask = stage === 'asking' ? nextAsk(draft, resolved, nameOfLanguage) : null;
   const key = ask ? askKey(ask) : null;
