@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const AgentModelSchema = z.enum(['haiku', 'sonnet', 'opus']);
+/** Whatever the agent reported (an alias like the one it lists); validated by the agent itself when a run starts. */
+export const AgentModelSchema = z.string().trim().min(1).max(128);
 export const AgentPreferencesSchema = z.object({
   path: z
     .string()

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { skipOnboarding } from './onboarding';
+import { allowFakeConnections, skipOnboarding } from './onboarding';
 
 type Main = typeof import('../src/main/app/main');
 
@@ -55,6 +55,7 @@ test('memory: install on request, a second run on the same site recalls the firs
       }, action);
     const window = await app.firstWindow();
     await skipOnboarding(window);
+    await allowFakeConnections(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
 
     // Three applications on the same mocked site.

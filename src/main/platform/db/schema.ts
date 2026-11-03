@@ -9,3 +9,4 @@ export * from '../../modules/postings/postings.entity';
 export * from '../../modules/profile/profile.entity';
 export * from '../../modules/runs/runs.entity';
 export * from '../../modules/settings/settings.entity';
+export * from '../../modules/grants/grants.entity';

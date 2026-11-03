@@ -1,4 +1,4 @@
-import { skipOnboarding } from './onboarding';
+import { allowFakeConnections, skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,6 +26,7 @@ test('Up next updates live, with no reload, as two runs change state', async ({}
     });
     const window = await app.firstWindow();
     await skipOnboarding(window);
+    await allowFakeConnections(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     const ids = await app.evaluate(async ({ app }) => {
       await new Promise((resolve) => setImmediate(resolve));

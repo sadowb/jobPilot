@@ -3,7 +3,15 @@ import { url as inspectorUrl } from 'node:inspector';
 import { db } from '../platform/db/database';
 import { AgentSettingsService } from '../modules/settings/agent.service';
 import { NeoBrowserProvider } from '../platform/browsers/neo';
-import { FakeAgentProvider } from '../platform/agents/fake';
+import { FakeAgentProvider, fakeClaudeControl } from '../platform/agents/fake';
+import { GrantsService } from '../modules/grants/grants.service';
+import { gateProviders } from '../modules/grants/grants.gate';
+import { grantsHandlers } from '../modules/grants/grants.controller';
+import { PreflightService } from '../modules/onboarding/preflight.service';
+import { CvService } from '../modules/onboarding/cv.service';
+import { CapTurnService } from '../modules/onboarding/cap-turn.service';
+import { onboardingHandlers } from '../modules/onboarding/onboarding.controller';
+import { SettingsRepository } from '../modules/settings/settings.repository';
 import { FakeBrowserProvider } from '../platform/browsers/fake';
 import { FakeMemoryProvider } from '../platform/memory/fake';
 import { MnemosyneMemory } from '../platform/memory/mnemosyne';
@@ -175,8 +183,21 @@ if (logsError) {
       );
       if (memory.status().state === 'ready') consolidation.start();
       agentSettings = new AgentSettingsService(db, app.getPath('userData'), app.isPackaged);
-      const agent = fakeAgent ?? agentSettings;
-      const browser = fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser'));
+      const grants = new GrantsService(db);
+      // Upgrade path: an owner who already confirmed Claude in Settings → Agent consented to it then; carry that over once.
+      // The browser has no such history, so it is asked on first use (Settings → Connections).
+      if ((await agentSettings.state()).confirmed) grants.allow('agent', 'claude');
+      // Nothing runs, reads a posting or reads a CV without the owner's grants: the gate wraps the providers once, here.
+      const rawBrowser = fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser'));
+      const { agent, browser } = gateProviders(grants, fakeAgent ?? agentSettings, rawBrowser);
+      const preflight = new PreflightService(
+        grants,
+        fakeAgent ? fakeClaudeControl : agentSettings,
+        agent,
+        rawBrowser,
+        new SettingsRepository(db),
+        fakeAgent ? () => Promise.resolve(null) : undefined,
+      );
       runsService = new RunsService(db, app.getPath('userData'), agent, browser, memory);
       const postingReader = new PostingReader(agent, browser);
       await runsService.initialize();
@@ -243,6 +264,8 @@ if (logsError) {
           ...postingsHandlers(postingReader),
           ...applicationsHandlers,
           ...profileHandlers,
+          ...grantsHandlers(grants),
+          ...onboardingHandlers(preflight, new CvService(agent), new CapTurnService(agent)),
         ],
         originCheck(isTrustedUrl),
         loggerFor('ipc'),

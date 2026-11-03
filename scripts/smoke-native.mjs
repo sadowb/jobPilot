@@ -26,7 +26,7 @@ try {
       "SELECT COUNT(*) n FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '__drizzle_migrations'",
     )
     .get().n;
-  assert.equal(tables, 22);
+  assert.equal(tables, 23);
   const lax = db
     .prepare(
       "SELECT name FROM pragma_table_list WHERE schema='main' AND type='table' AND strict=0 AND name NOT LIKE 'sqlite_%' AND name <> '__drizzle_migrations'",

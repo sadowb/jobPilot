@@ -30,6 +30,16 @@ import {
   AppSettingsSchema,
   UpdateSettingsSchema,
   RemoveAllDataSchema,
+  GrantSchema,
+  GrantListSchema,
+  RevokeGrantSchema,
+  PreflightSchema,
+  AllowConnectionsSchema,
+  AllowConnectionsResultSchema,
+  ExtractCvSchema,
+  CvExtractionSchema,
+  CapTurnInputSchema,
+  CapTurnSchema,
 } from '../shared/dto';
 import { parseInput } from '../shared/invalid-request';
 
@@ -54,6 +64,33 @@ const bridge: JobPilotBridge = {
     },
     async save(input) {
       return AgentStateSchema.parse(await invoke(Channels.saveAgent, parseInput(SaveAgentSchema, input)));
+    },
+  },
+  grants: {
+    async list() {
+      return GrantListSchema.parse(await invoke(Channels.listGrants));
+    },
+    async revoke(id) {
+      return GrantSchema.parse(await invoke(Channels.revokeGrant, parseInput(RevokeGrantSchema, { id })));
+    },
+  },
+  onboarding: {
+    async preflight() {
+      return PreflightSchema.parse(await invoke(Channels.preflight));
+    },
+    async chooseCustomAgent() {
+      return PreflightSchema.parse(await invoke(Channels.chooseCustomAgent));
+    },
+    async allow(input) {
+      return AllowConnectionsResultSchema.parse(
+        await invoke(Channels.allowConnections, parseInput(AllowConnectionsSchema, input)),
+      );
+    },
+    async extractCv(name, bytes) {
+      return CvExtractionSchema.parse(await invoke(Channels.extractCv, parseInput(ExtractCvSchema, { name, bytes })));
+    },
+    async capTurn(input) {
+      return CapTurnSchema.parse(await invoke(Channels.capTurn, parseInput(CapTurnInputSchema, input)));
     },
   },
   claudeKey: {

@@ -103,7 +103,7 @@ test('owner confirms installed Claude, selects a persistent model, and sees logi
     expect(
       await window.evaluate(async () => {
         try {
-          await window.jobpilot!.agent.save({ model: 'bogus', auth: 'login' } as never);
+          await window.jobpilot!.agent.save({ model: '', auth: 'login' } as never);
           return false;
         } catch {
           return true;

@@ -15,11 +15,9 @@ smoke review, not a pixel comparison against all 67 design boards.
 | Documents               | `/profile?section=documents` |
 | Settings                | `/settings`                  |
 | First-day dashboard     | `/first-day`                 |
-| Welcome                 | `/welcome/1`                 |
-| CV setup                | `/welcome/2`                 |
-| First job links         | `/welcome/3`                 |
-| Setup questions         | `/welcome/4`                 |
-| Liftoff                 | `/welcome/5`                 |
+| Pre-flight (Connect)    | `/welcome/1`                 |
+| About you               | `/welcome/2`                 |
+| Take-off                | `/welcome/3`                 |
 | Extension preview       | `/extension`                 |
 
 ## Fixed in this pass
@@ -54,7 +52,6 @@ Analytics, Manual control, Settings, and common answers.
 
 These layout checks do not make the sample workflows into a connected product:
 
-- Onboarding CV replacement and extraction still use sample data.
 - Extension capture and the live job tab are simulations.
 - Several Manual control and document-template actions remain static examples.
 - Ask Cap's command execution is not connected to the job queue.

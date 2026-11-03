@@ -4,7 +4,17 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  main: { build: { rollupOptions: { input: { index: resolve('src/main/app/main.ts') } } } },
+  main: {
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/main/app/main.ts'),
+          // Utility-process entry for the CV reader (modules/onboarding/cv-text.ts).
+          'cv-worker': resolve('src/main/modules/onboarding/cv-worker.ts'),
+        },
+      },
+    },
+  },
   preload: {
     // Sandboxed preloads can only require('electron'): bundle every other dependency (zod).
     build: { externalizeDeps: false, rollupOptions: { input: { index: resolve('src/preload/index.ts') } } },

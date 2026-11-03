@@ -23,8 +23,22 @@ export function claudeVersion(stdout: string): string | null {
   return CLAUDE_VERSION.test(version) ? version : null;
 }
 
-/** Discovery is advisory: only the owner-confirmed absolute path is used by runs. */
-export async function detectClaude(override?: string | null): Promise<{ path: string; version: string } | null> {
+/** `codex --version` prints e.g. `codex-cli 0.46.0`. */
+const CODEX_VERSION = /^codex(?:-cli)? \d{1,4}\.\d{1,4}\.\d{1,4}(?:[-+][0-9A-Za-z.]{1,32})?$/;
+export function codexVersion(stdout: string): string | null {
+  const version = stdout.trim();
+  return CODEX_VERSION.test(version) ? version : null;
+}
+
+export const detectClaude = (override?: string | null) => detectCli('claude', claudeVersion, override);
+export const detectCodex = (override?: string | null) => detectCli('codex', codexVersion, override);
+
+/** Discovery is advisory: only the owner-confirmed absolute path is used by runs. `--version` is the only thing ever executed (ADR 0016). */
+export async function detectCli(
+  binary: string,
+  parseVersion: (stdout: string) => string | null,
+  override?: string | null,
+): Promise<{ path: string; version: string } | null> {
   let pathValue = process.env.PATH ?? '';
   if (!override && process.platform === 'darwin') {
     try {
@@ -46,7 +60,7 @@ export async function detectClaude(override?: string | null): Promise<{ path: st
   } else if (process.platform === 'win32') {
     try {
       const whereBinary = process.env.SystemRoot ? join(process.env.SystemRoot, 'System32', 'where.exe') : 'where';
-      const whereResult = await execute(whereBinary, ['claude'], {
+      const whereResult = await execute(whereBinary, [binary], {
         timeout: 5000,
         killSignal: 'SIGKILL',
         maxBuffer: 16384,
@@ -65,17 +79,17 @@ export async function detectClaude(override?: string | null): Promise<{ path: st
       /* where failed or claude was not found on PATH */
     }
     const home = homedir();
-    candidates.push(join(home, '.local', 'bin', 'claude.exe'));
+    candidates.push(join(home, '.local', 'bin', `${binary}.exe`));
     const appData = process.env.APPDATA ?? join(home, 'AppData', 'Roaming');
-    candidates.push(join(appData, 'npm', 'claude.cmd'));
+    candidates.push(join(appData, 'npm', `${binary}.cmd`));
     for (const directory of pathValue.split(delimiter).filter(isAbsolute)) {
-      candidates.push(join(directory, 'claude.exe'), join(directory, 'claude.cmd'));
+      candidates.push(join(directory, `${binary}.exe`), join(directory, `${binary}.cmd`));
     }
   } else {
     for (const directory of pathValue.split(delimiter).filter(isAbsolute)) {
-      candidates.push(join(directory, 'claude'));
+      candidates.push(join(directory, binary));
     }
-    candidates.push(join(homedir(), '.local/bin/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude');
+    candidates.push(join(homedir(), `.local/bin/${binary}`), `/opt/homebrew/bin/${binary}`, `/usr/local/bin/${binary}`);
   }
   for (const candidate of new Set(candidates)) {
     try {
@@ -103,7 +117,7 @@ export async function detectClaude(override?: string | null): Promise<{ path: st
           SystemRoot: process.env.SystemRoot,
         },
       });
-      const version = claudeVersion(stdout);
+      const version = parseVersion(stdout);
       if (version) return { path, version };
     } catch {
       /* An unavailable or invalid candidate is not an installed tool. */

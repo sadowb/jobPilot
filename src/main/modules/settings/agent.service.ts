@@ -5,6 +5,7 @@ import { AgentPreferencesSchema, AgentStateSchema, SaveAgentSchema } from '../..
 import type { JobPilotDb } from '../../platform/db/database';
 import { ClaudeProvider } from '../../platform/agents/claude';
 import { detectClaude, executablePath } from '../../platform/agents/detect';
+import { listClaudeModels, type AgentModel } from '../../platform/agents/models';
 import type { AgentProvider, AgentRun, RunResultSchema, RunSpec } from '../../platform/agents/types';
 import { loggerFor } from '../observability/log.service';
 import { redact } from '../observability/redact';
@@ -102,6 +103,32 @@ export class AgentSettingsService implements AgentProvider {
     this.repository.storeAgentPreferences({ ...parsed, ...candidate, confirmed: true });
     this.login = 'unknown';
     return this.state();
+  }
+
+  /** The models this Claude Code reports, from the CLI itself; empty when it cannot be asked (the agent's own default applies). */
+  async models(): Promise<AgentModel[]> {
+    const state = await this.state();
+    if (!state.path) return [];
+    const cwd = join(this.userData, 'agents/claude', 'models');
+    try {
+      await mkdir(cwd, { recursive: true, mode: 0o700 });
+      return await listClaudeModels({
+        executablePath: state.path,
+        version: state.version,
+        cwd,
+        env: {
+          PATH: process.env.PATH ?? '',
+          HOME: process.env.HOME ?? '',
+          USER: process.env.USER ?? '',
+          LOGNAME: process.env.LOGNAME ?? '',
+          TMPDIR: cwd,
+          LANG: process.env.LANG ?? 'en_US.UTF-8',
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+        },
+      });
+    } catch {
+      return [];
+    }
   }
 
   async prepare(): Promise<void> {

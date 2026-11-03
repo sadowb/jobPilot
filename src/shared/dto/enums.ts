@@ -56,6 +56,7 @@ export const ACTIVE_RUN_STATUSES = ['queued', 'running'] as const satisfies read
 export const RunEventType = enumOf(['session', 'message', 'tool_call', 'tool_result', 'status', 'cost', 'error']);
 export type RunEventType = z.infer<typeof RunEventType.schema>;
 
+// shortcut: 'agy' stays in the stored set. Dropping it rebuilds run/cap_conversation, and a rebuild inside migrate()'s transaction cannot switch foreign keys off (ON DELETE CASCADE would wipe run_event and approval rows). Remove it with the provider work in #90, using a rebuild that handles that. Product UI never offers it.
 export const AgentId = enumOf(['claude', 'codex', 'agy']);
 export type AgentId = z.infer<typeof AgentId.schema>;
 
@@ -98,3 +99,15 @@ export type SiteAccountStatus = z.infer<typeof SiteAccountStatus.schema>;
 
 export const CapRole = enumOf(['user', 'assistant', 'system']);
 export type CapRole = z.infer<typeof CapRole.schema>;
+
+/** What a consent grant covers. A new scope needs a new grant, so widening what an agent or browser may do re-asks. */
+export const GrantKind = enumOf(['agent', 'browser']);
+export type GrantKind = z.infer<typeof GrantKind.schema>;
+
+/** `agent_run`: read job pages and the profile, write answers the owner approves. `browser_tab`: open its own tab per job and fill the form there. */
+export const GrantScope = enumOf(['agent_run', 'browser_tab']);
+export type GrantScope = z.infer<typeof GrantScope.schema>;
+
+/** The agents the owner can choose between in setup. Unlike `AgentId` (what a run row may store) this is what the UI offers. */
+export const AgentToolId = enumOf(['claude', 'codex', 'custom']);
+export type AgentToolId = z.infer<typeof AgentToolId.schema>;

@@ -43,6 +43,13 @@
       "when": 1793297253416,
       "tag": "0005_sturdy_hawkeye",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793675669428,
+      "tag": "0006_consent_grants",
+      "breakpoints": true
     }
   ]
 }

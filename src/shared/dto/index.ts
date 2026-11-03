@@ -11,3 +11,6 @@ export * from './claude-key.dto';
 export * from './agent.dto';
 export * from './memory.dto';
 export * from './settings.dto';
+export * from './grant.dto';
+export * from './preflight.dto';
+export * from './onboarding.dto';

@@ -1,4 +1,4 @@
-import { skipOnboarding } from './onboarding';
+import { allowFakeConnections, skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -74,6 +74,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     app = await electron.launch(options);
     const window = await app.firstWindow();
     await skipOnboarding(window);
+    await allowFakeConnections(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
     const applicationIds = await app.evaluate(async ({ app }) => {
       await new Promise((resolve) => setImmediate(resolve));
@@ -327,6 +328,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     app = await electron.launch(options);
     const restarted = await app.firstWindow();
     await skipOnboarding(restarted);
+    await allowFakeConnections(restarted);
     await expect(restarted.getByRole('navigation', { name: 'Main' })).toBeVisible();
     // An unclean exit with an interrupted run starts the queue paused: nothing re-executes until the owner resumes.
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -394,6 +396,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     app = await electron.launch(options);
     const configured = await app.firstWindow();
     await skipOnboarding(configured);
+    await allowFakeConnections(configured);
     await expect(configured.getByRole('navigation', { name: 'Main' })).toBeVisible();
     // The owner's pause set before the restart survived it, with no interruption notice.
     await configured.getByRole('tab', { name: /Up next/ }).click();

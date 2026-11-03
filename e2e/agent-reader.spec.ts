@@ -1,4 +1,4 @@
-import { skipOnboarding } from './onboarding';
+import { allowFakeConnections, skipOnboarding } from './onboarding';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,6 +28,7 @@ test('a custom career page without JSON-LD is read by the agent and ends Ready',
     });
     const window = await app.firstWindow();
     await skipOnboarding(window);
+    await allowFakeConnections(window);
     await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible();
 
     // Fake the network (a JS-rendered shell with no JSON-LD) and the agent's answer; DB, IPC, reader and renderer are real.
