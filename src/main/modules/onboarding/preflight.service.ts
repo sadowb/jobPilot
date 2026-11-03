@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import { z } from 'zod';
 import type {
+  BrowserStatus,
   AgentState,
   AgentTool,
   AllowConnectionsInput,
@@ -40,16 +41,18 @@ const BROWSER_NAMES: Record<string, string> = {
  * The single place browser detection lives. Today it asks the one provider main holds; when the Neo/MCP discovery
  * (#196) returns several, only this function changes. No port, URL or config path ever reaches the renderer.
  */
-async function browserTools(browser: BrowserProvider): Promise<BrowserTool[]> {
-  const probe = (browser as { status?: () => Promise<'installed' | 'not_installed' | 'not_running'> }).status;
-  const status = probe ? await probe.call(browser).catch(() => 'not_running' as const) : 'installed';
-  return [
-    {
-      id: browser.id,
-      name: BROWSER_NAMES[browser.id] ?? browser.id,
-      state: status === 'installed' ? 'running' : status,
-    },
-  ];
+export async function browserTools(browser: BrowserProvider): Promise<BrowserTool[]> {
+  const probe = (browser as { status?: () => Promise<BrowserStatus> }).status;
+  const status = probe ? await probe.call(browser).catch(() => ({ status: 'not_running' }) as BrowserStatus) : null;
+  // No Neo config on disk (not_detected) reads as "not installed": the owner has never run it on this machine.
+  const state: BrowserTool['state'] = !status
+    ? 'running'
+    : status.status === 'connected'
+      ? 'running'
+      : status.status === 'not_running'
+        ? 'not_running'
+        : 'not_installed';
+  return [{ id: browser.id, name: BROWSER_NAMES[browser.id] ?? browser.id, state }];
 }
 
 export class PreflightService {
