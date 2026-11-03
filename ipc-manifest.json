@@ -28,6 +28,10 @@
     "schema": "SetApplicationStatusSchema"
   },
   {
+    "channel": "browser:status",
+    "schema": "z.void()"
+  },
+  {
     "channel": "documents:save",
     "schema": "SaveDocumentInputSchema"
   },

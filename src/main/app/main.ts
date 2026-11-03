@@ -39,6 +39,7 @@ import { removeKeychainItem, usesOsKeychain } from '../platform/secrets/keychain
 import { rm } from 'node:fs/promises';
 import {
   agentHandlers,
+  browserHandlers,
   claudeKeyHandlers,
   dataHandlers,
   memoryHandlers,
@@ -48,6 +49,7 @@ import {
 import { MemorySettingsService } from '../modules/settings/memory.service';
 import {
   broadcastThemeChanges,
+  browserEndpointOverride,
   claudeKeyService,
   lastConsolidation,
   loadTheme,
@@ -188,7 +190,8 @@ if (logsError) {
       // The browser has no such history, so it is asked on first use (Settings → Connections).
       if ((await agentSettings.state()).confirmed) grants.allow('agent', 'claude');
       // Nothing runs, reads a posting or reads a CV without the owner's grants: the gate wraps the providers once, here.
-      const rawBrowser = fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser'));
+      const rawBrowser =
+        fakeBrowser ?? new NeoBrowserProvider(loggerFor('browser'), undefined, () => browserEndpointOverride(db));
       const { agent, browser } = gateProviders(grants, fakeAgent ?? agentSettings, rawBrowser);
       const preflight = new PreflightService(
         grants,
@@ -257,6 +260,7 @@ if (logsError) {
           ...settingsHandlers,
           ...dataHandlers(removeEverything),
           ...agentHandlers(agentSettings),
+          ...browserHandlers(rawBrowser as NeoBrowserProvider),
           ...memoryHandlers(new MemorySettingsService(memory)),
           ...claudeKeyHandlers(claudeKeyService(db)),
           ...documentsHandlers,

@@ -19,6 +19,7 @@ export const queryKeys = {
   grants: { all: ['grants'] as const },
   claudeKey: { status: () => ['claude-key', 'status'] as const },
   settings: { all: ['settings'] as const, current: () => [...queryKeys.settings.all, 'current'] as const },
+  browser: { status: () => ['browser', 'status'] as const },
 };
 
 /** A run change also changes the application list (it embeds the latest run status). */

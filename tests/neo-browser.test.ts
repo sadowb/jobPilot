@@ -1,12 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Logger } from 'pino';
 import { allowlistedErrorCode, NeoMcp } from '../src/main/platform/browsers/neo-mcp';
 import {
+  candidateConfigPaths,
   clickTargetLine,
   computeFormHash,
   extractFormFields,
   FINAL_ACTION,
   NeoBrowserProvider,
+  parseNeoConfig,
 } from '../src/main/platform/browsers/neo';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
@@ -53,7 +55,7 @@ describe('Neo MCP diagnostics (#142)', () => {
     const provider = new NeoBrowserProvider(logger, 'http://127.0.0.1:59999');
     const result = await provider.status();
 
-    expect(['not_installed', 'not_running']).toContain(result);
+    expect(['not_installed', 'not_running']).toContain(result.status);
     const debugLog = logs.find((l) => l.msg === 'Neo MCP availability check failed');
     expect(debugLog).toBeDefined();
     expect(debugLog?.obj.error_class).toBe('Error');
@@ -206,5 +208,79 @@ describe('Neo browser tools: guarded click', () => {
     await run('click', { ref: 'e2' });
     await provider.closeTab('read-1');
     expect(calls.some(({ name, arguments: a }) => name === 'tabs' && a.action === 'close')).toBe(true);
+  });
+});
+
+describe('Neo endpoint discovery and config parsing (#196)', () => {
+  it('parses valid config with ports.server 9210 to http://127.0.0.1:9210/mcp', () => {
+    const config = JSON.stringify({ ports: { cdp: 9110, proxy: 9010, server: 9210 } });
+    const parsed = parseNeoConfig(config);
+    expect(parsed).toEqual({ port: 9210, endpoint: 'http://127.0.0.1:9210/mcp' });
+  });
+
+  it('rejects malformed JSON', () => {
+    expect(parseNeoConfig('not valid json')).toBeUndefined();
+    expect(parseNeoConfig('{ malformed')).toBeUndefined();
+  });
+
+  it('rejects missing ports or missing server port', () => {
+    expect(parseNeoConfig({})).toBeUndefined();
+    expect(parseNeoConfig({ ports: {} })).toBeUndefined();
+    expect(parseNeoConfig({ ports: { cdp: 9110 } })).toBeUndefined();
+  });
+
+  it('rejects non-loopback host in config', () => {
+    expect(parseNeoConfig({ ports: { server: 9210 }, host: '192.168.1.100' })).toBeUndefined();
+    expect(parseNeoConfig({ ports: { server: 9210 }, host: 'example.com' })).toBeUndefined();
+  });
+
+  it('rejects out-of-range or non-numeric port', () => {
+    expect(parseNeoConfig({ ports: { server: 0 } })).toBeUndefined();
+    expect(parseNeoConfig({ ports: { server: -1 } })).toBeUndefined();
+    expect(parseNeoConfig({ ports: { server: 65536 } })).toBeUndefined();
+    expect(parseNeoConfig({ ports: { server: 99999 } })).toBeUndefined();
+    expect(parseNeoConfig({ ports: { server: '9210' } })).toBeUndefined();
+    expect(parseNeoConfig({ ports: { server: 9210.5 } })).toBeUndefined();
+  });
+
+  it('derives candidate config paths per platform without hardcoding usernames', () => {
+    const darwin = candidateConfigPaths('darwin', '/mock/home');
+    expect(darwin).toEqual(['/mock/home/Library/Application Support/BrowserClaw/.browseros/config.json']);
+
+    const win = candidateConfigPaths('win32', 'C:\\Users\\Mock', {
+      APPDATA: 'C:\\Users\\Mock\\AppData\\Roaming',
+      LOCALAPPDATA: 'C:\\Users\\Mock\\AppData\\Local',
+    });
+    expect(win).toContain('C:\\Users\\Mock\\AppData\\Roaming\\BrowserClaw\\.browseros\\config.json');
+
+    const linux = candidateConfigPaths('linux', '/home/mock', { XDG_CONFIG_HOME: '/home/mock/.config' });
+    expect(linux).toEqual(['/home/mock/.config/BrowserClaw/.browseros/config.json']);
+  });
+
+  it('reports not_detected when no config exists and no endpoint is passed', async () => {
+    const logger = { debug() {}, warn() {} } as unknown as Logger;
+    const provider = new NeoBrowserProvider(logger);
+    vi.spyOn(provider, 'resolveEndpoint').mockReturnValue(undefined);
+
+    const status = await provider.status();
+    expect(status.status).toBe('not_detected');
+    expect(status.installHint).toContain('Install BrowserOS neo');
+  });
+
+  it('surfaces not detected error via openTab', async () => {
+    const logger = { debug() {}, warn() {} } as unknown as Logger;
+    const provider = new NeoBrowserProvider(logger);
+    vi.spyOn(provider, 'resolveEndpoint').mockReturnValue(undefined);
+
+    await expect(provider.openTab('test-run', 'https://example.com/apply')).rejects.toThrow(/Neo not detected/);
+  });
+
+  it('respects valid owner override endpoint and rejects invalid', () => {
+    const logger = { debug() {}, warn() {} } as unknown as Logger;
+    const providerWithValid = new NeoBrowserProvider(logger, undefined, () => 'http://127.0.0.1:9215/mcp');
+    expect(providerWithValid.resolveEndpoint()).toEqual({ port: 9215, endpoint: 'http://127.0.0.1:9215/mcp' });
+
+    const providerWithInvalid = new NeoBrowserProvider(logger, undefined, () => 'http://192.168.1.1:9215/mcp');
+    expect(providerWithInvalid.resolveEndpoint([])).toBeUndefined();
   });
 });

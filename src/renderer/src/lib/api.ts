@@ -91,6 +91,13 @@ export const useAgent = () =>
     staleTime: 0,
   });
 
+export const useBrowserStatus = () =>
+  useQuery({
+    queryKey: queryKeys.browser.status(),
+    queryFn: () => bridge().browser.status(),
+    staleTime: 0,
+  });
+
 export const useAgentAction = () =>
   useMutation({
     mutationFn: (action: 'detect' | 'choose' | { save: Parameters<JobPilotBridge['agent']['save']>[0] }) =>
