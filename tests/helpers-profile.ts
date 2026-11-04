@@ -1,0 +1,46 @@
+import type { ProfileData } from '../src/shared/dto';
+
+/** Demo persona Sara Benali; every field a plan can read, overridable per test. */
+export function saraProfile(personal: Partial<NonNullable<ProfileData['personal']>> = {}): ProfileData {
+  return {
+    personal: {
+      firstName: 'Sara',
+      lastName: 'Benali',
+      preferredName: '',
+      headline: '',
+      email: 'sara.benali@example.com',
+      phone: '+1 215 555 0100',
+      alternatePhone: '',
+      address: '',
+      city: 'Philadelphia',
+      region: 'PA',
+      postalCode: '',
+      country: 'United States',
+      countryCode: 'US',
+      website: 'https://sara.example.com',
+      linkedin: '',
+      github: '',
+      bio: '',
+      school: '',
+      degree: '',
+      fieldOfStudy: '',
+      role: '',
+      workMode: '',
+      locations: '',
+      startDate: '',
+      salary: '',
+      salaryCurrency: 'USD',
+      schoolStart: '',
+      graduation: '',
+      career: [{ id: 'a', role: 'Designer', organisation: 'Acme', start: '2022-01', end: '2026-01' }],
+      languages: [],
+      salaryAmount: null,
+      salaryPeriod: 'year',
+      notice: null,
+      ...personal,
+    },
+    markets: [{ code: 'US', workAuth: 'authorized' }],
+    answers: null,
+    onboardingCompletedAt: 1,
+  };
+}

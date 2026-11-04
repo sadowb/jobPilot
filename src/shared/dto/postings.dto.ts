@@ -46,16 +46,26 @@ export const PostingFormSchema = z.object({
 export type PostingFormDto = z.infer<typeof PostingFormSchema>;
 
 export const FillPlanEntrySchema = z.object({
+  /** The real form field name for ATS-schema plans (`question_123`), the stored posting-question key otherwise. */
   field_key: z.string(),
   label: z.string(),
   value: z.string().nullable(),
-  source: z.enum(['library', 'profile', 'owner']).nullable(),
+  source: z.enum(['library', 'profile', 'owner', 'cv', 'derived']).nullable(),
   required: z.boolean(),
+  kind: z.enum(['text', 'textarea', 'select', 'multiselect', 'file', 'checkbox', 'date', 'number']).optional(),
+  /** What the agent does with this field. `fill`/`select` have a value; `draft` is written by the agent for owner review. */
+  action: z.enum(['fill', 'select', 'upload_cv', 'draft', 'skip', 'ask']).default('fill'),
+  /** The form's allowed option labels; a `select` value is always one of them. */
+  options: z.array(z.string()).optional(),
+  /** Why a field is left alone (`skip`) or is not fillable yet (`ask`). */
+  note: z.string().optional(),
 });
 export type FillPlanEntry = z.infer<typeof FillPlanEntrySchema>;
 
 export const FillPlanSchema = z.object({
   application_id: z.string(),
+  /** `ats_schema`: built from the ATS's own form definition before the browser opened. `page`: posting rows only. */
+  origin: z.enum(['ats_schema', 'page']).default('page'),
   entries: z.array(FillPlanEntrySchema),
   unresolved_required: z.array(z.object({ field_key: z.string(), label: z.string() })),
 });

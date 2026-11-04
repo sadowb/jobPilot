@@ -188,6 +188,55 @@ export class PostingsRepository {
     });
   }
 
+  /** What a schema-first plan is resolved from besides the profile and CV: the posting, the library and this application's owner answers. */
+  planInputs(applicationId: string) {
+    const row = this.db
+      .select({ postingId: schema.application.postingId })
+      .from(schema.application)
+      .where(eq(schema.application.id, applicationId))
+      .get();
+    if (!row) throw new Error(`Application ${applicationId} was not found`);
+    const posting = this.get(row.postingId);
+    return {
+      canonicalUrl: posting.canonicalUrl,
+      location: posting.location,
+      library: new Map(
+        this.db
+          .select({ key: answerLibrary.canonicalKey, answer: answerLibrary.answer })
+          .from(answerLibrary)
+          .all()
+          .map((r) => [r.key, r.answer] as const),
+      ),
+      owner: new Map(
+        this.db
+          .select({ fieldKey: schema.applicationAnswer.fieldKey, answer: schema.applicationAnswer.answer })
+          .from(schema.applicationAnswer)
+          .where(
+            and(
+              eq(schema.applicationAnswer.applicationId, applicationId),
+              eq(schema.applicationAnswer.source, 'owner'),
+            ),
+          )
+          .all()
+          .flatMap((r) => (r.answer === null ? [] : [[r.fieldKey, r.answer] as const])),
+      ),
+    };
+  }
+
+  /** One row per canonical key, the latest owner answer wins: the same question is never asked again on the next job. */
+  remember(answers: Array<{ canonicalKey: string; questionText: string; answer: string }>): void {
+    this.db.transaction((tx) => {
+      for (const { canonicalKey: key, questionText, answer } of answers)
+        tx.insert(answerLibrary)
+          .values({ canonicalKey: key, questionText, answer, source: 'owner' })
+          .onConflictDoUpdate({
+            target: answerLibrary.canonicalKey,
+            set: { questionText, answer, source: 'owner', updatedAt: Date.now() },
+          })
+          .run();
+    });
+  }
+
   resolveFillPlan(applicationId: string): FillPlanDto {
     const app = this.db
       .select({ postingId: schema.application.postingId })
@@ -279,7 +328,8 @@ export class PostingsRepository {
     ];
     return {
       application_id: applicationId,
-      entries,
+      origin: 'page',
+      entries: entries.map((entry) => ({ ...entry, action: 'fill' as const })),
       unresolved_required: entries
         .filter((entry) => entry.required && entry.value === null)
         .map(({ field_key, label }) => ({ field_key, label })),
