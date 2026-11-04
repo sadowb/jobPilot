@@ -80,6 +80,18 @@ export const useSetApplicationStatus = () =>
     mutationFn: (input: SetApplicationStatusInput) => bridge().applications.setStatus(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
   });
+export const useRemoveApplication = () =>
+  useMutation({
+    mutationFn: (id: string) => bridge().applications.remove(id),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+  });
+
+export const useRestoreApplication = () =>
+  useMutation({
+    mutationFn: (id: string) => bridge().applications.restore(id),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+  });
+
 export const useConfirmPosting = () => {
   const { mutate } = useMutation({
     mutationFn: (postingId: string) => bridge().postings.confirm(postingId),

@@ -225,6 +225,16 @@ if (logsError) {
         fakeAgent ? () => Promise.resolve(null) : undefined,
       );
       runsService = new RunsService(db, app.getPath('userData'), agent, browser, memory);
+      grants.onRevoked((kind, provider) => {
+        runsService
+          .cancelUsing(kind, provider)
+          .catch((error: unknown) =>
+            loggerFor('runs').error(
+              { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+              'Stopping runs after revoke failed',
+            ),
+          );
+      });
       const postingReader = new PostingReader(agent, browser);
       await runsService.initialize();
       // Stops owned work (agent children, Neo tabs, timers) once, bounded so a stuck stop cannot keep the app alive.
