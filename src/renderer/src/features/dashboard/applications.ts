@@ -42,7 +42,7 @@ export function queueItem(item: ApplicationListItem): QueueItem {
     source: 'Pasted',
     stage: queueStage(item),
     ...(item.verified ? {} : { unverifiedPostingId: item.postingId }),
-    agent: item.latestRunStatus === 'running' ? 'work' : 'idle',
+    agent: item.latestRunStatus === 'running' ? 'work' : item.latestRunStatus === 'failed' ? 'need' : 'idle',
   };
 }
 

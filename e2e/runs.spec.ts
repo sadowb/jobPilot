@@ -434,6 +434,37 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     await row.hover();
     await row.getByRole('button', { name: 'Cancel Fake employer Fake job 16 application' }).click();
     await expect.poll(runStatus).toBe('cancelled');
+
+    // Issue #197: When a provider fails, the error is visible after Start on the row and in an aria-live toast.
+    await app.evaluate(async ({ app }) => {
+      await new Promise((resolve) => setImmediate(resolve));
+      const path = process.getBuiltinModule('node:path')!;
+      const require = process
+        .getBuiltinModule('node:module')!
+        .createRequire(path.join(app.getAppPath(), 'package.json'));
+      const main = require(path.join(app.getAppPath(), 'out/main/index.js')) as Main;
+      main.fakeAgent!.reply = () => ({ status: 'invalid_status_forced_to_fail' });
+    });
+
+    await configured.getByPlaceholder('Search company, role, site').fill('Fake job 16');
+    const failedRow = configured.getByRole('row').filter({ hasText: 'Fake job 16' });
+    await failedRow.hover();
+    await failedRow.getByRole('button', { name: 'Start Fake employer Fake job 16 application' }).click();
+
+    const toast = configured.getByRole('alert');
+    await expect(toast).toBeVisible();
+    await expect(toast.getByText('Failed', { exact: true })).toBeVisible();
+    await expect(toast.getByRole('button', { name: 'Open Settings' })).toBeVisible();
+    await expect(failedRow.getByText('Failed', { exact: true })).toBeVisible();
+
+    await expect
+      .poll(async () => {
+        const item = (await configured.evaluate(() => window.jobpilot!.runs.list())).find(
+          (r) => r.applicationId === applicationIds[15],
+        );
+        return { status: item?.status, hasError: !!item?.error };
+      })
+      .toEqual({ status: 'failed', hasError: true });
   } finally {
     await app?.close();
     rmSync(userData, { recursive: true, force: true });

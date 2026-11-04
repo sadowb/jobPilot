@@ -3,6 +3,8 @@ export interface RemoveAllDataSteps {
   log(): void;
   /** Shared quit path: aborts runs, closes owned tabs, kills child processes. */
   stopOwnedWork(): Promise<void>;
+  /** Optional transcript purge hook before database and data deletion. */
+  deleteTranscripts?: () => Promise<void> | void;
   closeDatabase(): void;
   closeLogs(): void;
   deleteUserData(): Promise<void>;
@@ -20,6 +22,7 @@ export async function removeAllData(steps: RemoveAllDataSteps): Promise<void> {
   try {
     steps.log();
     await steps.stopOwnedWork();
+    if (steps.deleteTranscripts) await steps.deleteTranscripts();
     steps.closeDatabase();
     steps.closeLogs();
     await steps.deleteUserData();

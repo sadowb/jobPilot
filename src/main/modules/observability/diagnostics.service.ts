@@ -5,6 +5,7 @@ import { release } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { flushLogs, logsDirectory, loggerFor, scrub, scrubIdentity } from './log.service';
+import { RunTraceService } from './observability.service';
 
 const crashDirectory = (): string => join(app.getPath('userData'), 'crashes');
 const markerPath = (): string => join(logsDirectory(), 'session.lock');
@@ -76,7 +77,10 @@ export function buildDiagnostics(): Uint8Array {
   for (const { name } of runs) {
     // Run traces hold agent prompts and form answers: scrub every line, drop what cannot be parsed.
     const kept: string[] = [];
-    for (const line of readFileSync(join(logs, 'runs', name), 'utf8').split('\n')) {
+    const trace = RunTraceService.readTrace(name.replace(/\.jsonl$/, ''));
+    droppedTraceLines += trace.skipped;
+    const lines = trace.lines;
+    for (const line of lines) {
       if (!line) continue;
       try {
         kept.push(scrubIdentity(JSON.stringify(scrub(JSON.parse(line) as object))));

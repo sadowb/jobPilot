@@ -178,7 +178,8 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
       logger.info({ deep }, 'Depth redaction fixture');
       RunTraceService.append({ runId: id, type: 'message', payload });
       const row = db.prepare('SELECT payload FROM run_event WHERE run_id = ?').get(id) as { payload: string };
-      const trace = fs.readFileSync(path.join(app.getPath('userData'), 'logs', 'runs', `${id}.jsonl`), 'utf8');
+      // Transcripts are sealed on disk (#200); read them back through the service.
+      const trace = RunTraceService.readLines(id).join('\n');
       db.close();
       await new Promise<void>((resolve, reject) => logger.flush((error) => (error ? reject(error) : resolve())));
       const tracePayload = JSON.parse(row.payload);
@@ -319,7 +320,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         });
       const errorEntry = logText
         .split('\n')
-        .filter(Boolean)
+        .filter((line) => line.startsWith('{')) // sealed transcript records (v1.…) are not JSON
         .map((line) => JSON.parse(line))
         .find((entry) => entry.msg === 'Error redaction fixture');
       return {

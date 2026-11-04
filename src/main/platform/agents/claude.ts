@@ -174,7 +174,11 @@ export class ClaudeProvider implements AgentProvider {
               })
                 ? { behavior: 'allow', updatedInput: input }
                 : { behavior: 'deny', message: 'Only run-scoped MCP tools are allowed.' },
-            outputFormat: { type: 'json_schema', schema: z.toJSONSchema(spec.outputSchema, { io: 'input' }) },
+            // draft-7: Claude Code's --json-schema validator rejects the 2020-12 `$schema` zod emits by default.
+            outputFormat: {
+              type: 'json_schema',
+              schema: z.toJSONSchema(spec.outputSchema, { io: 'input', target: 'draft-7' }),
+            },
             // Reapply our environment at the actual spawn boundary, even if SDK defaults change.
             spawnClaudeCodeProcess: ({ args, signal }) => {
               const processChild = spawn(options.executablePath, args, {

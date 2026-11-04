@@ -1,4 +1,4 @@
-import { eq, max, sql } from 'drizzle-orm';
+import { eq, lt, max, sql } from 'drizzle-orm';
 import { db } from '../../platform/db/database';
 import { applicationEvent, runEvent } from '../../platform/db/schema';
 
@@ -42,4 +42,8 @@ export function appendRunEvent(
     .all();
   if (!row) throw new Error('Failed to persist run event');
   return { id: row.id, seq, createdAt: row.createdAt };
+}
+
+export function pruneRunEvents(beforeTimestamp: number): void {
+  db.delete(runEvent).where(lt(runEvent.createdAt, beforeTimestamp)).run();
 }

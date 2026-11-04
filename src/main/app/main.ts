@@ -28,6 +28,8 @@ import { PostingReader } from '../modules/postings/posting-reader.service';
 import { profileHandlers } from '../modules/profile/profile.controller';
 import { documentsHandlers } from '../modules/documents/documents.controller';
 import { observabilityHandlers } from '../modules/observability/observability.controller';
+import { getDatabaseKey } from '../platform/secrets/db-key';
+import { RunTraceService } from '../modules/observability/observability.service';
 import {
   initCrashReporting,
   installCrashHandlers,
@@ -160,6 +162,26 @@ if (logsError) {
         return;
       }
 
+      try {
+        await RunTraceService.init(async () => (await getDatabaseKey()).key);
+      } catch (error) {
+        loggerFor('observability').error(
+          { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+          'Run transcript key unavailable',
+        );
+      }
+      const pruneTranscripts = () => {
+        try {
+          RunTraceService.prune();
+        } catch (error) {
+          loggerFor('observability').error(
+            { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+            'Run transcript retention failed',
+          );
+        }
+      };
+      setImmediate(pruneTranscripts);
+      setInterval(pruneTranscripts, 24 * 60 * 60 * 1000).unref();
       const backups = startDailyBackups(loggerFor('database'));
       databaseBackupTimer = backups.timer;
 
@@ -230,6 +252,7 @@ if (logsError) {
         removeAllData({
           log: () => logger.warn('Remove all JobPilot data requested'),
           stopOwnedWork,
+          deleteTranscripts: () => RunTraceService.clear(),
           closeDatabase,
           closeLogs,
           deleteUserData: () =>
@@ -260,7 +283,7 @@ if (logsError) {
           ...runsHandlers(runsService),
           ...settingsHandlers,
           ...dataHandlers(removeEverything),
-          ...agentHandlers(agentSettings),
+          ...agentHandlers(fakeAgent ? fakeClaudeControl : agentSettings),
           ...browserHandlers(rawBrowser as NeoBrowserProvider),
           ...memoryHandlers(new MemorySettingsService(memory)),
           ...claudeKeyHandlers(claudeKeyService(db)),
