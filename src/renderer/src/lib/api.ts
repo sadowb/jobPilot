@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
+  CapTurnInput,
   ProfileSave,
   ProfileData,
   AgentState,
@@ -214,4 +215,4 @@ export const useExtractCv = () =>
     mutationFn: (cv: { name: string; bytes: Uint8Array }) => bridge().onboarding.extractCv(cv.name, cv.bytes),
   });
 export const useCapTurn = () =>
-  useMutation({ mutationFn: (input: { question: string; text: string }) => bridge().onboarding.capTurn(input) });
+  useMutation({ mutationFn: (input: CapTurnInput) => bridge().onboarding.capTurn(input) });

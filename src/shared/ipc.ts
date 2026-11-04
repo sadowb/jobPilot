@@ -25,6 +25,7 @@ import type {
   AllowConnectionsResult,
   CvExtraction,
   CapTurn,
+  CapTurnInput,
 } from './dto';
 import { z } from 'zod';
 
@@ -194,7 +195,7 @@ export interface JobPilotBridge {
     allow(input: AllowConnectionsInput): Promise<AllowConnectionsResult>;
     /** The CV bytes are read in main; nothing is stored. */
     extractCv(name: string, bytes: Uint8Array): Promise<CvExtraction>;
-    capTurn(input: { question: string; text: string }): Promise<CapTurn>;
+    capTurn(input: CapTurnInput): Promise<CapTurn>;
   };
   onDataChanged(listener: (change: DataChanged) => void): () => void;
 }

@@ -54,30 +54,51 @@ export const ExtractCvSchema = z.object({
   bytes: z.instanceof(Uint8Array).refine((b) => b.byteLength > 0 && b.byteLength <= CV_MAX_BYTES, 'CV too large'),
 });
 
-/** The fact kinds Cap may write from a free-text answer. Anything else is dropped by main. */
+/** The fact kinds Cap may write from the owner's words. Anything else is dropped by main; the renderer re-validates values. */
 export const CapFactSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('language'),
     language: z.string().trim().min(1).max(20),
     level: z.enum(['Native', 'Fluent', 'Professional', 'Basic']),
   }),
-  z.object({ kind: z.literal('market'), code: z.string().trim().length(2) }),
+  z.object({ kind: z.literal('market'), code: z.string().trim().length(2), remove: z.boolean().optional() }),
   z.object({
     kind: z.literal('work_auth'),
     code: z.string().trim().length(2),
     value: z.enum(['authorized', 'sponsorship']),
   }),
-  z.object({ kind: z.literal('nationality'), code: z.string().trim().length(2) }),
+  z.object({ kind: z.literal('nationality'), code: z.string().trim().length(2), remove: z.boolean().optional() }),
+  z.object({
+    kind: z.literal('personal'),
+    field: z.enum(['firstName', 'lastName', 'headline', 'email', 'phone', 'city', 'countryCode']),
+    value: z.string().trim().min(1).max(200),
+  }),
 ]);
 export type CapFact = z.infer<typeof CapFactSchema>;
 
-export const CapTurnInputSchema = z.object({
-  /** What Cap just asked, in the owner's terms; the answer is read against it. */
-  question: z.string().trim().min(1).max(300),
-  text: z.string().trim().min(1).max(1000),
+/** One thing the app still needs from the owner. The app decides this list; the agent only works through it. */
+export const CapMissingSchema = z.object({
+  key: z.string().trim().min(1).max(64),
+  label: z.string().trim().min(1).max(120),
 });
+export type CapMissing = z.infer<typeof CapMissingSchema>;
+
+export const CapTurnInputSchema = z.object({
+  /** The recent conversation, oldest first; the current owner message is `text`, not part of it. */
+  history: z.array(z.object({ role: z.enum(['cap', 'owner']), text: z.string().max(1000) })).max(24),
+  /** Plain-text summary of the draft so far, so the agent never re-asks what is known. */
+  known: z.string().max(3000),
+  missing: z.array(CapMissingSchema).max(40),
+  /** `null` = Cap opens the conversation right after the CV is read. */
+  text: z.string().trim().min(1).max(1000).nullable(),
+});
+export type CapTurnInput = z.infer<typeof CapTurnInputSchema>;
 export const CapTurnSchema = z.object({
-  reply: z.string().trim().min(1).max(400),
-  facts: z.array(CapFactSchema).max(6),
+  reply: z.string().trim().min(1).max(600),
+  facts: z.array(CapFactSchema).max(16),
+  /** Keys from `missing` the owner answered or explicitly declined. Main drops any other key. */
+  settled: z.array(z.string().max(64)).max(40),
+  /** Short quick replies the owner can tap; may be empty. */
+  suggestions: z.array(z.string().trim().min(1).max(60)).max(4),
 });
 export type CapTurn = z.infer<typeof CapTurnSchema>;

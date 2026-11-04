@@ -1,31 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProfileSaveSchema } from '../../../../shared/dto';
 import { Button, cn } from '../../components/ui';
 import { saveProfile, useCapTurn, useExtractCv } from '../../lib/api';
-import { usePrefersReducedMotion } from '../../lib/motion';
 import { AddJobsDialog } from '../dashboard/addjobs/AddJobsDialog';
 import { documentStore, type ProfileDocument } from '../profile/documents';
-import { AddCountryDialog } from '../profile/MarketDialogs';
-import { LEVELS, languageName } from '../profile/languages';
-import { COUNTRIES, EU_MARKET, countryName } from '../profile/markets';
 import { documentContentError, documentError } from '../profile/personal';
 import { DOCUMENTS_CHANGED } from '../profile/useDocumentCount';
 import { setProfileData } from '../profile/profileStorage';
 import { A_POP, A_RISE, BUBBLE, REDUCE_ALL } from '../shared-ui';
-import {
-  EMPTY_DRAFT,
-  applyFacts,
-  draftFromExtraction,
-  nextAsk,
-  requiredLeft,
-  setLanguageLevel,
-  setRight,
-  toSaves,
-  toggleMarket,
-  type Ask,
-  type Draft,
-} from './draft';
+import { EMPTY_DRAFT, applyFacts, draftFromExtraction, knownSummary, missingItems, toSaves, type Draft } from './draft';
 import { OnboardingHeader } from './OnboardingHeader';
 import { CapAvatar, PRESS, Spinner } from './parts';
 import { ProfilePanel } from './ProfilePanel';
@@ -37,21 +21,20 @@ interface Msg {
   from: 'cap' | 'me';
   text: string;
 }
+/** A turn that failed, kept so "Try again" resends exactly it. */
+interface Retry {
+  text: string | null;
+  history: Msg[];
+}
 
-const TYPING_MS = 900;
+const HISTORY_TURNS = 24;
 const chip =
-  'inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line-2 bg-transparent px-3.5 text-sm text-ink hover:bg-hover aria-pressed:border-brand aria-pressed:bg-brand-tint aria-pressed:font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
+  'inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line-2 bg-transparent px-3.5 text-sm text-ink hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50';
 const CARD = cn('flex flex-col gap-3 rounded-2xl border border-line bg-panel p-3.5', A_POP);
 
-const askKey = (ask: Ask): string =>
-  ask.kind === 'language' ? `lang:${ask.id}` : ask.kind === 'rights' ? `rights:${ask.code}` : ask.kind;
-
-const nameOfLanguage = (code: string) => languageName(code);
-
-/** P2 About you: drop the CV, Cap reads it and asks only what it was unsure of, the profile builds live on the right. */
+/** P2 About you: drop the CV, then a real chat with the owner's own agent, which asks for whatever the app still needs. The profile builds live on the right. */
 export function AboutStep() {
   const navigate = useNavigate();
-  const reduced = usePrefersReducedMotion();
   const extract = useExtractCv();
   const capTurn = useCapTurn();
   const [stage, setStage] = useState<Stage>('drop');
@@ -59,21 +42,16 @@ export function AboutStep() {
   const [hasDraft, setHasDraft] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [log, setLog] = useState<Msg[]>([]);
-  const [typing, setTyping] = useState(false);
   const [resolved, setResolved] = useState<ReadonlySet<string>>(new Set());
-  const [shown, setShown] = useState<string | null>(null);
-  const [offered, setOffered] = useState<string[]>([]);
-  const [addCountry, setAddCountry] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [retry, setRetry] = useState<Retry | null>(null);
   const [addJobs, setAddJobs] = useState(false);
   const [jobs, setJobs] = useState(0);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [text, setText] = useState('');
-  const [phoneEdit, setPhoneEdit] = useState<string | null>(null);
   const seq = useRef(0);
   const alive = useRef(true);
-  const announcing = useRef<string | null>(null);
-  const input = useRef<HTMLInputElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,67 +61,40 @@ export function AboutStep() {
     };
   }, []);
 
-  const push = useCallback((from: Msg['from'], body: string) => {
-    setLog((items) => [...items, { id: seq.current++, from, text: body }]);
-  }, []);
-  /** Cap types for a moment, then speaks. The delay never hides a slow AI: it only runs once a reply is in hand. */
-  const say = useCallback(
-    (body: string) =>
-      new Promise<void>((resolve) => {
-        setTyping(true);
-        setTimeout(
-          () => {
-            if (!alive.current) return resolve();
-            setTyping(false);
-            push('cap', body);
-            resolve();
-          },
-          reduced ? 0 : TYPING_MS,
-        );
-      }),
-    [push, reduced],
-  );
-
-  // Intro line once.
-  useEffect(() => {
-    push('cap', 'Now you. Drop your CV and watch: I fill your profile while I read.');
-  }, [push]);
+  const push = (from: Msg['from'], body: string) => {
+    const msg = { id: seq.current++, from, text: body };
+    setLog((items) => [...items, msg]);
+    return msg;
+  };
 
   useEffect(() => {
     bottom.current?.scrollIntoView?.({ block: 'end' });
-  }, [log, typing, shown]);
+  }, [log, capTurn.isPending, suggestions, retry]);
 
-  const ask = stage === 'asking' ? nextAsk(draft, resolved, nameOfLanguage) : null;
-  const key = ask ? askKey(ask) : null;
-
-  const prompt = useCallback(
-    (a: Ask): string => {
-      switch (a.kind) {
-        case 'phone':
-          return `I read your phone as ${draft.personal.phone}. Does that country code look right?`;
-        case 'language':
-          return `How well do you speak ${a.name}?`;
-        case 'markets':
-          return 'Where do you want to work? I guessed from your CV. Tap to change.';
-        case 'rights': {
-          const nationality = draft.nationalities.map((c) => countryName(c) ?? c).join(' and ');
-          return `${nationality ? `Your CV says ${nationality}. ` : ''}Can you work in ${countryName(a.code) ?? a.code} without a visa?`;
-        }
-        case 'jobs':
-          return 'That’s all I need. Salary and notice I ask only when a form wants them. Last, optional: paste jobs you want.';
-      }
-    },
-    [draft.nationalities, draft.personal.phone],
-  );
-
-  // Announce each new question once; the card appears after Cap has "typed" it.
-  useEffect(() => {
-    if (!ask || !key || shown === key || announcing.current === key) return;
-    announcing.current = key;
-    void say(prompt(ask)).then(() => alive.current && setShown(key));
-  }, [ask, key, shown, say, prompt]);
-
-  const resolve = (k: string) => setResolved((current) => new Set(current).add(k));
+  /**
+   * One agent turn. The agent asks and extracts; the app decides what is missing (`missingItems`) and validates every fact
+   * before it touches the draft. `history` excludes the message being answered, which travels as `message`.
+   */
+  const turn = async (d: Draft, r: ReadonlySet<string>, history: Msg[], message: string | null) => {
+    setRetry(null);
+    setSuggestions([]);
+    try {
+      const out = await capTurn.mutateAsync({
+        history: history.slice(-HISTORY_TURNS).map((m) => ({ role: m.from === 'cap' ? 'cap' : 'owner', text: m.text })),
+        known: knownSummary(d),
+        missing: missingItems(d, r),
+        text: message,
+      });
+      if (!alive.current) return;
+      // Functional updates: the owner may have edited the panel while the agent was thinking.
+      setDraft((current) => applyFacts(current, out.facts));
+      setResolved((current) => new Set([...current, ...out.settled]));
+      push('cap', out.reply);
+      setSuggestions(out.suggestions);
+    } catch {
+      if (alive.current) setRetry({ text: message, history });
+    }
+  };
 
   const readCv = async (picked: File | undefined) => {
     if (!picked || stage !== 'drop') return;
@@ -152,19 +103,14 @@ export function AboutStep() {
     if (problem) return setError(problem);
     setFile(picked);
     setStage('reading');
-    const started = Date.now();
     try {
       const x = await extract.mutateAsync({ name: picked.name, bytes: new Uint8Array(await picked.arrayBuffer()) });
       if (!alive.current) return;
       const next = draftFromExtraction(x);
       setDraft(next);
       setHasDraft(true);
-      setOffered(next.markets.map((m) => m.code));
       setStage('asking');
-      const seconds = Math.max(1, Math.round((Date.now() - started) / 1000));
-      await say(
-        `Read in ${seconds} s. Everything’s on the right. ${nextAsk(next, new Set(), nameOfLanguage) ? 'A few things I wasn’t sure about:' : ''}`.trim(),
-      );
+      await turn(next, resolved, [], null);
     } catch (cause) {
       if (!alive.current) return;
       setStage('drop');
@@ -190,36 +136,17 @@ export function AboutStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
-  const answer = (k: string, mine: string, change?: (d: Draft) => Draft) => {
-    push('me', mine);
-    resolve(k);
-    if (change) setDraft(change);
-  };
-
-  const send = async () => {
-    const body = text.trim();
-    if (!body || !ask || typing || capTurn.isPending) return;
+  const send = (value: string) => {
+    const body = value.trim();
+    if (!body || stage !== 'asking' || capTurn.isPending) return;
     setText('');
+    const history = log;
     push('me', body);
-    try {
-      const turn = await capTurn.mutateAsync({ question: prompt(ask).slice(0, 300), text: body });
-      setDraft((d) => applyFacts(d, turn.facts));
-      setOffered((o) => [
-        ...new Set([...o, ...turn.facts.flatMap((f) => (f.kind === 'market' ? [f.code.toUpperCase()] : []))]),
-      ]);
-      if (ask.kind === 'markets' && turn.facts.some((f) => f.kind === 'market')) resolve('markets');
-      await say(turn.reply);
-    } catch (cause) {
-      await say(
-        cause instanceof Error && cause.message
-          ? cause.message
-          : 'I couldn’t read that just now. Tap one of the options.',
-      );
-    }
+    void turn(draft, resolved, history, body);
   };
 
-  const left = useMemo(() => requiredLeft(draft, resolved, nameOfLanguage), [draft, resolved]);
-  const phoneResolved = resolved.has('phone');
+  const missing = missingItems(draft, resolved);
+  const left = missing.length;
 
   const confirm = async () => {
     if (!file || saving) return;
@@ -243,9 +170,6 @@ export function AboutStep() {
     }
   };
 
-  const marketCodes = [...new Set([...offered, ...draft.markets.map((m) => m.code)])];
-  const showCard = key !== null && shown === key && !typing;
-
   const footer =
     stage === 'asking' && left === 0 ? (
       <Button
@@ -266,7 +190,7 @@ export function AboutStep() {
           ? 'Drop your CV first'
           : stage === 'reading'
             ? 'Reading your CV…'
-            : `${left} quick answer${left === 1 ? '' : 's'} left`}
+            : `${left} thing${left === 1 ? '' : 's'} left`}
       </span>
     );
 
@@ -279,33 +203,25 @@ export function AboutStep() {
             <CapAvatar size={38} />
             <div className="flex grow flex-col">
               <span className="text-[15px] font-semibold">Cap</span>
-              <span className="text-[12.5px] text-brand-text">Tap an answer or type your own</span>
+              <span className="text-[12.5px] text-brand-text">Chat in your own words</span>
             </div>
+            {stage === 'asking' && (
+              <Button variant="ghost" size="sm" onClick={() => setAddJobs(true)}>
+                Paste job links
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => void navigate(stepPath(1))}>
               ← Back
             </Button>
           </div>
 
           <div aria-live="polite" className="flex min-h-0 grow flex-col justify-end gap-3 overflow-y-auto px-8 py-5">
-            {log.map((m) =>
-              m.from === 'cap' ? (
-                <div key={m.id} className={cn('flex items-start gap-3', A_POP)}>
-                  <CapAvatar />
-                  <div className={cn(BUBBLE, 'max-w-[560px] px-4 py-2.5 text-[15px]')}>{m.text}</div>
-                </div>
-              ) : (
-                <div
-                  key={m.id}
-                  className={cn(
-                    'max-w-[460px] self-end rounded-[20px] rounded-br-md bg-hover px-4 py-2.5 text-[15px]',
-                    A_POP,
-                  )}
-                >
-                  {m.text}
-                </div>
-              ),
-            )}
-
+            <div className={cn('flex items-start gap-3', A_POP)}>
+              <CapAvatar />
+              <div className={cn(BUBBLE, 'max-w-[560px] px-4 py-2.5 text-[15px]')}>
+                Now you. Drop your CV and watch: I fill your profile while I read.
+              </div>
+            </div>
             {stage === 'drop' && (
               <div className={CARD}>
                 <label className="flex cursor-pointer items-center gap-4 rounded-xl p-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand">
@@ -360,13 +276,32 @@ export function AboutStep() {
               </div>
             )}
 
+            {log.map((m) =>
+              m.from === 'cap' ? (
+                <div key={m.id} className={cn('flex items-start gap-3', A_POP)}>
+                  <CapAvatar />
+                  <div className={cn(BUBBLE, 'max-w-[560px] px-4 py-2.5 text-[15px]')}>{m.text}</div>
+                </div>
+              ) : (
+                <div
+                  key={m.id}
+                  className={cn(
+                    'max-w-[460px] self-end rounded-[20px] rounded-br-md bg-hover px-4 py-2.5 text-[15px]',
+                    A_POP,
+                  )}
+                >
+                  {m.text}
+                </div>
+              ),
+            )}
+
             {error && (
               <p role="alert" className="m-0 text-sm text-bad">
                 {error}
               </p>
             )}
 
-            {typing && (
+            {capTurn.isPending && (
               <div className="flex items-start gap-3">
                 <CapAvatar />
                 <div
@@ -385,131 +320,28 @@ export function AboutStep() {
               </div>
             )}
 
-            {showCard && ask && (
-              <div className={CARD} role="group" aria-label="Cap’s question">
-                {ask.kind === 'phone' && (
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    {phoneEdit === null ? (
-                      <>
-                        <button
-                          type="button"
-                          className={chip}
-                          aria-pressed="true"
-                          onClick={() => answer('phone', `Yes, ${draft.personal.phone}`)}
-                        >
-                          {draft.personal.phone} looks right
-                        </button>
-                        <button type="button" className={chip} onClick={() => setPhoneEdit(draft.personal.phone)}>
-                          Change
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-sm text-muted">
-                        Edit the number in your profile on the right, then press Enter.
-                      </span>
-                    )}
-                  </div>
-                )}
-                {ask.kind === 'language' && (
-                  <div className="flex flex-wrap gap-2">
-                    {LEVELS.map((level) => (
-                      <button
-                        key={level}
-                        type="button"
-                        className={chip}
-                        onClick={() =>
-                          answer(`lang:${ask.id}`, `${ask.name}: ${level}`, (d) => setLanguageLevel(d, ask.id, level))
-                        }
-                      >
-                        {level}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {ask.kind === 'markets' && (
-                  <>
-                    <div className="flex flex-wrap gap-2">
-                      {marketCodes.map((code) => {
-                        const on = draft.markets.some((m) => m.code === code);
-                        return (
-                          <button
-                            key={code}
-                            type="button"
-                            className={chip}
-                            aria-pressed={on}
-                            onClick={() => setDraft((d) => toggleMarket(d, code))}
-                          >
-                            <span className="font-mono text-[11px] text-muted">{code}</span>
-                            {countryName(code) ?? (code === EU_MARKET.code ? EU_MARKET.name : code)}
-                          </button>
-                        );
-                      })}
-                      <button type="button" className={cn(chip, 'text-muted')} onClick={() => setAddCountry(true)}>
-                        + Another country
-                      </button>
-                    </div>
-                    <div>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        disabled={draft.markets.length === 0}
-                        onClick={() =>
-                          answer('markets', draft.markets.map((m) => countryName(m.code) ?? m.code).join(', '))
-                        }
-                        className={PRESS}
-                      >
-                        That’s it
-                      </Button>
-                    </div>
-                  </>
-                )}
-                {ask.kind === 'rights' && (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className={chip}
-                      onClick={() =>
-                        answer(`rights:${ask.code}`, 'Yes, I can work there', (d) =>
-                          setRight(d, ask.code, 'authorized'),
-                        )
-                      }
-                    >
-                      Yes, I can work there
-                    </button>
-                    <button
-                      type="button"
-                      className={chip}
-                      onClick={() =>
-                        answer(`rights:${ask.code}`, 'No, I’d need sponsorship', (d) =>
-                          setRight(d, ask.code, 'sponsorship'),
-                        )
-                      }
-                    >
-                      No, I’d need sponsorship
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(chip, 'border-transparent text-muted')}
-                      onClick={() => {
-                        setText('I also hold a passport from ');
-                        input.current?.focus();
-                      }}
-                    >
-                      + I hold another passport
-                    </button>
-                  </div>
-                )}
-                {ask.kind === 'jobs' && (
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <button type="button" className={chip} aria-pressed="true" onClick={() => setAddJobs(true)}>
-                      Paste job links
-                    </button>
-                    <button type="button" className={chip} onClick={() => answer('jobs', 'Later')}>
-                      Later
-                    </button>
-                    <span className="text-[13px] text-muted">One link or many</span>
-                  </div>
-                )}
+            {retry && (
+              <div className="flex flex-wrap items-center gap-2.5">
+                <p role="alert" className="m-0 text-sm text-bad">
+                  Cap could not answer just now. You can also edit your profile on the right.
+                </p>
+                <button
+                  type="button"
+                  className={chip}
+                  onClick={() => void turn(draft, resolved, retry.history, retry.text)}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {suggestions.length > 0 && !capTurn.isPending && (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Quick replies">
+                {suggestions.map((suggestion) => (
+                  <button key={suggestion} type="button" className={chip} onClick={() => send(suggestion)}>
+                    {suggestion}
+                  </button>
+                ))}
               </div>
             )}
             <div ref={bottom} />
@@ -519,14 +351,13 @@ export function AboutStep() {
             className="px-8 pt-2.5 pb-5"
             onSubmit={(event) => {
               event.preventDefault();
-              void send();
+              send(text);
             }}
           >
             <div className="flex h-[50px] items-center gap-2.5 rounded-full border border-line bg-panel pr-2 pl-[18px] focus-within:border-line-2">
               <input
-                ref={input}
                 aria-label="Message Cap"
-                disabled={!ask || !showCard}
+                disabled={stage !== 'asking'}
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 maxLength={1000}
@@ -538,7 +369,7 @@ export function AboutStep() {
               <button
                 type="submit"
                 aria-label="Send"
-                disabled={!text.trim() || !showCard || capTurn.isPending}
+                disabled={!text.trim() || stage !== 'asking' || capTurn.isPending}
                 className="grid size-9 place-items-center rounded-full border-0 bg-pri text-on-pri disabled:opacity-40"
               >
                 <svg
@@ -563,45 +394,35 @@ export function AboutStep() {
           draft={draft}
           hasDraft={hasDraft}
           jobsLinedUp={jobs}
-          resolvedPhone={phoneResolved}
-          onEdit={(patch) => {
-            setDraft((d) => ({ ...d, personal: { ...d.personal, ...patch } }));
-            if (phoneEdit !== null && 'phone' in patch) {
-              setPhoneEdit(null);
-              answer('phone', `Phone: ${patch.phone}`);
-            }
-          }}
+          resolvedPhone={resolved.has('phone')}
+          onEdit={(patch) =>
+            setDraft((d) => ({
+              ...d,
+              personal: { ...d.personal, ...patch },
+              // A value the owner typed themselves is no longer "unsure".
+              flagged: d.flagged.filter(
+                (k) =>
+                  !(
+                    (k === 'name' && ('firstName' in patch || 'lastName' in patch)) ||
+                    (k === 'email' && 'email' in patch) ||
+                    (k === 'phone' && 'phone' in patch)
+                  ),
+              ),
+            }))
+          }
           footer={footer}
         />
       </main>
 
-      {addCountry && (
-        <AddCountryDialog
-          existing={marketCodes}
-          onCancel={() => setAddCountry(false)}
-          onAdd={(code) => {
-            setAddCountry(false);
-            if (!COUNTRIES.some((c) => c.code === code) && code !== EU_MARKET.code) return;
-            setOffered((o) => [...new Set([...o, code])]);
-            setDraft((d) => (d.markets.some((m) => m.code === code) ? d : toggleMarket(d, code)));
-          }}
-        />
-      )}
       {addJobs && (
         <AddJobsDialog
           initialText=""
-          onClose={() => {
-            setAddJobs(false);
-          }}
+          onClose={() => setAddJobs(false)}
           onAdded={async (ids) => {
             setAddJobs(false);
             setJobs((n) => n + ids.length);
-            answer('jobs', `${ids.length} job link${ids.length === 1 ? '' : 's'}`);
-            await say(
-              ids.length
-                ? `Lined up ${ids.length}. Nothing starts until you press Start, and you approve every form.`
-                : 'No problem. Paste links any time from your dashboard.',
-            );
+            if (ids.length)
+              push('cap', `Lined up ${ids.length}. Nothing starts until you press Start, and you approve every form.`);
           }}
         />
       )}
