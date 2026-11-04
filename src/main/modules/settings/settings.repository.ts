@@ -92,6 +92,18 @@ export class SettingsRepository {
     this.setSetting('runs.limits', value);
   }
 
+  browserEndpoint(): unknown {
+    return this.getSetting('browsers.neo.endpoint');
+  }
+
+  storeBrowserEndpoint(endpoint: string | null): void {
+    if (endpoint === null) {
+      this.db.delete(settings).where(eq(settings.key, 'browsers.neo.endpoint')).run();
+    } else {
+      this.setSetting('browsers.neo.endpoint', endpoint);
+    }
+  }
+
   profileMigrationValue(): unknown {
     return this.getSetting(key);
   }

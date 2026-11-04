@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
+  CapTurnInput,
   ProfileSave,
   ProfileData,
   AgentState,
@@ -88,6 +89,13 @@ export const useAgent = () =>
     queryKey: queryKeys.agent.state(),
     queryFn: () => bridge().agent.get(),
     // Claude's install and sign-in change outside the app, so re-read whenever the card mounts.
+    staleTime: 0,
+  });
+
+export const useBrowserStatus = () =>
+  useQuery({
+    queryKey: queryKeys.browser.status(),
+    queryFn: () => bridge().browser.status(),
     staleTime: 0,
   });
 
@@ -207,4 +215,4 @@ export const useExtractCv = () =>
     mutationFn: (cv: { name: string; bytes: Uint8Array }) => bridge().onboarding.extractCv(cv.name, cv.bytes),
   });
 export const useCapTurn = () =>
-  useMutation({ mutationFn: (input: { question: string; text: string }) => bridge().onboarding.capTurn(input) });
+  useMutation({ mutationFn: (input: CapTurnInput) => bridge().onboarding.capTurn(input) });

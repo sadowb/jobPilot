@@ -51,3 +51,11 @@ export const UpdateSettingsSchema = z.object({
   limits: SettingsLimitsSchema.partial().optional(),
 });
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>;
+
+export const BrowserStatusSchema = z.object({
+  status: z.enum(['connected', 'not_running', 'not_installed', 'not_detected']),
+  port: z.number().int().optional(),
+  endpoint: z.string().optional(),
+  installHint: z.string().optional(),
+});
+export type BrowserStatus = z.infer<typeof BrowserStatusSchema>;

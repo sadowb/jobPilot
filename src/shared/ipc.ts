@@ -9,6 +9,7 @@ import type {
   ProfileSave,
   ClaudeKeyStatus,
   ClaudeKeyTest,
+  BrowserStatus,
   MemoryStatus,
   ThemeSource,
   ThemeState,
@@ -24,6 +25,7 @@ import type {
   AllowConnectionsResult,
   CvExtraction,
   CapTurn,
+  CapTurnInput,
 } from './dto';
 import { z } from 'zod';
 
@@ -36,6 +38,7 @@ export const IpcValidationErrorSchema = z.object({
 export type IpcValidationError = z.infer<typeof IpcValidationErrorSchema>;
 
 export const Channels = {
+  getBrowserStatus: 'browser:status',
   getAgent: 'agents:get',
   detectAgent: 'agents:detect',
   chooseAgentPath: 'agents:choosePath',
@@ -112,6 +115,9 @@ export const RestoreBackupSchema = z.object({
 });
 
 export interface JobPilotBridge {
+  browser: {
+    status(): Promise<BrowserStatus>;
+  };
   agent: {
     get(): Promise<AgentState>;
     detect(): Promise<AgentState>;
@@ -189,7 +195,7 @@ export interface JobPilotBridge {
     allow(input: AllowConnectionsInput): Promise<AllowConnectionsResult>;
     /** The CV bytes are read in main; nothing is stored. */
     extractCv(name: string, bytes: Uint8Array): Promise<CvExtraction>;
-    capTurn(input: { question: string; text: string }): Promise<CapTurn>;
+    capTurn(input: CapTurnInput): Promise<CapTurn>;
   };
   onDataChanged(listener: (change: DataChanged) => void): () => void;
 }

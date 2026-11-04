@@ -1,9 +1,14 @@
 import { createHash } from 'node:crypto';
+import type { BrowserStatus } from '../../../shared/dto';
 import type { BrowserProvider } from './types';
 
 export class FakeBrowserProvider implements BrowserProvider {
   readonly id = 'neo';
   readonly tabs = new Map<string, string>();
+
+  async status(): Promise<BrowserStatus> {
+    return { status: 'connected', port: 9210, endpoint: 'http://127.0.0.1:9210/mcp' };
+  }
 
   async mcpServerConfig() {
     return { type: 'stdio' as const, command: 'jobpilot-fake-browser' };

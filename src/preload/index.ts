@@ -40,6 +40,7 @@ import {
   CvExtractionSchema,
   CapTurnInputSchema,
   CapTurnSchema,
+  BrowserStatusSchema,
 } from '../shared/dto';
 import { parseInput } from '../shared/invalid-request';
 
@@ -52,6 +53,11 @@ async function invoke(channel: string, ...args: unknown[]): Promise<unknown> {
 }
 
 const bridge: JobPilotBridge = {
+  browser: {
+    async status() {
+      return BrowserStatusSchema.parse(await invoke(Channels.getBrowserStatus));
+    },
+  },
   agent: {
     async get() {
       return AgentStateSchema.parse(await invoke(Channels.getAgent));

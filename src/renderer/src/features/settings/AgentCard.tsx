@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { AgentModelSchema, type AgentState } from '../../../../shared/dto';
 import { Button, Select, Status, type StatusKind } from '../../components/ui';
-import { hasBridge, useAgent, useAgentAction } from '../../lib/api';
+import { hasBridge, useAgent, useAgentAction, useBrowserStatus } from '../../lib/api';
+import { queryClient, queryKeys } from '../../lib/query';
 import { S } from '../shared-ui';
 
 const STATUS: Record<AgentState['status'], { kind: StatusKind; label: string; help: string }> = {
@@ -19,6 +20,8 @@ const STATUS: Record<AgentState['status'], { kind: StatusKind; label: string; he
 export function AgentCard() {
   const query = useAgent();
   const state = query.data;
+  const browserQuery = useBrowserStatus();
+  const browser = browserQuery.data;
   const agentAction = useAgentAction();
   const [model, setModel] = useState<AgentState['model']>('haiku');
   const [auth, setAuth] = useState<AgentState['auth']>('login');
@@ -36,6 +39,9 @@ export function AgentCard() {
     setBusy(true);
     setError('');
     try {
+      if (action === 'detect') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.browser.status() });
+      }
       await agentAction.mutateAsync(action === 'save' ? { save: { model, auth } } : action);
     } catch {
       setError(
@@ -48,6 +54,14 @@ export function AgentCard() {
     }
   }
   const status = state ? STATUS[state.status] : undefined;
+  const browserBadge: { kind: StatusKind; label: string } = !browser
+    ? { kind: 'idle', label: 'Checking browser…' }
+    : browser.status === 'connected'
+      ? { kind: 'done', label: `Neo connected on ${browser.port}` }
+      : browser.status === 'not_running'
+        ? { kind: 'need', label: 'Neo not running' }
+        : { kind: 'bad', label: 'not installed' };
+
   return (
     <section className="border-t border-line py-2.5 text-[13px]" aria-label="Agent settings">
       <div className="flex items-start justify-between gap-4">
@@ -61,9 +75,14 @@ export function AgentCard() {
             </p>
           )}
         </div>
-        <Status kind={status?.kind ?? 'idle'} data-testid="agent-status">
-          {status?.label ?? 'Detecting…'}
-        </Status>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Status kind={browserBadge.kind} data-testid="browser-status">
+            {browserBadge.label}
+          </Status>
+          <Status kind={status?.kind ?? 'idle'} data-testid="agent-status">
+            {status?.label ?? 'Detecting…'}
+          </Status>
+        </div>
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-3">
         <label className="flex min-w-0 flex-col gap-[7px] font-semibold">
