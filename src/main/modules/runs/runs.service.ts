@@ -9,6 +9,7 @@ import {
   type ApprovalSummary,
   type ApproveResult,
   type InboxEntry,
+  type GrantKind,
   type RunsPauseReason,
   type RunsState,
   type RunStatus,
@@ -29,6 +30,7 @@ import { applyConcurrency, runPreferences, runsPauseReason, storeRunsPause } fro
 import { PostingService } from '../postings/postings.service';
 import { getProfile } from '../profile/profile.service';
 import { RunsRepository } from './runs.repository';
+import { agentFailureReason, failureReason, zodIssues } from './runs.failure';
 import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 const MAX_ATTEMPTS = 3;
@@ -215,19 +217,54 @@ export class RunsService {
     return RunSummarySchema.parse(row);
   }
 
-  async cancel(runId: string) {
+  async cancel(runId: string, reason?: string) {
     const row = this.repository.get(runId);
     // Once approved the click may already be on its way; the outcome is settled by the submit itself.
     if (row.status === 'awaiting_approval' && this.repository.latestApproval(runId)?.status === 'approved')
       throw new UserFacingError('This application is being submitted and can no longer be cancelled.');
-    if (row.status === 'queued' || row.status === 'running') this.transition(runId, 'cancelled');
+    if (row.status === 'queued' || row.status === 'running')
+      this.transition(runId, 'cancelled', reason ? { error: reason } : {});
     else if (row.status === 'awaiting_approval' || row.status === 'needs_you')
       this.db.transaction(() => {
-        this.transition(runId, 'cancelled');
+        this.transition(runId, 'cancelled', reason ? { error: reason } : {});
         this.repository.closeApprovals(runId, 'rejected');
       });
     await this.worker.cancel(runId);
     return RunSummarySchema.parse(this.repository.get(runId));
+  }
+
+  /**
+   * The owner withdrew consent for a provider: its in-flight work stops now. The gate only checks when a run starts
+   * and when an MCP server is built, so tools already attached would otherwise keep working until the run ends.
+   * A run waiting on the owner is left alone: approving it is refused by the gate. An approved submit cannot be
+   * cancelled (a click may be on its way); aborting it settles it by the durable claim, as a quit does.
+   */
+  async cancelUsing(kind: GrantKind, provider: string): Promise<void> {
+    const reason = `Stopped: you turned off ${kind === 'agent' ? 'the AI' : 'the browser tool'}.`;
+    const live = this.repository
+      .list()
+      .filter((row) => (kind === 'agent' ? row.agent : row.browser) === provider)
+      .filter((row) => row.status === 'queued' || row.status === 'running' || row.status === 'awaiting_approval');
+    const results = await Promise.allSettled(
+      live.map((row) =>
+        row.status === 'awaiting_approval'
+          ? this.repository.latestApproval(row.id)?.status === 'approved'
+            ? this.worker.cancel(row.id)
+            : undefined
+          : this.cancel(row.id, reason),
+      ),
+    );
+    results.forEach((result, index) => {
+      if (result.status === 'rejected')
+        loggerFor('runs').error(
+          {
+            run_id: live[index]!.id,
+            error_class: result.reason instanceof Error ? result.reason.constructor.name : 'Unknown',
+          },
+          'Stopping a run after revoke failed',
+        );
+    });
+    if (live.length > 0) loggerFor('runs').info({ kind, provider, runs: live.length }, 'Stopped runs after revoke');
   }
 
   state(): RunsState {
@@ -743,6 +780,11 @@ export class RunsService {
           })),
         });
       }
+      if (result.status === 'failed')
+        loggerFor('runs').warn(
+          { run_id: runId, application_id: row.applicationId, blockers: result.blockers.map(({ kind }) => kind) },
+          'Run ended failed: the agent reported it could not complete the form',
+        );
       this.db.transaction(() => {
         // Fail closed: an unreadable form leaves nothing to review, so it is never offered for approval.
         const next = unreadable ? 'needs_you' : status;
@@ -753,6 +795,7 @@ export class RunsService {
             ? { error: 'JobPilot could not read the filled form back, so there is nothing to approve.' }
             : {}),
           ...(result.status === 'submitted' ? { error: 'Submission is not authorized' } : {}),
+          ...(result.status === 'failed' ? { error: agentFailureReason(result) } : {}),
         });
         if (next === 'awaiting_approval' && summary) {
           const approvalRow = this.repository.requestApproval(
@@ -770,12 +813,14 @@ export class RunsService {
         }
       });
     } catch (error) {
+      const reason = failureReason(error);
       loggerFor('runs').error(
         {
           run_id: runId,
           error_class: error instanceof Error ? error.constructor.name : 'Unknown',
           // Paths and codes only: zod messages can quote the offending value.
-          issues: error instanceof z.ZodError ? error.issues.map((i) => `${i.path.join('.')}:${i.code}`) : undefined,
+          issues: error instanceof z.ZodError ? zodIssues(error) : undefined,
+          reason,
         },
         'Run execution failed',
       );
@@ -787,13 +832,7 @@ export class RunsService {
       } else if (current.status === 'running' || current.status === 'queued') {
         const setup = error instanceof Error && ['not_logged_in', 'tool_not_installed'].includes(error.message);
         this.transition(runId, setup && current.status === 'running' ? 'needs_you' : 'failed', {
-          error: setup
-            ? 'Open Settings → Agent to configure Claude.'
-            : signal.aborted
-              ? 'Run aborted'
-              : error instanceof RunInputError
-                ? error.message
-                : 'Provider failed or returned an invalid result',
+          error: setup ? 'Open Settings → Agent to configure Claude.' : signal.aborted ? 'Run aborted' : reason,
         });
       }
     } finally {

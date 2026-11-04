@@ -27,4 +27,5 @@ export const OwnerStatusSchema = z.enum(['applied', 'interviewing', 'offer', 're
 export type OwnerStatus = z.infer<typeof OwnerStatusSchema>;
 export const SetApplicationStatusSchema = z.object({ id: z.ulid(), status: OwnerStatusSchema });
 export type SetApplicationStatusInput = z.infer<typeof SetApplicationStatusSchema>;
+export const ApplicationIdSchema = z.object({ id: z.ulid() }).strict();
 export const CreateApplicationSchema = z.object({ postingId: z.ulid() });

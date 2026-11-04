@@ -13,6 +13,13 @@ export class GrantsService {
     this.repository = new GrantsRepository(db);
   }
 
+  private readonly revokedListeners: Array<(kind: GrantKind, provider: string) => void> = [];
+
+  /** Lets the composition root stop in-flight work when consent is withdrawn, without grants knowing about runs. */
+  onRevoked(listener: (kind: GrantKind, provider: string) => void): void {
+    this.revokedListeners.push(listener);
+  }
+
   list(): Grant[] {
     return this.repository.active();
   }
@@ -54,6 +61,7 @@ export class GrantsService {
       { actor: 'owner', type: 'grant_revoked', kind: revoked.kind, provider: revoked.provider },
       'Owner turned a connection off',
     );
+    for (const listener of this.revokedListeners) listener(revoked.kind, revoked.provider);
     return revoked;
   }
 

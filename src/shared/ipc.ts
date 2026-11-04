@@ -70,6 +70,8 @@ export const Channels = {
   listApplications: 'applications:list',
   createApplication: 'applications:create',
   setApplicationStatus: 'applications:set-status',
+  removeApplication: 'applications:remove',
+  restoreApplication: 'applications:restore',
   getProfile: 'profile:get',
   profileMigrationDone: 'profile:migration-done',
   saveProfile: 'profile:save',
@@ -171,6 +173,10 @@ export interface JobPilotBridge {
     list(): Promise<ApplicationListItem[]>;
     create(postingId: string): Promise<ApplicationListItem>;
     setStatus(input: SetApplicationStatusInput): Promise<ApplicationListItem>;
+    /** Soft delete; refused while a run is live or after submission. */
+    remove(id: string): Promise<void>;
+    /** Undo of `remove`. */
+    restore(id: string): Promise<ApplicationListItem>;
   };
   profile: {
     get(): Promise<ProfileData>;

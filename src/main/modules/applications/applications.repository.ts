@@ -4,6 +4,9 @@ import type { ApplicationListItem, OwnerStatus } from '../../../shared/dto';
 import { application, applicationAnswer, vApplicationList } from './applications.entity';
 import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
+/** Run states that mean work or an owner decision is pending on the application. */
+const LIVE_RUN: ReadonlySet<string> = new Set(['queued', 'running', 'awaiting_approval', 'needs_you']);
+
 export class ApplicationsRepository {
   constructor(private readonly db: JobPilotDb) {}
 
@@ -41,6 +44,37 @@ export class ApplicationsRepository {
       const item = this.db.select().from(vApplicationList).where(eq(vApplicationList.id, id)).get();
       if (!item) throw new UserFacingError('Application is unavailable.');
       return { item, changed };
+    });
+  }
+
+  /**
+   * Soft delete (`deleted_at`): the application leaves the list and no longer counts as tracked, so the same posting
+   * can be added again. Idempotent. A submitted application is history and a live run is the crew's: both are refused.
+   */
+  remove(id: string): boolean {
+    return this.db.transaction(() => {
+      const row = this.db.select().from(application).where(eq(application.id, id)).get();
+      if (!row) throw new UserFacingError('Application not found.');
+      if (row.deletedAt !== null) return false;
+      if (row.appliedAt !== null) throw new UserFacingError('A submitted application stays in your history.');
+      const item = this.db.select().from(vApplicationList).where(eq(vApplicationList.id, id)).get();
+      if (item?.latestRunStatus && LIVE_RUN.has(item.latestRunStatus))
+        throw new UserFacingError('Cancel the run first, then remove this job.');
+      this.db.update(application).set({ deletedAt: Date.now() }).where(eq(application.id, id)).run();
+      return true;
+    });
+  }
+
+  /** Undo of `remove`. Idempotent. */
+  restore(id: string): ApplicationListItem {
+    return this.db.transaction(() => {
+      const row = this.db.select().from(application).where(eq(application.id, id)).get();
+      if (!row) throw new UserFacingError('Application not found.');
+      if (row.deletedAt !== null)
+        this.db.update(application).set({ deletedAt: null }).where(eq(application.id, id)).run();
+      const item = this.db.select().from(vApplicationList).where(eq(vApplicationList.id, id)).get();
+      if (!item) throw new UserFacingError('Application is unavailable.');
+      return item;
     });
   }
 
