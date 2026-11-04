@@ -182,7 +182,14 @@ export function ReviewSidePanel({ item, flow }: { item: ApprovalItem; flow: Appr
             </Btn>
           </>
         ) : (
-          <Btn size="sm" variant="primary" className="min-w-0 flex-1" disabled={flow.busy} onClick={flow.ask}>
+          <Btn
+            size="sm"
+            variant="primary"
+            className="min-w-0 flex-1"
+            disabled={flow.busy || item.takenOver}
+            title={item.takenOver ? 'Hand the tab back before approving' : undefined}
+            onClick={flow.ask}
+          >
             {item.state === 'submitting' ? 'Submitting…' : 'Approve and send'}
           </Btn>
         )}

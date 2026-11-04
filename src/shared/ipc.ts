@@ -15,6 +15,7 @@ import type {
   ThemeState,
   RunSummaryDto,
   AnswerRunInput,
+  RunTabLocation,
   ApproveResult,
   InboxEntry,
   RunsState,
@@ -63,6 +64,9 @@ export const Channels = {
   approveApproval: 'approvals:approve',
   rejectApproval: 'approvals:reject',
   answerRun: 'runs:answer',
+  goToRunTab: 'runs:go-to-tab',
+  takeOverRun: 'runs:take-over',
+  handBackRun: 'runs:hand-back',
   ingestPosting: 'postings:ingest',
   confirmPosting: 'postings:confirm',
   cancelIngestPosting: 'postings:cancel-ingest',
@@ -152,6 +156,12 @@ export interface JobPilotBridge {
     state(): Promise<RunsState>;
     /** The owner's answers to a run's questions; the run is filled again with them. */
     answer(input: AnswerRunInput): Promise<RunSummaryDto>;
+    /** Names the run's open tab (Neo's MCP cannot switch the visible tab, so the owner finds it by host). */
+    goToTab(runId: string): Promise<RunTabLocation>;
+    /** Pauses the agent on this run and leaves its tab to the owner. Never submits. */
+    takeOver(runId: string): Promise<RunSummaryDto>;
+    /** Gives the tab back to the agent (or, awaiting review, ends the pause). */
+    handBack(runId: string): Promise<RunSummaryDto>;
   };
   inbox: {
     list(): Promise<InboxEntry[]>;

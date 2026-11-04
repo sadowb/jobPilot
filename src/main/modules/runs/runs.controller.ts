@@ -7,6 +7,8 @@ import {
   DecideApprovalSchema,
   InboxEntrySchema,
   RunsStateSchema,
+  RunTabLocationSchema,
+  RunTabSchema,
   RunSummarySchema,
   StartRunSchema,
 } from '../../../shared/dto';
@@ -34,6 +36,11 @@ export function runsHandlers(service: RunsService) {
     defineHandler(Channels.answerRun, AnswerRunSchema, async (input) =>
       RunSummarySchema.parse(await service.answer(input)),
     ),
+    defineHandler(Channels.goToRunTab, RunTabSchema, async ({ runId }) =>
+      RunTabLocationSchema.parse(await service.goToTab(runId)),
+    ),
+    defineHandler(Channels.takeOverRun, RunTabSchema, ({ runId }) => RunSummarySchema.parse(service.takeOver(runId))),
+    defineHandler(Channels.handBackRun, RunTabSchema, ({ runId }) => RunSummarySchema.parse(service.handBack(runId))),
     defineHandler(Channels.listRuns, z.void(), () => z.array(RunSummarySchema).parse(service.list())),
   ];
 }

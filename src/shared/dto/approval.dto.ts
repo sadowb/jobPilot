@@ -32,6 +32,8 @@ const Job = {
   company: z.string(),
   title: z.string(),
   siteHost: z.string(),
+  /** True while the owner drives the run's tab: the agent waits and approval is blocked until they hand it back. */
+  takenOver: z.boolean(),
 };
 
 export const ApprovalItemSchema = z.object({

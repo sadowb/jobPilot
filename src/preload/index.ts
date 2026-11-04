@@ -22,6 +22,8 @@ import {
   StartRunSchema,
   CancelRunSchema,
   AnswerRunSchema,
+  RunTabLocationSchema,
+  RunTabSchema,
   ApproveResultSchema,
   DecideApprovalSchema,
   InboxEntrySchema,
@@ -154,6 +156,15 @@ const bridge: JobPilotBridge = {
     },
     async answer(input) {
       return RunSummarySchema.parse(await invoke(Channels.answerRun, parseInput(AnswerRunSchema, input)));
+    },
+    async goToTab(runId) {
+      return RunTabLocationSchema.parse(await invoke(Channels.goToRunTab, parseInput(RunTabSchema, { runId })));
+    },
+    async takeOver(runId) {
+      return RunSummarySchema.parse(await invoke(Channels.takeOverRun, parseInput(RunTabSchema, { runId })));
+    },
+    async handBack(runId) {
+      return RunSummarySchema.parse(await invoke(Channels.handBackRun, parseInput(RunTabSchema, { runId })));
     },
   },
   inbox: {

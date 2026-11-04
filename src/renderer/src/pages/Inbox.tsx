@@ -9,6 +9,7 @@ import { ShortcutBar, ThreadHeader } from '../features/inbox/Frame';
 import { MessageStream, type ThreadMessage } from '../features/inbox/Messages';
 import { SHORTCUTS, entryKey, entryToItem, formatAge, type StepRow } from '../features/inbox/model';
 import { ClearCenter, NeedsYouSidePanel, PilotSidePanel, ReviewSidePanel } from '../features/inbox/Panels';
+import { TabControls } from '../features/inbox/TabControls';
 import { ThreadList } from '../features/inbox/ThreadList';
 import { useApprovalFlow, type ApprovalMutations } from '../features/inbox/useApprovalFlow';
 import { ApprovalWidget, QuestionsWidget, type AnswerState } from '../features/inbox/Widgets';
@@ -71,7 +72,7 @@ function needsYouThread(item: NeedsYou, widget: ThreadMessage): ThreadMessage[] 
   ];
 }
 
-/** Go to tab / Take over need browser control JobPilot does not expose yet: say so in text instead of dead buttons. */
+/** Tab controls exist for runs with an open tab; a stopped run says its tab is closed. */
 function Header({ item, sub }: { item: InboxEntry; sub: string }) {
   return (
     <ThreadHeader
@@ -79,7 +80,7 @@ function Header({ item, sub }: { item: InboxEntry; sub: string }) {
       title={`${item.company} · ${item.title}`}
       sub={sub}
     >
-      <span className="text-[12.5px] text-muted">Go to tab and Take over are not connected yet</span>
+      <TabControls item={item} />
     </ThreadHeader>
   );
 }

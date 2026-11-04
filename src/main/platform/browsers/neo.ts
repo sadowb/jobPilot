@@ -7,7 +7,14 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { Logger } from 'pino';
 import type { BrowserStatus } from '../../../shared/dto';
 import type { McpServerConfig } from '../agents/types';
-import type { BrowserProvider, BrowserTab, FormSnapshot, SubmitAuthorisation, UploadableFile } from './types';
+import type {
+  BrowserProvider,
+  BrowserTab,
+  FormSnapshot,
+  SubmitAuthorisation,
+  TabLocation,
+  UploadableFile,
+} from './types';
 import { NeoMcp, allowlistedErrorCode } from './neo-mcp';
 import { discoverNeoEndpoint, validateLoopbackEndpoint } from './neo-discovery';
 
@@ -276,6 +283,8 @@ export class NeoBrowserProvider implements BrowserProvider {
   // hosts: every host the run's own clicks took the tab to, so closeTab still recognises it.
   private readonly tabs = new Map<string, { tabId: string; hosts: Set<string> }>();
   private readonly runLocks = new Map<string, Promise<unknown>>();
+  // Owner take-over: runs whose agent calls wait until `release` runs (or the run's signal aborts).
+  private readonly holds = new Map<string, { released: Promise<void>; release: () => void }>();
   private pending: Promise<unknown> = Promise.resolve();
 
   constructor(
@@ -398,6 +407,7 @@ export class NeoBrowserProvider implements BrowserProvider {
     const page = PageId.parse(Number(tab.tabId));
     const call = async (name: string, args: Record<string, unknown>) => {
       signal.throwIfAborted();
+      await this.waitWhileHeld(runId, signal);
       if (this.tabs.get(runId) !== tab) throw new Error('Run tab is unavailable.');
       const mcp = await this.getMcp();
       const result = await this.runSerial(runId, () => mcp.call('tools/call', { name, arguments: { ...args, page } }));
@@ -570,6 +580,7 @@ export class NeoBrowserProvider implements BrowserProvider {
           );
         }
       } finally {
+        this.releaseTab(runId);
         this.tabs.delete(runId);
         this.runLocks.delete(runId);
       }
@@ -591,6 +602,56 @@ export class NeoBrowserProvider implements BrowserProvider {
     return this.runSerial(runId, () =>
       mcp.call('tools/call', { name: 'snapshot', arguments: { page, mode: 'interactive', depth: 30 } }),
     );
+  }
+
+  holdTab(runId: string): boolean {
+    z.string().min(1).parse(runId);
+    if (!this.tabs.has(runId)) return false;
+    if (!this.holds.has(runId)) {
+      let release!: () => void;
+      const released = new Promise<void>((resolve) => (release = resolve));
+      this.holds.set(runId, { released, release });
+    }
+    return true;
+  }
+
+  releaseTab(runId: string): void {
+    const hold = this.holds.get(runId);
+    this.holds.delete(runId);
+    hold?.release();
+  }
+
+  isHeld(runId: string): boolean {
+    return this.holds.has(runId);
+  }
+
+  async tabLocation(runId: string): Promise<TabLocation | null> {
+    const tab = this.tabs.get(runId);
+    if (!tab) return null;
+    try {
+      const { pages } = z
+        .object({ pages: z.array(z.object({ page: PageId, url: z.string().optional() })) })
+        .parse(await this.serial(() => this.tabsTool({ action: 'list' })));
+      const url = pages.find(({ page }) => String(page) === tab.tabId)?.url;
+      return url === undefined ? null : { tabId: tab.tabId, url };
+    } catch {
+      return { tabId: tab.tabId };
+    }
+  }
+
+  /** Parks an agent call while the owner drives the tab; an abort (cancel, quit) ends the wait. */
+  private async waitWhileHeld(runId: string, signal: AbortSignal): Promise<void> {
+    for (let hold = this.holds.get(runId); hold; hold = this.holds.get(runId)) {
+      await new Promise<void>((resolve, reject) => {
+        const onAbort = () => reject(signal.reason);
+        signal.addEventListener('abort', onAbort, { once: true });
+        void hold.released.then(() => {
+          signal.removeEventListener('abort', onAbort);
+          resolve();
+        });
+      });
+    }
+    signal.throwIfAborted();
   }
 
   private async tabsTool(args: Record<string, unknown>): Promise<unknown> {

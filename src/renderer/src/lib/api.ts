@@ -66,6 +66,14 @@ export const useReject = () =>
 export const useAnswerRun = () =>
   useMutation({ mutationFn: (input: AnswerRunInput) => bridge().runs.answer(input), onSettled: invalidateRuns });
 
+export const useGoToTab = () => useMutation({ mutationFn: (runId: string) => bridge().runs.goToTab(runId) });
+
+export const useTakeOver = () =>
+  useMutation({ mutationFn: (runId: string) => bridge().runs.takeOver(runId), onSettled: invalidateRuns });
+
+export const useHandBack = () =>
+  useMutation({ mutationFn: (runId: string) => bridge().runs.handBack(runId), onSettled: invalidateRuns });
+
 export const useApplications = () =>
   useQuery({ queryKey: queryKeys.applications.list(), queryFn: () => bridge().applications.list() });
 

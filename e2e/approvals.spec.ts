@@ -115,6 +115,17 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
       await window.screenshot({ path: testInfo.outputPath(`inbox-review-${theme}.png`), animations: 'disabled' });
     }
     await window.evaluate((source) => window.jobpilot!.theme.set(source), 'light');
+    // Take over: Go to tab names the tab, Take over pauses the agent and blocks approving until Hand back. Nothing is sent.
+    const reviewPanel = window.getByRole('complementary', { name: 'Details' });
+    await window.getByRole('button', { name: 'Go to tab' }).click();
+    await expect(window.getByRole('status').filter({ hasText: 'example.com' })).toBeVisible();
+    await window.getByRole('button', { name: 'Take over' }).click();
+    await expect(window.getByText('You have the tab. The agent is paused.')).toBeVisible();
+    await expect(reviewPanel.getByRole('button', { name: 'Approve and send' })).toBeDisabled();
+    expect(await rows(app, 'SELECT status FROM approval')).toEqual([{ status: 'pending' }]);
+    await window.getByRole('button', { name: 'Hand back' }).click();
+    await expect(reviewPanel.getByRole('button', { name: 'Approve and send' })).toBeEnabled();
+    expect(await rows(app, 'SELECT status FROM approval')).toEqual([{ status: 'pending' }]);
     await window
       .getByRole('complementary', { name: 'Details' })
       .getByRole('button', { name: 'Approve and send' })
