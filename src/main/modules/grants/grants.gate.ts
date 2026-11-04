@@ -17,9 +17,9 @@ export function gateProviders(
     get id() {
       return browser.id;
     },
-    async mcpServerConfig(runId, signal, submit) {
+    async mcpServerConfig(runId, signal, submit, upload) {
       await grants.assert('browser', browser.id);
-      return browser.mcpServerConfig(runId, signal, submit);
+      return browser.mcpServerConfig(runId, signal, submit, upload);
     },
     async openTab(runId, url) {
       await grants.assert('browser', browser.id);

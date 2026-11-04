@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readdirSync, rmSync } from 'node:fs';
+import { CvDocumentsService } from '../documents/cv-documents.service';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { JobPilotDb } from '../../platform/db/database';
@@ -33,6 +34,7 @@ import { UserFacingError } from '../../platform/ipc/user-facing-error';
 const MAX_ATTEMPTS = 3;
 /** The posting description is untrusted agent-read text; only this much goes into the prompt, inside the JSON block. */
 const MAX_PROMPT_DESCRIPTION = 8_000;
+const MAX_PROMPT_CV = 12_000;
 /** Cap on the agent's structured result before it is parsed and stored. */
 const MAX_RESULT_BYTES = 256 * 1024;
 
@@ -631,6 +633,10 @@ export class RunsService {
     });
   }
 
+  private cvDir(runId: string): string {
+    return join(this.userData, 'agents', 'cv', runId);
+  }
+
   private async execute(runId: string, signal: AbortSignal): Promise<void> {
     try {
       if (!this.agent || !this.browser)
@@ -646,7 +652,14 @@ export class RunsService {
       const tab = await this.browser.openTab(runId, posting.canonicalUrl);
       signal.throwIfAborted();
       this.repository.update(runId, { tabId: tab.tabId });
-      const mcpServer = await this.browser.mcpServerConfig(runId, signal);
+      // The owner's stored CV, copied under its real name for this run only (removed in `finally`).
+      const cv = new CvDocumentsService(this.db, this.userData).forRun(application.cvVersionId, this.cvDir(runId));
+      const mcpServer = await this.browser.mcpServerConfig(
+        runId,
+        signal,
+        undefined,
+        cv ? { path: cv.path, fileName: cv.fileName } : undefined,
+      );
       signal.throwIfAborted();
       // Undefined unless the owner installed memory; runs never wait on or install it.
       const memoryServer = this.memory?.mcpServerConfig();
@@ -663,6 +676,11 @@ export class RunsService {
           'Use profile facts and the fill plan; do not invent personal facts. Return needs_answers for missing facts.',
           'If login, credentials, CAPTCHA, or a different host is required, return blocked for owner intervention.',
           'Return the filled form hash for the approval gate. No submission is authorized in this run.',
+          ...(cv
+            ? [
+                `The owner's CV is ready as the file ${cv.fileName}: attach it with the upload_cv tool on the resume file input (usually behind an Attach button; snapshot first). Only if no file input exists, paste the CV text from the data below into the resume text box. Never say a file cannot be attached without trying upload_cv.`,
+              ]
+            : []),
           ...(memoryServer
             ? [
                 'Memory tools (mnemosyne_recall, mnemosyne_remember) are attached. Before filling, call mnemosyne_recall with the site host and the employer name to retrieve earlier form quirks and owner answers.',
@@ -679,6 +697,7 @@ export class RunsService {
             },
             fillPlan,
             profile: getProfile(this.db),
+            cv: cv ? { fileName: cv.fileName, text: cv.text?.slice(0, MAX_PROMPT_CV) ?? null } : null,
           }),
         ].join('\n'),
         mcpServers: { browser: mcpServer, ...(memoryServer ? { memory: memoryServer } : {}) },
@@ -774,6 +793,7 @@ export class RunsService {
         });
       }
     } finally {
+      rmSync(this.cvDir(runId), { recursive: true, force: true });
       if (this.repository.get(runId).status !== 'awaiting_approval') await this.browser?.closeTab(runId);
     }
   }

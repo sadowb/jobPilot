@@ -14,7 +14,7 @@
 - Trade-offs and known limits:
   - Success is the click plus the agent's reading of the confirmation page. It is not independently verified (employer email or an ATS API would be).
   - The hash is canonical (sorted id, control type, checked/selected state, exact value; value = everything after the first colon, so URLs and times stay whole) and fails closed: a snapshot with no recognisable input roles has no hash, so no approval and no click. The parser still reads Neo's text snapshot format, which is unverified against a live Neo. The hash covers field values the Neo snapshot exposes. A page that puts volatile text into those fields would drift on every approve and loop through refills; live pages must be checked (not verified against real Neo or Greenhouse yet).
-  - Browser tools cannot upload files, so the CV shown is the pinned version, not a claim it was attached.
+  - The CV shown is the stored version the agent is told to attach with `upload_cv` (Neo's `upload` tool, one fixed path chosen by main). It is not a claim it was attached; the form read-back shows that.
   - An unconfirmed click leaves the application in Up next; Start is the owner's explicit choice after the warning. An "I confirmed it was sent" action is a follow-up.
   - Auto submit mode stays out of scope.
 - Consequence: `approval.submit_claimed_at` (migration 0007); `BrowserProvider.mcpServerConfig` takes an optional authorisation and `formHash` became `formSnapshot`.

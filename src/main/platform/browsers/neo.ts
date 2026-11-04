@@ -7,7 +7,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { Logger } from 'pino';
 import type { BrowserStatus } from '../../../shared/dto';
 import type { McpServerConfig } from '../agents/types';
-import type { BrowserProvider, BrowserTab, FormSnapshot, SubmitAuthorisation } from './types';
+import type { BrowserProvider, BrowserTab, FormSnapshot, SubmitAuthorisation, UploadableFile } from './types';
 import { NeoMcp, allowlistedErrorCode } from './neo-mcp';
 import { discoverNeoEndpoint, validateLoopbackEndpoint } from './neo-discovery';
 
@@ -360,7 +360,12 @@ export class NeoBrowserProvider implements BrowserProvider {
     });
   }
 
-  async mcpServerConfig(runId: string, signal: AbortSignal, submit?: SubmitAuthorisation): Promise<McpServerConfig> {
+  async mcpServerConfig(
+    runId: string,
+    signal: AbortSignal,
+    submit?: SubmitAuthorisation,
+    upload?: UploadableFile,
+  ): Promise<McpServerConfig> {
     const tab = this.tabs.get(runId);
     if (!tab) throw new Error('Run tab is unavailable.');
     const page = PageId.parse(Number(tab.tabId));
@@ -443,6 +448,22 @@ export class NeoBrowserProvider implements BrowserProvider {
           { direction: z.enum(['up', 'down']), amount: z.number().int().min(1).max(20).optional() },
           ({ direction, amount }) => call('act', { kind: 'scroll', direction, ...(amount ? { amount } : {}) }),
         ),
+        ...(upload
+          ? [
+              tool(
+                'upload_cv',
+                `Attach the owner's CV (${upload.fileName}) to a file input from the latest snapshot (often behind an Attach button). The file is fixed; you cannot choose another.`,
+                { ref },
+                async ({ ref: target }) => {
+                  if (clickTargetLine(lastSnapshot, target) === undefined)
+                    return refused(`${target} is not in the latest snapshot. Take a snapshot first.`);
+                  const result = await call('upload', { ref: target, file: upload.path });
+                  lastSnapshot = '';
+                  return result;
+                },
+              ),
+            ]
+          : []),
         tool(
           'fill',
           'Replace form field values on the owned tab, without pressing keys or clicking buttons.',

@@ -8,6 +8,7 @@ import { GrantsService } from '../modules/grants/grants.service';
 import { gateProviders } from '../modules/grants/grants.gate';
 import { grantsHandlers } from '../modules/grants/grants.controller';
 import { PreflightService } from '../modules/onboarding/preflight.service';
+import { CvDocumentsService } from '../modules/documents/cv-documents.service';
 import { CvService } from '../modules/onboarding/cv.service';
 import { CapTurnService } from '../modules/onboarding/cap-turn.service';
 import { onboardingHandlers } from '../modules/onboarding/onboarding.controller';
@@ -269,7 +270,11 @@ if (logsError) {
           ...applicationsHandlers,
           ...profileHandlers,
           ...grantsHandlers(grants),
-          ...onboardingHandlers(preflight, new CvService(agent), new CapTurnService(agent)),
+          ...onboardingHandlers(
+            preflight,
+            new CvService(agent, new CvDocumentsService(db, app.getPath('userData'))),
+            new CapTurnService(agent),
+          ),
         ],
         originCheck(isTrustedUrl),
         loggerFor('ipc'),

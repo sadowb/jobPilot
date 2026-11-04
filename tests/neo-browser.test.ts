@@ -526,3 +526,50 @@ describe('Neo tabs tool replies in plain text (live test of #111)', () => {
     expect(tabsReply({ action: 'new' }, text('something else'))).toBeUndefined();
   });
 });
+
+describe('Neo upload_cv attaches only the stored CV (live test of #111)', () => {
+  async function setup(upload?: { path: string; fileName: string }) {
+    const calls: Array<{ name: string; arguments: Record<string, unknown> }> = [];
+    const provider = new NeoBrowserProvider({ debug() {}, warn() {} } as unknown as Logger, 'http://127.0.0.1:59999');
+    (provider as unknown as { mcp: { call: (m: string, p: never) => Promise<unknown> } }).mcp = {
+      call: async (_method, params: { name: string; arguments: Record<string, unknown> }) => {
+        calls.push(params);
+        if (params.name === 'tabs') return { content: [], structuredContent: { page: 7 } };
+        return {
+          content: [
+            {
+              type: 'text',
+              text: params.name === 'snapshot' ? 'button "Attach" [ref=e5]\n  input file [ref=e6]' : 'ok',
+            },
+          ],
+        };
+      },
+    };
+    await provider.openTab('run-1', 'https://example.com/jobs/1');
+    const server = (await provider.mcpServerConfig(
+      'run-1',
+      new AbortController().signal,
+      undefined,
+      upload,
+    )) as unknown as {
+      instance: {
+        _registeredTools: Record<string, { handler: (a: object, e: object) => Promise<{ isError?: boolean }> }>;
+      };
+    };
+    return { calls, tools: server.instance._registeredTools };
+  }
+
+  it('is absent unless main gave a file', async () => {
+    expect((await setup()).tools.upload_cv).toBeUndefined();
+  });
+
+  it('always sends the configured path, never one from the agent, and needs a snapshot first', async () => {
+    const { calls, tools } = await setup({ path: '/data/run-1/Sara_Benali_CV.pdf', fileName: 'Sara_Benali_CV.pdf' });
+    expect((await tools.upload_cv!.handler({ ref: 'e6' }, {})).isError).toBe(true);
+    await tools.snapshot!.handler({}, {});
+    await tools.upload_cv!.handler({ ref: 'e6', file: '/etc/passwd', files: ['/Users/x/.ssh/id_rsa'] }, {});
+    const sent = calls.filter(({ name }) => name === 'upload');
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.arguments).toEqual({ ref: 'e6', file: '/data/run-1/Sara_Benali_CV.pdf', page: 7 });
+  });
+});

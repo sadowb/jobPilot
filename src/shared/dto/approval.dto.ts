@@ -44,7 +44,7 @@ export const ApprovalItemSchema = z.object({
   /** First characters of the bound form hash, for display and support only. */
   formRef: z.string(),
   summary: ApprovalSummarySchema,
-  /** The CV version pinned to this application. Browser tools cannot upload files yet, so this is not a claim it was attached. */
+  /** The CV version pinned to this application. The agent attaches it with the upload_cv tool; the form read-back, not this field, shows whether it is attached. */
   cv: z.object({ name: z.string(), fileName: z.string(), mime: z.string(), sizeBytes: z.number().int() }).nullable(),
 });
 export type ApprovalItem = z.infer<typeof ApprovalItemSchema>;

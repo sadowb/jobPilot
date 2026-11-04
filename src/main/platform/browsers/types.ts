@@ -21,11 +21,24 @@ export interface SubmitAuthorisation {
   claim(): boolean;
 }
 
+/** The one file a run may attach, chosen by main from the owner's stored CV; the agent never supplies a path. */
+export interface UploadableFile {
+  /** Absolute path of the copy made for this run. */
+  path: string;
+  fileName: string;
+}
+
 /** One browser backend (neo, playwright, embedded). Each run gets its own tab. */
 export interface BrowserProvider {
   readonly id: BrowserId;
   /** MCP server the agent uses to drive this browser. Final actions (submit, send, pay, delete) are refused unless `submit` is given, and then only submit-like ones. */
-  mcpServerConfig(runId: string, signal: AbortSignal, submit?: SubmitAuthorisation): Promise<McpServerConfig>;
+  mcpServerConfig(
+    runId: string,
+    signal: AbortSignal,
+    submit?: SubmitAuthorisation,
+    /** Adds `upload_cv`, which attaches exactly this file to a file input of the owned tab. No other path is uploadable. */
+    upload?: UploadableFile,
+  ): Promise<McpServerConfig>;
   openTab(runId: string, url: string): Promise<BrowserTab>;
   /** Idempotent: closing an already-closed run's tab is a no-op. */
   closeTab(runId: string): Promise<void>;
