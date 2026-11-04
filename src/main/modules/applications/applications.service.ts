@@ -46,4 +46,23 @@ export class ApplicationsService {
     if (changed) emitDataChanged({ entity: 'application', id });
     return item;
   }
+
+  /** A confirmed submission: the application moves to Applied. Idempotent. */
+  markApplied(id: string, runId: string): void {
+    const changed = this.repository.markApplied(id, (from) =>
+      AuditService.record({
+        applicationId: id,
+        runId,
+        type: 'status_changed',
+        actor: 'system',
+        fromStatus: from,
+        toStatus: 'applied',
+      }),
+    );
+    if (changed) emitDataChanged({ entity: 'application', id });
+  }
+
+  saveOwnerAnswers(id: string, answers: Array<{ fieldKey: string; questionText: string; answer: string }>): void {
+    this.repository.saveOwnerAnswers(id, answers);
+  }
 }

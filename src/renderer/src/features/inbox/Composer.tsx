@@ -2,12 +2,21 @@ import { useState, type FormEvent } from 'react';
 import { BARE_INPUT, FOCUS_WITHIN } from './styles';
 
 /** Bottom message pill (`.comp`). `onSend` receives trimmed, non-empty text only. */
-export function Composer({ placeholder, onSend }: { placeholder: string; onSend: (text: string) => void }) {
+export function Composer({
+  placeholder,
+  onSend,
+  disabled = false,
+}: {
+  placeholder: string;
+  onSend: (text: string) => void;
+  /** Not wired yet: the field stays visible (it is part of the design) but cannot be used. */
+  disabled?: boolean;
+}) {
   const [text, setText] = useState('');
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || disabled) return;
     onSend(trimmed);
     setText('');
   };
@@ -34,11 +43,13 @@ export function Composer({ placeholder, onSend }: { placeholder: string; onSend:
         value={text}
         placeholder={placeholder}
         aria-label={placeholder}
+        disabled={disabled}
         onChange={(e) => setText(e.target.value)}
       />
       <button
-        className="ml-auto grid size-[38px] place-items-center rounded-full border-0 bg-pri text-on-pri!"
+        className="ml-auto grid size-[38px] place-items-center rounded-full border-0 bg-pri text-on-pri! disabled:opacity-40"
         type="submit"
+        disabled={disabled}
         aria-label="Send"
       >
         <svg

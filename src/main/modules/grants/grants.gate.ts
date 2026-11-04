@@ -17,17 +17,17 @@ export function gateProviders(
     get id() {
       return browser.id;
     },
-    async mcpServerConfig(runId, signal) {
+    async mcpServerConfig(runId, signal, submit, upload) {
       await grants.assert('browser', browser.id);
-      return browser.mcpServerConfig(runId, signal);
+      return browser.mcpServerConfig(runId, signal, submit, upload);
     },
     async openTab(runId, url) {
       await grants.assert('browser', browser.id);
       return browser.openTab(runId, url);
     },
-    // Closing and hashing an already-open tab stay possible after a revoke, so a run can always clean up.
+    // Closing and reading an already-open tab stay possible after a revoke, so a run can always clean up.
     closeTab: (runId) => browser.closeTab(runId),
-    formHash: (runId) => browser.formHash(runId),
+    formSnapshot: (runId) => browser.formSnapshot(runId),
   };
   const gatedAgent: AgentProvider = {
     get id() {

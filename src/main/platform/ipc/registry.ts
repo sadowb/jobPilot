@@ -31,6 +31,13 @@ function publicError(error: unknown): Error {
   return new Error('Something went wrong. Try again.');
 }
 
+let accepting = true;
+
+/** Quit and Remove-all-data close the database while windows still exist; later requests must not reach it. */
+export function stopAcceptingIpc(): void {
+  accepting = false;
+}
+
 /** channel -> zod input schema -> handler. The renderer sends one payload argument (or none for `z.void()`). */
 export function defineHandler<S extends z.ZodType, R>(
   channel: string,
@@ -44,6 +51,10 @@ export function defineHandler<S extends z.ZodType, R>(
         if (!isTrustedSender(event)) {
           logger.warn({ channel }, 'Untrusted IPC sender');
           throw new Error(`untrusted sender for ${channel}`);
+        }
+        if (!accepting) {
+          logger.debug({ channel }, 'IPC refused: app is shutting down');
+          throw new Error('JobPilot is closing.');
         }
         try {
           const parsed = input.safeParse(raw);

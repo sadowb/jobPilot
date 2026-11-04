@@ -1,7 +1,8 @@
 import { CvExtractionSchema, type CvExtraction } from '../../../shared/dto';
 import type { AgentProvider } from '../../platform/agents/types';
 import { UserFacingError } from '../../platform/ipc/user-facing-error';
-import { cvText } from './cv-text';
+import type { CvDocumentsService } from '../documents/cv-documents.service';
+import { CV_TEXT_MAX, cvText } from './cv-text';
 import { structuredCall } from './structured-call';
 
 const EXTRACT_TIMEOUT_MS = 90_000;
@@ -21,9 +22,12 @@ const prompt = (text: string) =>
   ].join('\n');
 
 export class CvService {
-  constructor(private readonly agent: AgentProvider) {}
+  constructor(
+    private readonly agent: AgentProvider,
+    private readonly documents?: CvDocumentsService,
+  ) {}
 
-  async extract(bytes: Uint8Array, signal?: AbortSignal): Promise<CvExtraction> {
+  async extract(bytes: Uint8Array, signal?: AbortSignal, name = 'CV.pdf'): Promise<CvExtraction> {
     let text: string;
     try {
       text = await cvText(bytes);
@@ -31,10 +35,13 @@ export class CvService {
       throw new UserFacingError(error instanceof Error ? error.message : 'Could not read that file.');
     }
     try {
-      return await structuredCall(this.agent, CvExtractionSchema, prompt(text), {
+      const extraction = await structuredCall(this.agent, CvExtractionSchema, prompt(text), {
         timeoutMs: EXTRACT_TIMEOUT_MS,
         signal,
       });
+      // Kept so every later application can use the same CV (as text and as the file to attach).
+      this.documents?.store({ name, bytes, parsedText: text.slice(0, CV_TEXT_MAX) });
+      return extraction;
     } catch (error) {
       if (error instanceof UserFacingError) throw error;
       throw new UserFacingError('Cap could not read this CV. Check your AI connection in Settings and try again.');

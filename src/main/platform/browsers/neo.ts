@@ -7,7 +7,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { Logger } from 'pino';
 import type { BrowserStatus } from '../../../shared/dto';
 import type { McpServerConfig } from '../agents/types';
-import type { BrowserProvider, BrowserTab } from './types';
+import type { BrowserProvider, BrowserTab, FormSnapshot, SubmitAuthorisation, UploadableFile } from './types';
 import { NeoMcp, allowlistedErrorCode } from './neo-mcp';
 import { discoverNeoEndpoint, validateLoopbackEndpoint } from './neo-discovery';
 
@@ -18,11 +18,77 @@ const HttpsUrl = z.url({ protocol: /^https$/ }).refine((value) => {
   return !url.username && !url.password;
 }, 'Posting URL must not contain credentials');
 const PageId = z.number().int().nonnegative().max(0xffffffff);
-const ToolResult = z.object({ isError: z.boolean().optional(), structuredContent: z.unknown().optional() });
+const ToolResult = z.object({
+  isError: z.boolean().optional(),
+  structuredContent: z.unknown().optional(),
+  content: z.array(z.object({ text: z.string().optional() })).optional(),
+});
+
+/**
+ * Neo 0.51 answers the tabs tool in plain text only ("opened page 5", "[5] https://… (title), owned by …"), with no
+ * structuredContent. Older builds sent structured data, which still wins when present.
+ */
+export function tabsReply(args: Record<string, unknown>, result: z.infer<typeof ToolResult>): unknown {
+  if (result.structuredContent !== undefined) return result.structuredContent;
+  const text = (result.content ?? []).map((part) => part.text ?? '').join('\n');
+  if (args.action === 'new') {
+    const page = /^opened page (\d+)/m.exec(text)?.[1];
+    return page === undefined ? undefined : { page: Number(page) };
+  }
+  if (args.action === 'list') {
+    const pages = [...text.matchAll(/^\[(\d+)\]\s+(\S+)/gm)].map((m) => ({ page: Number(m[1]), url: m[2]! }));
+    return { pages };
+  }
+  return {};
+}
 
 export interface FormField {
   field: string;
   value: string;
+  /** Control type/role (textbox, checkbox, file ...). Part of the hash: a text box and a checkbox never collide. */
+  kind: string;
+  /** Checked / selected / disabled markers, sorted and comma-joined. */
+  state: string;
+}
+
+/** Roles that hold a value the owner is submitting. Anything else in a snapshot is page chrome and not hashed. */
+const INPUT_ROLES = new Set([
+  'textbox',
+  'searchbox',
+  'textarea',
+  'input',
+  'combobox',
+  'select',
+  'listbox',
+  'spinbutton',
+  'slider',
+  'checkbox',
+  'radio',
+  'switch',
+  'file',
+  'upload',
+  'date',
+]);
+const STATE_FLAGS = new Set(['checked', 'selected', 'disabled', 'required', 'pressed', 'expanded']);
+
+/**
+ * Neo's snapshot shows an attached file only as a "Remove file" button inside the field's group, with no file name.
+ * Surface it as a field so the owner sees the attachment and removing it later changes the form hash.
+ */
+export function attachedFiles(text: string): FormField[] {
+  const lines = text.split(/\r?\n/);
+  const found: FormField[] = [];
+  lines.forEach((line, i) => {
+    const group = /^(\s*)-?\s*group\s+"([^"]+)"/.exec(line);
+    if (!group) return;
+    for (let j = i + 1; j < lines.length && /^\s*/.exec(lines[j]!)![0].length > group[1]!.length; j++) {
+      if (/button\s+"(?:remove|delete) (?:file|attachment|resume|cv)/i.test(lines[j]!)) {
+        found.push({ field: `group:${group[2]!.replace(/\*$/, '')}`, value: 'File attached', kind: 'file', state: '' });
+        break;
+      }
+    }
+  });
+  return found;
 }
 
 export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn'>): FormField[] {
@@ -47,7 +113,9 @@ export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn
 
     if (hasValue && (ref || label)) {
       const fieldId = ref && label ? `${ref}:${label}` : (ref ?? label)!;
-      fields.push({ field: fieldId, value: String(obj.value) });
+      const kind = [obj.role, obj.type].find((item): item is string => typeof item === 'string') ?? '';
+      const state = [...STATE_FLAGS].filter((flag) => obj[flag] === true || obj[flag] === 'true').join(',');
+      fields.push({ field: fieldId, value: String(obj.value), kind: kind.toLowerCase(), state });
     }
 
     for (const [k, v] of Object.entries(obj)) {
@@ -62,38 +130,34 @@ export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn
     }
   }
 
+  /**
+   * Snapshot lines look like `textbox "Label" [ref=e1] [checked]: value`. The value is everything after the first colon
+   * that follows the label and the bracketed attributes, taken verbatim (URLs and values with colons stay whole).
+   * Only input roles count; a line that is not one is page chrome.
+   */
   function parseText(text: string) {
-    const lines = text.split(/\r?\n/);
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) continue;
-
-      const refMatch = line.match(/(?:\[ref=(e\d+)\]|\[(e\d+)\]|@?(e\d+)\b)/);
-      const ref = refMatch ? (refMatch[1] ?? refMatch[2] ?? refMatch[3]) : undefined;
-
-      const labelMatch = line.match(
-        /(?:(?:textbox|input|combobox|select|textarea|field|checkbox|radio)\s+["']([^"']+)["']|label=["']([^"']+)["'])/i,
-      );
-      const label = labelMatch ? (labelMatch[1] ?? labelMatch[2])?.trim() : undefined;
-
-      let value: string | undefined;
-      const valueAttrMatch = line.match(/value=["']([^"']*)["']/);
-      if (valueAttrMatch) {
-        value = valueAttrMatch[1];
-      } else {
-        const colonIndex = line.lastIndexOf(':');
-        if (colonIndex !== -1 && (ref || label)) {
-          const afterColon = line.slice(colonIndex + 1).trim();
-          if (!afterColon.startsWith('//')) {
-            value = afterColon;
-          }
-        }
+    fields.push(...attachedFiles(text));
+    for (const rawLine of text.split(/\r?\n/)) {
+      const head = rawLine.match(/^\s*(?:-\s*)?(?:\[ref=(e\d+)\]\s*)?([A-Za-z]+)(?:\s+"((?:[^"\\]|\\.)*)")?/);
+      if (!head || !INPUT_ROLES.has(head[2]!.toLowerCase())) continue;
+      let rest = rawLine.slice(head[0].length);
+      const attrs: string[] = [];
+      for (let m = rest.match(/^\s*\[([^\]]*)\]/); m; m = rest.match(/^\s*\[([^\]]*)\]/)) {
+        attrs.push(m[1]!);
+        rest = rest.slice(m[0].length);
       }
-
-      if ((ref || label) && value !== undefined) {
-        const fieldId = ref && label ? `${ref}:${label}` : (ref ?? label)!;
-        fields.push({ field: fieldId, value });
-      }
+      const ref = head[1] ?? attrs.map((a) => a.match(/^ref=(e\d+)$/)?.[1]).find(Boolean);
+      const label = head[3]?.trim();
+      const colon = rest.match(/^\s*:\s?/);
+      const value = colon ? rest.slice(colon[0].length).trim() : undefined;
+      const state = [...STATE_FLAGS].filter((flag) => attrs.some((a) => a === flag || a === `${flag}=true`)).join(',');
+      if (!(ref || label) || (value === undefined && !state && !/checkbox|radio|switch/i.test(head[2]!))) continue;
+      fields.push({
+        field: ref && label ? `${ref}:${label}` : (ref ?? label)!,
+        value: value ?? '',
+        kind: head[2]!.toLowerCase(),
+        state,
+      });
     }
   }
 
@@ -147,35 +211,60 @@ export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn
   return fields;
 }
 
+/**
+ * Canonical hash of the structured form: every input's id, type, state and exact value, sorted by id. Fails closed: a
+ * snapshot with no recognisable inputs has no hash, so nothing can be approved against it (ADR 0020).
+ */
 export function computeFormHash(snapshot: unknown, logger?: Pick<Logger, 'warn'>): string {
   const fields = extractFormFields(snapshot, logger);
-  fields.sort((a, b) => {
-    const c = a.field.localeCompare(b.field);
-    return c !== 0 ? c : a.value.localeCompare(b.value);
-  });
-  if (fields.length === 0) {
-    let text = '';
-    if (typeof snapshot === 'string') text = snapshot;
-    else if (snapshot && typeof snapshot === 'object' && Array.isArray((snapshot as { content?: unknown[] }).content)) {
-      text = (snapshot as { content: Array<{ text?: string }> }).content.map((c) => c.text ?? '').join('\n');
-    }
-    const cleanLines = text
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l && !/^(?:timestamp|cursor|rendered_at|scroll|time):/i.test(l))
-      .sort();
-    return createHash('sha256').update(JSON.stringify(cleanLines)).digest('hex');
-  }
-  return createHash('sha256').update(JSON.stringify(fields)).digest('hex');
+  if (fields.length === 0) throw new Error('The form could not be read in a structured way.');
+  const canonical = fields
+    .map(({ field, kind, state, value }) => [field, kind, state, value] as const)
+    .sort((a, b) => {
+      for (let i = 0; i < 4; i++) {
+        const [x, y] = [a[i]!, b[i]!];
+        if (x !== y) return x < y ? -1 : 1;
+      }
+      return 0;
+    });
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
 }
 
-/** Controls an agent must never click: the owner's browser is logged in, so these act for real. */
-export const FINAL_ACTION =
-  /\b(submit|send|confirm|finish|complete (my )?application|place order|pay|purchase|buy|checkout|delete|remove|withdraw|sign out|log ?out|unsubscribe)\b/i;
+/** Never clicked, with or without an approval: they act for real in the owner's logged-in browser. */
+export const NEVER_ACTION =
+  /\b(place order|pay|purchase|buy|checkout|delete|remove|withdraw|sign out|log ?out|unsubscribe)\b/i;
+/** Completes the application. Refused unless the run was given a `SubmitAuthorisation` (the approval path). */
+export const SUBMIT_ACTION = /\b(submit|send|confirm|finish|complete (my )?application)\b/i;
+/** Every control the agent may not click on its own. */
+export const FINAL_ACTION = new RegExp(`${NEVER_ACTION.source}|${SUBMIT_ACTION.source}`, 'i');
+
+/** The field values and hash of one raw snapshot reply. The hash is computed on the raw reply, exactly as at approval time. */
+export function snapshotForm(raw: unknown, logger?: Pick<Logger, 'warn'>): FormSnapshot {
+  return {
+    hash: computeFormHash(raw, logger),
+    fields: extractFormFields(raw, logger).map(({ field, kind, value }) => {
+      const label = field.replace(/^e\d+:/, '');
+      // Neo prints text values in quotes; the owner reads the value, not the syntax. A dropdown's choice is not
+      // exposed in the snapshot, so an empty one is "not readable", never "empty".
+      const shown = value.replace(/^"(.*)"$/s, '$1');
+      return {
+        label: /^e\d+$/.test(label) ? `Field ${label}` : label.replace(/^group:/, ''),
+        value: shown === '' && /^(combobox|select|listbox)$/.test(kind) ? 'Choice not shown by the page' : shown,
+      };
+    }),
+  };
+}
 
 /** The snapshot line for a ref, matched exactly ([ref=e1] never matches e12); undefined when absent. */
 export function clickTargetLine(snapshot: string, ref: string): string | undefined {
   return snapshot.split(/\r?\n/).find((line) => line.includes(`[ref=${ref}]`));
+}
+
+function textOf(raw: unknown): string {
+  const content = (raw as { content?: Array<{ text?: unknown }> } | null)?.content;
+  return Array.isArray(content)
+    ? content.map((item) => (typeof item.text === 'string' ? item.text : '')).join('\n')
+    : '';
 }
 
 export class NeoBrowserProvider implements BrowserProvider {
@@ -298,7 +387,12 @@ export class NeoBrowserProvider implements BrowserProvider {
     });
   }
 
-  async mcpServerConfig(runId: string, signal: AbortSignal): Promise<McpServerConfig> {
+  async mcpServerConfig(
+    runId: string,
+    signal: AbortSignal,
+    submit?: SubmitAuthorisation,
+    upload?: UploadableFile,
+  ): Promise<McpServerConfig> {
     const tab = this.tabs.get(runId);
     if (!tab) throw new Error('Run tab is unavailable.');
     const page = PageId.parse(Number(tab.tabId));
@@ -318,6 +412,33 @@ export class NeoBrowserProvider implements BrowserProvider {
     const ref = z.string().regex(/^e\d+$/);
     const refused = (text: string) => ({ content: [{ type: 'text' as const, text }], isError: true });
     let lastSnapshot = '';
+    /**
+     * The one path to a submit click (ADR 0020): re-read the live form, require the approved hash, re-find the control in
+     * that fresh read (refs can move), claim the single durable attempt, then click.
+     */
+    const submitClick = async (target: string) => {
+      if (!submit) return refused('Refused: submitting is not authorised.');
+      signal.throwIfAborted();
+      const fresh = await this.rawSnapshot(runId, tab);
+      signal.throwIfAborted();
+      let liveHash: string | undefined;
+      try {
+        liveHash = snapshotForm(fresh, this.logger).hash;
+      } catch {
+        liveHash = undefined; // unreadable form: no hash, no click
+      }
+      if (liveHash !== submit.formHash)
+        return refused('Refused: the form changed after approval or could not be read. Nothing was sent.');
+      lastSnapshot = textOf(fresh);
+      const line = clickTargetLine(lastSnapshot, target);
+      if (line === undefined || !/\bbutton\b/i.test(line) || NEVER_ACTION.test(line) || !SUBMIT_ACTION.test(line))
+        return refused(`Refused: ${target} is not a submit button on the approved form. Nothing was sent.`);
+      if (!submit.claim()) return refused('Refused: a submit was already attempted for this approval.');
+      const result = await call('act', { kind: 'click', ref: target, diff: 'summary' });
+      lastSnapshot = '';
+      await this.rememberTabHost(runId, tab);
+      return result;
+    };
     // No generic MCP forwarding: tab management, URL navigation, scripts, credentials and submission stay unavailable.
     return createSdkMcpServer({
       name: 'browser',
@@ -334,7 +455,14 @@ export class NeoBrowserProvider implements BrowserProvider {
           async ({ ref: target }) => {
             const line = clickTargetLine(lastSnapshot, target);
             if (line === undefined) return refused(`${target} is not in the latest snapshot. Take a snapshot first.`);
-            if (FINAL_ACTION.test(line)) return refused(`Refused: ${target} looks like a final action. Never submit.`);
+            if (NEVER_ACTION.test(line))
+              return refused(
+                `Refused: ${target} looks like a final action (payment, deletion, sign-out). Never click it.`,
+              );
+            if (SUBMIT_ACTION.test(line)) {
+              if (!submit) return refused(`Refused: ${target} looks like a final action. Never submit.`);
+              return submitClick(target);
+            }
             const result = await call('act', { kind: 'click', ref: target, diff: 'summary' });
             lastSnapshot = ''; // Refs may be stale after a click; force a fresh snapshot.
             await this.rememberTabHost(runId, tab);
@@ -347,6 +475,22 @@ export class NeoBrowserProvider implements BrowserProvider {
           { direction: z.enum(['up', 'down']), amount: z.number().int().min(1).max(20).optional() },
           ({ direction, amount }) => call('act', { kind: 'scroll', direction, ...(amount ? { amount } : {}) }),
         ),
+        ...(upload
+          ? [
+              tool(
+                'upload_cv',
+                `Attach the owner's CV (${upload.fileName}) to a file input from the latest snapshot (often behind an Attach button). The file is fixed; you cannot choose another.`,
+                { ref },
+                async ({ ref: target }) => {
+                  if (clickTargetLine(lastSnapshot, target) === undefined)
+                    return refused(`${target} is not in the latest snapshot. Take a snapshot first.`);
+                  const result = await call('upload', { ref: target, file: upload.path });
+                  lastSnapshot = '';
+                  return result;
+                },
+              ),
+            ]
+          : []),
         tool(
           'fill',
           'Replace form field values on the owned tab, without pressing keys or clicking buttons.',
@@ -432,23 +576,28 @@ export class NeoBrowserProvider implements BrowserProvider {
     });
   }
 
-  async formHash(runId: string): Promise<string> {
+  async formSnapshot(runId: string): Promise<FormSnapshot> {
     z.string().min(1).parse(runId);
     const tab = this.tabs.get(runId);
     if (!tab) throw new Error('Run tab is unavailable.');
+    return snapshotForm(await this.rawSnapshot(runId, tab), this.logger);
+  }
+
+  /** The snapshot reply exactly as Neo sent it: the approval hash and the click-time check must hash the same shape. */
+  private async rawSnapshot(runId: string, tab: { tabId: string }): Promise<unknown> {
+    if (this.tabs.get(runId) !== tab) throw new Error('Run tab is unavailable.');
     const mcp = await this.getMcp();
     const page = PageId.parse(Number(tab.tabId));
-    const result = await this.runSerial(runId, () =>
+    return this.runSerial(runId, () =>
       mcp.call('tools/call', { name: 'snapshot', arguments: { page, mode: 'interactive', depth: 30 } }),
     );
-    return computeFormHash(result, this.logger);
   }
 
   private async tabsTool(args: Record<string, unknown>): Promise<unknown> {
     const mcp = await this.getMcp();
     const result = ToolResult.parse(await mcp.call('tools/call', { name: 'tabs', arguments: args }));
     if (result.isError) throw new Error('Neo tabs tool failed');
-    return result.structuredContent;
+    return tabsReply(args, result);
   }
 
   private runSerial<T>(runId: string, operation: () => Promise<T>): Promise<T> {

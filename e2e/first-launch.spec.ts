@@ -90,8 +90,8 @@ test('fresh profile opens onboarding and contains only real empty states', async
       } else await expect(window.getByRole('heading', { name: title!, exact: true })).toBeVisible();
       await expect(window.locator('body')).not.toContainText(/Arrives with|Phase \d/);
       if (route === '/inbox') {
-        await expect(window.getByText('Nothing needs you', { exact: true })).toBeVisible();
-        await expect(window.getByRole('button', { name: 'Open Up next' })).toBeVisible();
+        await expect(window.getByRole('status')).toContainText('Nothing needs you');
+        await expect(window.getByRole('button', { name: 'Back to Dashboard' })).toBeVisible();
       }
       await capture(name!);
       if (route === '/settings') {

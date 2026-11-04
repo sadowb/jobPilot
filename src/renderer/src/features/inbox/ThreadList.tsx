@@ -1,9 +1,9 @@
 import { forwardRef, type ReactNode } from 'react';
 import { CapOnDartArt } from '../../components/CapOnDartArt';
-import { CritterBot } from '../../components/CritterBot';
+import { V17AgentBot } from '../../components/V17AgentBot';
 import { BARE_INPUT, ELLIPSIS, FOCUS_WITHIN, MONO } from './styles';
 import { KeyHint as KeyCap } from './KeyHint';
-import { CAP_LIST_PREVIEW, type InboxItem, type ItemId, type ThreadId } from './model';
+import type { InboxItem } from './model';
 
 const TAG_COLOR = {
   work: 'text-work border-work',
@@ -49,12 +49,12 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-function CapRow({ on, clear, onSelect }: { on: boolean; clear: boolean; onSelect: () => void }) {
+function CapRow({ on, onSelect }: { on: boolean; onSelect: () => void }) {
   return (
     <Row
       on={on}
       onSelect={onSelect}
-      time={clear ? CAP_LIST_PREVIEW.clearTime : CAP_LIST_PREVIEW.pendingTime}
+      time=""
       lead={
         <span className="grid size-10 place-items-center">
           <CapOnDartArt size={38} />
@@ -66,40 +66,26 @@ function CapRow({ on, clear, onSelect }: { on: boolean; clear: boolean; onSelect
           <span className="text-[14.5px] font-semibold">Cap</span>
           <span className={MONO}>pinned</span>
         </div>
-        <div className={`text-[13px] text-muted ${ELLIPSIS}`}>
-          {clear ? CAP_LIST_PREVIEW.clear : CAP_LIST_PREVIEW.pending}
-        </div>
+        <div className={`text-[13px] text-muted ${ELLIPSIS}`}>Chat is not connected yet</div>
       </div>
     </Row>
   );
 }
 
-function ItemRow({
-  item,
-  on,
-  driving,
-  onSelect,
-}: {
-  item: InboxItem;
-  on: boolean;
-  driving: boolean;
-  onSelect: () => void;
-}) {
+function ItemRow({ item, on, onSelect }: { item: InboxItem; on: boolean; onSelect: () => void }) {
   return (
     <Row
       on={on}
       onSelect={onSelect}
       time={item.age}
-      lead={<CritterBot agent={item.agent} state={item.critter} size={40} />}
+      lead={<V17AgentBot name={item.agent} state={item.state} size={40} />}
     >
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className={`min-w-0 text-[14.5px] font-semibold ${ELLIPSIS}`}>{item.agent}</span>
           <span className={`${MONO} flex-none rounded-md border px-1.5 py-px ${TAG_COLOR[item.tone]}`}>{item.tag}</span>
         </div>
-        <div className="line-clamp-2 text-[13px] leading-[1.35] text-ink-2">
-          {driving ? 'You have control · its agent is paused' : item.preview}
-        </div>
+        <div className="line-clamp-2 text-[13px] leading-[1.35] text-ink-2">{item.preview}</div>
         <div className="text-[12px] text-muted">{item.role}</div>
       </div>
     </Row>
@@ -110,26 +96,35 @@ export interface ThreadListProps {
   items: readonly InboxItem[];
   /** Pending count before the search filter (drives the headings). */
   pendingCount: number;
-  selected: ThreadId | null;
-  /** Item the owner is driving, if any (its row says so). */
-  takeover: ItemId | null;
+  /** The first load has not finished: show neither "All clear" nor a count. */
+  loading?: boolean;
+  /** An item key, or 'cap' for the pinned pilot thread. */
+  selected: string | null;
   query: string;
   onQuery: (q: string) => void;
-  onSelect: (id: ThreadId) => void;
+  onSelect: (key: string) => void;
 }
 
-/** Left column: title, search, pinned Cap thread, and the items that need the owner. */
+/** Left column: title, search, pinned Cap thread, and one thread per job that needs the owner. */
 export const ThreadList = forwardRef<HTMLInputElement, ThreadListProps>(function ThreadList(
-  { items, pendingCount, selected, takeover, query, onQuery, onSelect },
+  { items, pendingCount, loading = false, selected, query, onQuery, onSelect },
   searchRef,
 ) {
-  const clear = pendingCount === 0;
+  const clear = !loading && pendingCount === 0;
   return (
     <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-line bg-bg [@media(max-width:1194px)]:col-start-1 [@media(max-width:1194px)]:row-[1/3]">
       <div className="flex flex-none flex-col gap-3.5 px-5 pt-[22px] pb-3">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="m-0 font-serif text-[36px] leading-[1.02] font-[350] tracking-[-0.025em]">Inbox</h1>
-          <span className="text-[12.5px] text-muted">{clear ? 'All clear' : `${pendingCount} need you`}</span>
+          <h1
+            id="inbox-heading"
+            tabIndex={-1}
+            className="m-0 font-serif outline-none text-[36px] leading-[1.02] font-[350] tracking-[-0.025em]"
+          >
+            Inbox
+          </h1>
+          <span className="text-[12.5px] text-muted">
+            {loading ? '' : clear ? 'All clear' : `${pendingCount} need you`}
+          </span>
         </div>
         <label
           className={`flex h-[38px] min-w-0 items-center gap-2 rounded-full border border-line-2 bg-bg px-3.5 text-[13.5px] text-muted ${FOCUS_WITHIN}`}
@@ -150,21 +145,19 @@ export const ThreadList = forwardRef<HTMLInputElement, ThreadListProps>(function
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto *:shrink-0">
         <SectionLabel>Pilot</SectionLabel>
-        <CapRow on={selected === 'cap'} clear={clear} onSelect={() => onSelect('cap')} />
-        <SectionLabel>{clear ? 'Needs you · 0' : `Needs you · ${pendingCount} · newest first`}</SectionLabel>
+        <CapRow on={selected === 'cap'} onSelect={() => onSelect('cap')} />
+        <SectionLabel>
+          {loading ? 'Needs you' : clear ? 'Needs you · 0' : `Needs you · ${pendingCount} · newest first`}
+        </SectionLabel>
         {clear ? (
-          <div className={EMPTY_NOTE}>Nothing is waiting on you. The crew handles the rest.</div>
+          <div className={EMPTY_NOTE}>Nothing is waiting on you. Sent jobs leave the Inbox.</div>
+        ) : loading ? (
+          <div className={EMPTY_NOTE}>Loading…</div>
         ) : items.length === 0 ? (
-          <div className={EMPTY_NOTE}>No match for “{query}”.</div>
+          <div className={`${EMPTY_NOTE} break-words`}>No match for “{query.slice(0, 60)}”.</div>
         ) : (
           items.map((item) => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              on={selected === item.id}
-              driving={takeover === item.id}
-              onSelect={() => onSelect(item.id)}
-            />
+            <ItemRow key={item.key} item={item} on={selected === item.key} onSelect={() => onSelect(item.key)} />
           ))
         )}
       </div>

@@ -87,6 +87,8 @@ export const approval = sqliteTable(
     /** Snapshot of what will be submitted, shown on the approval card. */
     summary: text('summary', { mode: 'json' }),
     decidedAt: integer('decided_at'),
+    /** Set (once, durably) right before the submit click is dispatched. Once set, an unconfirmed outcome is never retried. */
+    submitClaimedAt: integer('submit_claimed_at'),
     ...timestamps(),
   },
   (t) => [

@@ -30,8 +30,8 @@ export function onboardingHandlers(preflight: PreflightService, cv: CvService, c
     defineHandler(Channels.allowConnections, AllowConnectionsSchema, async (input) =>
       AllowConnectionsResultSchema.parse(await preflight.allow(input)),
     ),
-    defineHandler(Channels.extractCv, ExtractCvSchema, async ({ bytes }) =>
-      CvExtractionSchema.parse(await cv.extract(bytes)),
+    defineHandler(Channels.extractCv, ExtractCvSchema, async ({ name, bytes }) =>
+      CvExtractionSchema.parse(await cv.extract(bytes, undefined, name)),
     ),
     defineHandler(Channels.capTurn, CapTurnInputSchema, async (input) => CapTurnSchema.parse(await cap.turn(input))),
   ];

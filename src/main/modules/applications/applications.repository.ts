@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull, max } from 'drizzle-orm';
 import type { JobPilotDb } from '../../platform/db/database';
 import type { ApplicationListItem, OwnerStatus } from '../../../shared/dto';
-import { application, vApplicationList } from './applications.entity';
+import { application, applicationAnswer, vApplicationList } from './applications.entity';
 import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 export class ApplicationsRepository {
@@ -69,6 +69,39 @@ export class ApplicationsRepository {
       const item = this.db.select().from(vApplicationList).where(eq(vApplicationList.id, id)).get();
       if (!item) throw new UserFacingError('Application is unavailable.');
       return item;
+    });
+  }
+
+  /** Idempotent: an already applied application keeps its first `appliedAt`. Returns whether it changed. */
+  markApplied(id: string, recordChange: (from: string) => void): boolean {
+    return this.db.transaction(() => {
+      const row = this.db.select().from(application).where(eq(application.id, id)).get();
+      if (!row) throw new UserFacingError('Application not found.');
+      if (row.appliedAt !== null) return false;
+      const now = Date.now();
+      this.db
+        .update(application)
+        .set({ status: 'applied', appliedAt: now, lastActivityAt: now, updatedAt: now })
+        .where(eq(application.id, id))
+        .run();
+      recordChange(row.status);
+      return true;
+    });
+  }
+
+  /** Owner-typed answers to questions a run could not answer. One row per field, the latest answer wins. */
+  saveOwnerAnswers(id: string, answers: Array<{ fieldKey: string; questionText: string; answer: string }>): void {
+    this.db.transaction(() => {
+      for (const { fieldKey, questionText, answer } of answers) {
+        this.db
+          .insert(applicationAnswer)
+          .values({ applicationId: id, fieldKey, questionText, answer, source: 'owner' })
+          .onConflictDoUpdate({
+            target: [applicationAnswer.applicationId, applicationAnswer.fieldKey],
+            set: { answer, questionText, source: 'owner', updatedAt: Date.now() },
+          })
+          .run();
+      }
     });
   }
 }

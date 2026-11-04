@@ -13,6 +13,7 @@ export const queryClient = new QueryClient({
 export const queryKeys = {
   applications: { all: ['applications'] as const, list: () => [...queryKeys.applications.all, 'list'] as const },
   runs: { all: ['runs'] as const, state: () => ['runs', 'state'] as const, list: () => ['runs', 'list'] as const },
+  inbox: { all: ['inbox'] as const, list: () => ['inbox', 'list'] as const },
   recovery: { state: () => ['recovery', 'state'] as const },
   agent: { state: () => ['agent', 'state'] as const },
   preflight: { all: ['preflight'] as const },
@@ -22,9 +23,11 @@ export const queryKeys = {
   browser: { status: () => ['browser', 'status'] as const },
 };
 
-/** A run change also changes the application list (it embeds the latest run status). */
+/** A run change also changes the application list (it embeds the latest run status) and the Inbox. */
 export function invalidateForChange(change: DataChanged, client: QueryClient = queryClient): Promise<void> {
   const keys =
-    change.entity === 'run' ? [queryKeys.runs.all, queryKeys.applications.all] : [queryKeys.applications.all];
+    change.entity === 'run'
+      ? [queryKeys.runs.all, queryKeys.applications.all, queryKeys.inbox.all]
+      : [queryKeys.applications.all];
   return Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey }))).then(() => undefined);
 }

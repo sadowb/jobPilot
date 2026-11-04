@@ -14,3 +14,4 @@ export * from './settings.dto';
 export * from './grant.dto';
 export * from './preflight.dto';
 export * from './onboarding.dto';
+export * from './approval.dto';

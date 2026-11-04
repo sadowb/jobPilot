@@ -50,6 +50,13 @@
       "when": 1793675669428,
       "tag": "0006_consent_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793757322758,
+      "tag": "0007_approval_submit_claim",
+      "breakpoints": true
     }
   ]
 }
