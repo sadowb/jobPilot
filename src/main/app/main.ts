@@ -67,6 +67,9 @@ import {
   openDatabase,
   startDailyBackups,
 } from '../platform/db/database';
+import { CapChatService } from '../modules/cap/cap.service';
+import { chatHandlers } from '../modules/inbox/inbox.controller';
+import { InboxChatService } from '../modules/inbox/inbox.service';
 import { originCheck, registerIpc, stopAcceptingIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
@@ -225,6 +228,8 @@ if (logsError) {
         fakeAgent ? () => Promise.resolve(null) : undefined,
       );
       runsService = new RunsService(db, app.getPath('userData'), agent, browser, memory);
+      const jobChat = new InboxChatService(db, agent, () => runsService.listInbox());
+      const capChat = new CapChatService(db, agent, jobChat, () => runsService.listInbox());
       const postingReader = new PostingReader(agent, browser);
       await runsService.initialize();
       // Stops owned work (agent children, Neo tabs, timers) once, bounded so a stuck stop cannot keep the app alive.
@@ -285,6 +290,7 @@ if (logsError) {
       registerIpc(
         [
           ...runsHandlers(runsService),
+          ...chatHandlers(jobChat, capChat),
           ...settingsHandlers,
           ...dataHandlers(removeEverything),
           ...agentHandlers(fakeAgent ? fakeClaudeControl : agentSettings),

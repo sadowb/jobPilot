@@ -15,6 +15,9 @@ import type {
   ThemeState,
   RunSummaryDto,
   AnswerRunInput,
+  ChatMessage,
+  SendCapChatInput,
+  SendJobChatInput,
   RunTabLocation,
   ApproveResult,
   InboxEntry,
@@ -64,6 +67,10 @@ export const Channels = {
   approveApproval: 'approvals:approve',
   rejectApproval: 'approvals:reject',
   answerRun: 'runs:answer',
+  listJobChat: 'chat:job:list',
+  sendJobChat: 'chat:job:send',
+  listCapChat: 'chat:cap:list',
+  sendCapChat: 'chat:cap:send',
   goToRunTab: 'runs:go-to-tab',
   takeOverRun: 'runs:take-over',
   handBackRun: 'runs:hand-back',
@@ -162,6 +169,16 @@ export interface JobPilotBridge {
     takeOver(runId: string): Promise<RunSummaryDto>;
     /** Gives the tab back to the agent (or, awaiting review, ends the pause). */
     handBack(runId: string): Promise<RunSummaryDto>;
+  };
+  chat: {
+    /** The saved thread with one job's agent. */
+    jobMessages(applicationId: string): Promise<ChatMessage[]>;
+    /** Saves the owner's message for the agent's next fill and returns it with the reply. */
+    sendToJob(input: SendJobChatInput): Promise<ChatMessage[]>;
+    /** Cap's saved pilot chat. */
+    capMessages(): Promise<ChatMessage[]>;
+    /** Cap is read-only: it answers and can pass notes to an agent's next fill, never approve or send. */
+    sendToCap(input: SendCapChatInput): Promise<ChatMessage[]>;
   };
   inbox: {
     list(): Promise<InboxEntry[]>;

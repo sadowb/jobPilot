@@ -22,6 +22,10 @@ import {
   StartRunSchema,
   CancelRunSchema,
   AnswerRunSchema,
+  ChatMessageSchema,
+  JobChatSchema,
+  SendCapChatSchema,
+  SendJobChatSchema,
   RunTabLocationSchema,
   RunTabSchema,
   ApproveResultSchema,
@@ -165,6 +169,22 @@ const bridge: JobPilotBridge = {
     },
     async handBack(runId) {
       return RunSummarySchema.parse(await invoke(Channels.handBackRun, parseInput(RunTabSchema, { runId })));
+    },
+  },
+  chat: {
+    async jobMessages(applicationId) {
+      return z
+        .array(ChatMessageSchema)
+        .parse(await invoke(Channels.listJobChat, parseInput(JobChatSchema, { applicationId })));
+    },
+    async sendToJob(input) {
+      return z.array(ChatMessageSchema).parse(await invoke(Channels.sendJobChat, parseInput(SendJobChatSchema, input)));
+    },
+    async capMessages() {
+      return z.array(ChatMessageSchema).parse(await invoke(Channels.listCapChat));
+    },
+    async sendToCap(input) {
+      return z.array(ChatMessageSchema).parse(await invoke(Channels.sendCapChat, parseInput(SendCapChatSchema, input)));
     },
   },
   inbox: {

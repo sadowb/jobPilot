@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   AnswerRunInput,
+  ChatMessage,
   CapTurnInput,
   ProfileSave,
   ProfileData,
@@ -65,6 +66,25 @@ export const useReject = () =>
 
 export const useAnswerRun = () =>
   useMutation({ mutationFn: (input: AnswerRunInput) => bridge().runs.answer(input), onSettled: invalidateRuns });
+
+const chatKey = (applicationId: string | null) => ['chat', applicationId ?? 'cap'] as const;
+
+/** The saved thread with one job's agent (`null`: Cap's pilot chat). */
+export const useChat = (applicationId: string | null) =>
+  useQuery({
+    queryKey: chatKey(applicationId),
+    queryFn: () => (applicationId ? bridge().chat.jobMessages(applicationId) : bridge().chat.capMessages()),
+  });
+
+export const useSendChat = (applicationId: string | null) =>
+  useMutation({
+    mutationFn: (text: string) =>
+      applicationId ? bridge().chat.sendToJob({ applicationId, text }) : bridge().chat.sendToCap({ text }),
+    onSuccess: (added) => {
+      queryClient.setQueryData<ChatMessage[]>(chatKey(applicationId), (old) => [...(old ?? []), ...added]);
+      void queryClient.invalidateQueries({ queryKey: chatKey(applicationId) });
+    },
+  });
 
 export const useGoToTab = () => useMutation({ mutationFn: (runId: string) => bridge().runs.goToTab(runId) });
 

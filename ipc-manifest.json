@@ -40,6 +40,22 @@
     "schema": "z.void()"
   },
   {
+    "channel": "chat:cap:list",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "chat:cap:send",
+    "schema": "SendCapChatSchema"
+  },
+  {
+    "channel": "chat:job:list",
+    "schema": "JobChatSchema"
+  },
+  {
+    "channel": "chat:job:send",
+    "schema": "SendJobChatSchema"
+  },
+  {
     "channel": "documents:save",
     "schema": "SaveDocumentInputSchema"
   },

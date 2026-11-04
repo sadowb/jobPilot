@@ -225,14 +225,16 @@ export function NeedsYouSidePanel({ item }: { item: NeedsYouItem }) {
   );
 }
 
-/** Right column of the Cap thread: the chat is a board element main has no data for yet. */
+/** Right column of the Cap thread: what Cap can and cannot do. */
 export function PilotSidePanel() {
   return (
     <PanelFrame>
-      <span className={EYEBROW}>Not connected yet</span>
+      <h2 className="m-0">
+        <Eyebrow>What Cap can do</Eyebrow>
+      </h2>
       <div className="text-[13px] leading-[1.6] text-muted">
-        Cap’s rules, memory and chat need pilot data that JobPilot does not expose yet. Nothing is shown here until it
-        is real.
+        Cap sees your jobs and what each agent has done so far. It explains and answers, and can pass your wishes to a
+        job’s agent for its next fill. It never approves or sends: that is your click in the review panel.
       </div>
     </PanelFrame>
   );

@@ -5,3 +5,5 @@ Read the [root AGENTS.md](../../../../AGENTS.md) first (layering, logging, schem
 - **Owns**: inbox_thread, inbox_message, email_signal; view v_inbox
 - **Files**: `inbox.controller.ts` (IPC), `inbox.service.ts`, `inbox.repository.ts`, `inbox.entity.ts` (contract, exists), `inbox.dto.ts` (zod input/output; shared row types go in `src/shared/dto/`).
 - **Notes**: Questions the agent cannot answer, approval requests and employer email. Resolving a `needs_answer` thread writes the answer to `application_answer`, offers it to `answer_library`, and re-queues the application with the run `session_id` to resume.
+
+Chat (#242): each application has one `system` thread (`Chat with agent`) holding the owner's and the agent's messages (`inbox.service.ts` `InboxChatService`). A send saves the owner message first, then asks a tool-less model (`structuredCall`, no MCP servers) for a reply; if that fails the note is still saved. The owner's newest messages go into the next fill prompt as data (`runs.service.ts`), never as rules. Nothing here can approve or submit.

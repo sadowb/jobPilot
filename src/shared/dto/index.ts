@@ -15,3 +15,4 @@ export * from './grant.dto';
 export * from './preflight.dto';
 export * from './onboarding.dto';
 export * from './approval.dto';
+export * from './chat.dto';

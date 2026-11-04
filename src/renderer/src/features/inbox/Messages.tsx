@@ -20,7 +20,7 @@ const BUBBLE =
 export type ThreadMessage =
   | { kind: 'day'; label: string }
   | { kind: 'steps'; title: string; rows: readonly StepRow[] }
-  | { kind: 'bubble'; text: string }
+  | { kind: 'bubble'; text: string; mine?: boolean }
   /** An interactive widget card owned by the page. */
   | { kind: 'widget'; node: ReactNode };
 
@@ -69,7 +69,10 @@ function renderMessage(m: ThreadMessage, i: number): ReactNode {
       return <Steps key={i} title={m.title} rows={m.rows} />;
     case 'bubble':
       return (
-        <div key={i} className={BUBBLE}>
+        <div
+          key={i}
+          className={m.mine ? `${BUBBLE} self-end! rounded-bl-[20px]! rounded-br-[6px]! border-0! bg-panel!` : BUBBLE}
+        >
           {m.text}
         </div>
       );

@@ -115,6 +115,41 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
       await window.screenshot({ path: testInfo.outputPath(`inbox-review-${theme}.png`), animations: 'disabled' });
     }
     await window.evaluate((source) => window.jobpilot!.theme.set(source), 'light');
+    // Messaging (#242, #243): the thread composer saves a note and shows the reply; Cap relays to a real job only.
+    await inMain(
+      app,
+      (main, appId) => {
+        main.fakeAgent!.delayMs = 0; // chat turns answer at once; runs get their 60 s hold back below
+        main.fakeAgent!.reply = (spec) =>
+          spec.prompt.includes('<jobs>')
+            ? { reply: 'Cap: passing that on.', relays: [{ applicationId: appId, note: 'keep it short' }] }
+            : spec.prompt.includes('<owner_message>')
+              ? { reply: 'Agent: noted for the next fill.' }
+              : undefined;
+      },
+      id(101),
+    );
+    await window.getByLabel('Message this agent').fill('Please use my short bio');
+    await window.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(window.getByRole('log')).toContainText('Agent: noted for the next fill.');
+    await expect(window.getByRole('log')).toContainText('Please use my short bio');
+    await window.getByText('Ask me anything about your jobs').click();
+    await window.getByLabel('Message Cap').fill('Tell the Fake employer agent to keep it short');
+    await window.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(window.getByRole('log')).toContainText('Cap: passing that on.');
+    expect(await rows(app, 'SELECT sender, body FROM inbox_message ORDER BY created_at, id')).toEqual([
+      { sender: 'owner', body: 'Please use my short bio' },
+      { sender: 'agent', body: 'Agent: noted for the next fill.' },
+      { sender: 'owner', body: 'Via Cap: keep it short' },
+    ]);
+    await window
+      .getByRole('button', { name: /Review/ })
+      .first()
+      .click();
+    await expect(window.getByLabel('Message this agent')).toBeVisible();
+    await inMain(app, (main) => void (main.fakeAgent!.delayMs = 60_000), 0);
+    expect(await rows(app, 'SELECT status FROM approval')).toEqual([{ status: 'pending' }]);
+
     // Take over: Go to tab names the tab, Take over pauses the agent and blocks approving until Hand back. Nothing is sent.
     const reviewPanel = window.getByRole('complementary', { name: 'Details' });
     await window.getByRole('button', { name: 'Go to tab' }).click();
