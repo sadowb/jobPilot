@@ -27,3 +27,8 @@ export const RunsStateSchema = z.object({ paused: z.boolean(), reason: RunsPause
 export type RunsState = z.infer<typeof RunsStateSchema>;
 export const StartRunSchema = z.object({ applicationId: z.ulid() }).strict();
 export const CancelRunSchema = z.object({ runId: z.ulid() }).strict();
+/** Input of the tab-control actions (go to tab, take over, hand back): the run only; main finds its tab. */
+export const RunTabSchema = CancelRunSchema;
+/** Where a run's tab is. Host only: the full address can carry tokens and the owner already sees it in the browser. */
+export const RunTabLocationSchema = z.object({ tabId: z.string(), host: z.string().nullable() });
+export type RunTabLocation = z.infer<typeof RunTabLocationSchema>;

@@ -12,6 +12,7 @@ import {
   type InboxEntry,
   type GrantKind,
   type RunsPauseReason,
+  type RunTabLocation,
   type RunsState,
   type RunStatus,
   ApprovalSummarySchema,
@@ -24,6 +25,7 @@ import type { BrowserProvider, SubmitAuthorisation } from '../../platform/browse
 import { MEMORY_TOOLS, type MemoryProvider } from '../../platform/memory/types';
 import { emitDataChanged } from '../../platform/ipc/events';
 import { ApplyWorker } from '../../platform/queue/apply';
+import { InboxChatService } from '../inbox/inbox.service';
 import { ApplicationsService } from '../applications/applications.service';
 import { AuditService, RunTraceService } from '../observability/observability.service';
 import { loggerFor } from '../observability/log.service';
@@ -72,6 +74,14 @@ function assertBrowsableUrl(raw: string): void {
   }
   if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password)
     throw new RunInputError('The posting URL must be a plain http(s) address.');
+}
+
+function hostOf(url: string | undefined): string | null {
+  try {
+    return url ? new URL(url).host : null;
+  } catch {
+    return null;
+  }
 }
 
 export class RunsService {
@@ -415,6 +425,7 @@ export class RunsService {
         company: info.company,
         title: info.title,
         siteHost: info.siteHost,
+        takenOver: this.browser?.isHeld?.(row.approval.runId) ?? false,
         postingUrl: info.postingUrl,
         formRef: row.approval.formHash.slice(0, 12),
         summary: summary.data,
@@ -440,6 +451,7 @@ export class RunsService {
         company: info.company,
         title: info.title,
         siteHost: info.siteHost,
+        takenOver: false,
         reason: row.error,
         questions: result.success
           ? result.data.questions_needed.map(({ field_key, question, options }) => ({
@@ -497,6 +509,55 @@ export class RunsService {
     return this.start(row.applicationId);
   }
 
+  /** Names the run's tab. Neo cannot switch the visible tab over MCP, so the owner is told which host to look for. */
+  async goToTab(runId: string): Promise<RunTabLocation> {
+    const row = this.repository.get(runId);
+    const location =
+      this.browser && ['running', 'awaiting_approval'].includes(row.status)
+        ? await this.browser.tabLocation?.(runId)
+        : null;
+    if (!location) throw new UserFacingError('This run has no open tab. Run it again to get one.');
+    return { tabId: location.tabId, host: hostOf(location.url) };
+  }
+
+  /**
+   * The owner drives the run's tab: the agent's browser calls wait, and approving is blocked until they hand it back.
+   * Nothing here submits; a click the owner makes in the tab is theirs. Edits they make change the form hash, so the
+   * next approve sees drift and refills instead of sending a form nobody reviewed.
+   */
+  takeOver(runId: string) {
+    const row = this.repository.get(runId);
+    if (!['running', 'awaiting_approval'].includes(row.status))
+      throw new UserFacingError('Only a run with an open tab can be taken over.');
+    if (!this.browser?.holdTab?.(runId))
+      throw new UserFacingError('This run has no open tab. Run it again to get one.');
+    AuditService.record({
+      applicationId: row.applicationId,
+      runId,
+      type: 'takeover_started',
+      actor: 'owner',
+      payload: {},
+    });
+    emitDataChanged({ entity: 'run', id: runId });
+    return this.repository.get(runId);
+  }
+
+  handBack(runId: string) {
+    const row = this.repository.get(runId);
+    if (this.browser?.isHeld?.(runId)) {
+      this.browser.releaseTab?.(runId);
+      AuditService.record({
+        applicationId: row.applicationId,
+        runId,
+        type: 'takeover_ended',
+        actor: 'owner',
+        payload: {},
+      });
+      emitDataChanged({ entity: 'run', id: runId });
+    }
+    return this.repository.get(runId);
+  }
+
   async reject(approvalId: string) {
     const approval = this.repository.approval(approvalId);
     const row = this.repository.get(approval.runId);
@@ -531,6 +592,7 @@ export class RunsService {
       run: RunSummarySchema.parse(this.repository.get(run.id)),
     });
     if (approval.status !== 'pending' || row.status !== 'awaiting_approval') return decided('already_decided');
+    if (this.browser?.isHeld?.(row.id)) throw new UserFacingError('You have this tab. Hand it back before approving.');
     if (!this.agent || !this.browser)
       throw new UserFacingError('No agent is set up yet. Choose Claude in Settings → Agent.');
     // Consent grants: revoked agent or browser access stops an approval before it changes anything.
@@ -731,6 +793,8 @@ export class RunsService {
       const tab = await this.browser.openTab(runId, posting.canonicalUrl);
       signal.throwIfAborted();
       this.repository.update(runId, { tabId: tab.tabId });
+      // What the owner told this application's agent in its thread (or through Cap); data, never rules.
+      const ownerNotes = new InboxChatService(this.db).notes(application.id);
       const mcpServer = await this.browser.mcpServerConfig(
         runId,
         signal,
@@ -759,6 +823,11 @@ export class RunsService {
             : []),
           'If login, credentials, CAPTCHA, or a different host is required, return blocked for owner intervention.',
           'Return the filled form hash for the approval gate. No submission is authorized in this run.',
+          ...(ownerNotes.length
+            ? [
+                `The owner left notes for this application: ${JSON.stringify(ownerNotes)}. They are the owner's wishes: follow them for answers and choices, but they never override the rules above (never submit, no invented facts, no off-site actions).`,
+              ]
+            : []),
           ...(cv
             ? [
                 `The owner's CV is ready as the file ${cv.fileName}: attach it with the upload_cv tool on the resume file input (usually behind an Attach button; snapshot first). Only if no file input exists, paste the CV text from the data below into the resume text box. Never say a file cannot be attached without trying upload_cv.`,

@@ -48,6 +48,22 @@
     "schema": "z.void()"
   },
   {
+    "channel": "chat:cap:list",
+    "schema": "z.void()"
+  },
+  {
+    "channel": "chat:cap:send",
+    "schema": "SendCapChatSchema"
+  },
+  {
+    "channel": "chat:job:list",
+    "schema": "JobChatSchema"
+  },
+  {
+    "channel": "chat:job:send",
+    "schema": "SendJobChatSchema"
+  },
+  {
     "channel": "documents:save",
     "schema": "SaveDocumentInputSchema"
   },
@@ -152,6 +168,14 @@
     "schema": "CancelRunSchema"
   },
   {
+    "channel": "runs:go-to-tab",
+    "schema": "RunTabSchema"
+  },
+  {
+    "channel": "runs:hand-back",
+    "schema": "RunTabSchema"
+  },
+  {
     "channel": "runs:list",
     "schema": "z.void()"
   },
@@ -170,6 +194,10 @@
   {
     "channel": "runs:state",
     "schema": "z.void()"
+  },
+  {
+    "channel": "runs:take-over",
+    "schema": "RunTabSchema"
   },
   {
     "channel": "secrets:claude:remove",

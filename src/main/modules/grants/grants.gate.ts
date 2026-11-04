@@ -28,6 +28,11 @@ export function gateProviders(
     // Closing and reading an already-open tab stay possible after a revoke, so a run can always clean up.
     closeTab: (runId) => browser.closeTab(runId),
     formSnapshot: (runId) => browser.formSnapshot(runId),
+    // Tab control only ever pauses or releases the agent, so a revoked grant never blocks it.
+    holdTab: (runId) => browser.holdTab?.(runId) ?? false,
+    releaseTab: (runId) => browser.releaseTab?.(runId),
+    isHeld: (runId) => browser.isHeld?.(runId) ?? false,
+    tabLocation: async (runId) => browser.tabLocation?.(runId) ?? null,
   };
   const gatedAgent: AgentProvider = {
     get id() {

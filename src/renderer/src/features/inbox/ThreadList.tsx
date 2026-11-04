@@ -66,7 +66,7 @@ function CapRow({ on, onSelect }: { on: boolean; onSelect: () => void }) {
           <span className="text-[14.5px] font-semibold">Cap</span>
           <span className={MONO}>pinned</span>
         </div>
-        <div className={`text-[13px] text-muted ${ELLIPSIS}`}>Chat is not connected yet</div>
+        <div className={`text-[13px] text-muted ${ELLIPSIS}`}>Ask me anything about your jobs</div>
       </div>
     </Row>
   );

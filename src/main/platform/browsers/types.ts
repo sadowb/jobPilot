@@ -28,6 +28,13 @@ export interface UploadableFile {
   fileName: string;
 }
 
+/** Where a run's tab is, for showing the owner which tab to look at. */
+export interface TabLocation {
+  tabId: string;
+  /** Current address of the tab when the browser could be asked; absent when it could not. */
+  url?: string;
+}
+
 /** One browser backend (neo, playwright, embedded). Each run gets its own tab. */
 export interface BrowserProvider {
   readonly id: BrowserId;
@@ -44,4 +51,13 @@ export interface BrowserProvider {
   closeTab(runId: string): Promise<void>;
   /** One read of the owned tab: its form hash (the approval binds to it) and the field values it shows. Rejects when the tab is gone. */
   formSnapshot(runId: string): Promise<FormSnapshot>;
+  /**
+   * Owner take-over: while held, every browser tool call the agent makes for this run waits (it neither acts nor fails).
+   * Optional: a provider without tab control omits these four. Returns false when the run has no open tab. The hold ends on `releaseTab` or when the tab closes.
+   */
+  holdTab?(runId: string): boolean;
+  releaseTab?(runId: string): void;
+  isHeld?(runId: string): boolean;
+  /** The run's open tab, or null when there is none. Neo's MCP cannot switch the visible tab, so this names it instead. */
+  tabLocation?(runId: string): Promise<TabLocation | null>;
 }

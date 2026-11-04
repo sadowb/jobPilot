@@ -15,6 +15,10 @@ import type {
   ThemeState,
   RunSummaryDto,
   AnswerRunInput,
+  ChatMessage,
+  SendCapChatInput,
+  SendJobChatInput,
+  RunTabLocation,
   ApproveResult,
   InboxEntry,
   RunsState,
@@ -63,6 +67,13 @@ export const Channels = {
   approveApproval: 'approvals:approve',
   rejectApproval: 'approvals:reject',
   answerRun: 'runs:answer',
+  listJobChat: 'chat:job:list',
+  sendJobChat: 'chat:job:send',
+  listCapChat: 'chat:cap:list',
+  sendCapChat: 'chat:cap:send',
+  goToRunTab: 'runs:go-to-tab',
+  takeOverRun: 'runs:take-over',
+  handBackRun: 'runs:hand-back',
   ingestPosting: 'postings:ingest',
   confirmPosting: 'postings:confirm',
   cancelIngestPosting: 'postings:cancel-ingest',
@@ -154,6 +165,22 @@ export interface JobPilotBridge {
     state(): Promise<RunsState>;
     /** The owner's answers to a run's questions; the run is filled again with them. */
     answer(input: AnswerRunInput): Promise<RunSummaryDto>;
+    /** Names the run's open tab (Neo's MCP cannot switch the visible tab, so the owner finds it by host). */
+    goToTab(runId: string): Promise<RunTabLocation>;
+    /** Pauses the agent on this run and leaves its tab to the owner. Never submits. */
+    takeOver(runId: string): Promise<RunSummaryDto>;
+    /** Gives the tab back to the agent (or, awaiting review, ends the pause). */
+    handBack(runId: string): Promise<RunSummaryDto>;
+  };
+  chat: {
+    /** The saved thread with one job's agent. */
+    jobMessages(applicationId: string): Promise<ChatMessage[]>;
+    /** Saves the owner's message for the agent's next fill and returns it with the reply. */
+    sendToJob(input: SendJobChatInput): Promise<ChatMessage[]>;
+    /** Cap's saved pilot chat. */
+    capMessages(): Promise<ChatMessage[]>;
+    /** Cap is read-only: it answers and can pass notes to an agent's next fill, never approve or send. */
+    sendToCap(input: SendCapChatInput): Promise<ChatMessage[]>;
   };
   inbox: {
     list(): Promise<InboxEntry[]>;

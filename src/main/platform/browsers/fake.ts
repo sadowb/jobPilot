@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { BrowserStatus } from '../../../shared/dto';
-import type { BrowserProvider, FormSnapshot, SubmitAuthorisation } from './types';
+import type { BrowserProvider, FormSnapshot, SubmitAuthorisation, TabLocation } from './types';
 
 export class FakeBrowserProvider implements BrowserProvider {
   readonly id = 'neo';
@@ -33,6 +33,28 @@ export class FakeBrowserProvider implements BrowserProvider {
 
   async closeTab(runId: string): Promise<void> {
     this.tabs.delete(runId);
+    this.held.delete(runId);
+  }
+
+  readonly held = new Set<string>();
+
+  holdTab(runId: string): boolean {
+    if (!this.tabs.has(runId)) return false;
+    this.held.add(runId);
+    return true;
+  }
+
+  releaseTab(runId: string): void {
+    this.held.delete(runId);
+  }
+
+  isHeld(runId: string): boolean {
+    return this.held.has(runId);
+  }
+
+  async tabLocation(runId: string): Promise<TabLocation | null> {
+    const tabId = this.tabs.get(runId);
+    return tabId ? { tabId, url: 'https://example.com/jobs/fake' } : null;
   }
 
   /** Test seam: bump a run's version to simulate the page changing after review. */

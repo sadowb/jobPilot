@@ -599,6 +599,68 @@ describe('read-back of a real Greenhouse snapshot (live test of #111)', () => {
   });
 });
 
+describe('Neo owner take-over holds the agent (#243)', () => {
+  async function setup() {
+    const calls: string[] = [];
+    const provider = new NeoBrowserProvider({ debug() {}, warn() {} } as unknown as Logger, 'http://127.0.0.1:59999');
+    (provider as unknown as { mcp: { call: (m: string, p: never) => Promise<unknown> } }).mcp = {
+      call: async (_method, params: { name: string; arguments: Record<string, unknown> }) => {
+        calls.push(params.name);
+        if (params.name === 'tabs')
+          return { content: [], structuredContent: { page: 7, pages: [{ page: 7, url: 'https://x.example/a' }] } };
+        return { content: [{ type: 'text', text: 'ok' }] };
+      },
+    };
+    await provider.openTab('run-1', 'https://x.example/a');
+    const abort = new AbortController();
+    const server = (await provider.mcpServerConfig('run-1', abort.signal)) as unknown as {
+      instance: { _registeredTools: Record<string, { handler: (a: object, e: object) => Promise<unknown> }> };
+    };
+    return { provider, calls, abort, snapshot: () => server.instance._registeredTools.snapshot!.handler({}, {}) };
+  }
+  const settled = (p: Promise<unknown>) =>
+    Promise.race([
+      p.then(
+        () => true,
+        () => true,
+      ),
+      new Promise((r) => setTimeout(() => r(false), 30)),
+    ]);
+
+  it('parks an agent call until the owner hands the tab back', async () => {
+    const { provider, calls, snapshot } = await setup();
+    expect(provider.holdTab('run-1')).toBe(true);
+    expect(provider.isHeld('run-1')).toBe(true);
+    const before = calls.length;
+    const pending = snapshot();
+    expect(await settled(pending)).toBe(false);
+    expect(calls.length).toBe(before);
+    provider.releaseTab('run-1');
+    await pending;
+    expect(provider.isHeld('run-1')).toBe(false);
+    expect(calls.length).toBe(before + 1);
+  });
+
+  it('ends the wait when the run is cancelled, and when the tab closes', async () => {
+    const first = await setup();
+    first.provider.holdTab('run-1');
+    const waiting = first.snapshot();
+    first.abort.abort(new Error('cancelled'));
+    await expect(waiting).rejects.toThrow('cancelled');
+    const second = await setup();
+    second.provider.holdTab('run-1');
+    await second.provider.closeTab('run-1');
+    expect(second.provider.isHeld('run-1')).toBe(false);
+  });
+
+  it('refuses a hold without an open tab and reports the tab by page and address', async () => {
+    const { provider } = await setup();
+    expect(provider.holdTab('other-run')).toBe(false);
+    expect(await provider.tabLocation('run-1')).toEqual({ tabId: '7', url: 'https://x.example/a' });
+    expect(await provider.tabLocation('other-run')).toBeNull();
+  });
+});
+
 describe('Neo openTab leaves no stray tab behind (#236)', () => {
   const textReply = (text: string) => ({ content: [{ type: 'text', text }] });
 

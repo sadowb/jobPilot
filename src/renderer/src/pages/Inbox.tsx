@@ -4,16 +4,17 @@ import type { InboxEntry } from '../../../shared/dto';
 import { V17AgentBot } from '../components/V17AgentBot';
 import { CapOnDartArt } from '../components/CapOnDartArt';
 import { Button } from '../components/ui';
-import { Composer } from '../features/inbox/Composer';
+import { ChatComposer, chatBubbles } from '../features/inbox/Chat';
 import { ShortcutBar, ThreadHeader } from '../features/inbox/Frame';
 import { MessageStream, type ThreadMessage } from '../features/inbox/Messages';
 import { SHORTCUTS, entryKey, entryToItem, formatAge, type StepRow } from '../features/inbox/model';
 import { ClearCenter, NeedsYouSidePanel, PilotSidePanel, ReviewSidePanel } from '../features/inbox/Panels';
+import { TabControls } from '../features/inbox/TabControls';
 import { ThreadList } from '../features/inbox/ThreadList';
 import { useApprovalFlow, type ApprovalMutations } from '../features/inbox/useApprovalFlow';
 import { ApprovalWidget, QuestionsWidget, type AnswerState } from '../features/inbox/Widgets';
 import { isTypingTarget } from '../features/inbox/dom';
-import { useAnswerRun, useApplications, useApprove, useInbox, useReject, useStartRun } from '../lib/api';
+import { useAnswerRun, useApplications, useApprove, useChat, useInbox, useReject, useStartRun } from '../lib/api';
 
 type Approval = Extract<InboxEntry, { kind: 'approval' }>;
 type NeedsYou = Extract<InboxEntry, { kind: 'needs_you' }>;
@@ -71,7 +72,7 @@ function needsYouThread(item: NeedsYou, widget: ThreadMessage): ThreadMessage[] 
   ];
 }
 
-/** Go to tab / Take over need browser control JobPilot does not expose yet: say so in text instead of dead buttons. */
+/** Tab controls exist for runs with an open tab; a stopped run says its tab is closed. */
 function Header({ item, sub }: { item: InboxEntry; sub: string }) {
   return (
     <ThreadHeader
@@ -79,14 +80,18 @@ function Header({ item, sub }: { item: InboxEntry; sub: string }) {
       title={`${item.company} · ${item.title}`}
       sub={sub}
     >
-      <span className="text-[12.5px] text-muted">Go to tab and Take over are not connected yet</span>
+      <TabControls item={item} />
     </ThreadHeader>
   );
 }
 
 function ApprovalLayout({ item, mutations, now }: { item: Approval; mutations: ApprovalMutations; now: number }) {
   const flow = useApprovalFlow(item, mutations);
-  const messages = approvalThread(item, { kind: 'widget', node: <ApprovalWidget item={item} flow={flow} /> });
+  const { data: chat } = useChat(item.applicationId);
+  const messages = [
+    ...approvalThread(item, { kind: 'widget', node: <ApprovalWidget item={item} flow={flow} /> }),
+    ...chatBubbles(chat),
+  ];
   return (
     <>
       <section className="flex min-h-0 min-w-0 flex-col bg-ground">
@@ -95,7 +100,7 @@ function ApprovalLayout({ item, mutations, now }: { item: Approval; mutations: A
           sub={`${item.siteHost} · ${item.state === 'submitting' ? 'submitting' : 'ready to review'} · ${formatAge(item.createdAt, now)}`}
         />
         <MessageStream messages={messages} threadKey={item.approvalId} />
-        <Composer placeholder="Messaging this agent is not connected yet" onSend={() => undefined} disabled />
+        <ChatComposer applicationId={item.applicationId} placeholder="Message this agent" />
         <ShortcutBar shortcuts={SHORTCUTS.approval} />
       </section>
       <ReviewSidePanel item={item} flow={flow} />
@@ -114,20 +119,43 @@ function NeedsLayout({
   restart: { pending: boolean; error: unknown; run: () => void };
   now: number;
 }) {
-  const messages = needsYouThread(item, {
-    kind: 'widget',
-    node: <QuestionsWidget item={item} answer={answer} restart={restart} />,
-  });
+  const { data: chat } = useChat(item.applicationId);
+  const messages = [
+    ...needsYouThread(item, {
+      kind: 'widget',
+      node: <QuestionsWidget item={item} answer={answer} restart={restart} />,
+    }),
+    ...chatBubbles(chat),
+  ];
   return (
     <>
       <section className="flex min-h-0 min-w-0 flex-col bg-ground">
         <Header item={item} sub={`${item.siteHost} · waiting ${formatAge(item.createdAt, now)}`} />
         <MessageStream messages={messages} threadKey={item.runId} />
-        <Composer placeholder="Messaging this agent is not connected yet" onSend={() => undefined} disabled />
+        <ChatComposer applicationId={item.applicationId} placeholder="Message this agent" />
         <ShortcutBar shortcuts={SHORTCUTS.needs_you} />
       </section>
       <NeedsYouSidePanel item={item} />
     </>
+  );
+}
+
+function CapLayout() {
+  const { data: chat } = useChat(null);
+  const messages: ThreadMessage[] = [
+    {
+      kind: 'bubble',
+      text: 'I’m Cap, your pilot. Ask what any agent is doing or why it chose an answer, or tell me something to pass on: I hand it to that job’s agent for its next fill. I can’t approve or send anything; that stays with you.',
+    },
+    ...chatBubbles(chat),
+  ];
+  return (
+    <section className="flex min-h-0 min-w-0 flex-col bg-ground">
+      <ThreadHeader lead={<CapOnDartArt size={36} />} title="Cap" sub="Your pilot · read-only" />
+      <MessageStream messages={messages} threadKey="cap" />
+      <ChatComposer applicationId={null} placeholder="Message Cap" />
+      <ShortcutBar shortcuts={SHORTCUTS.pilot} />
+    </section>
   );
 }
 
@@ -263,18 +291,7 @@ export function Inbox() {
             </div>
           ) : view === 'cap' ? (
             <>
-              <section className="flex min-h-0 min-w-0 flex-col bg-ground">
-                <ThreadHeader
-                  lead={<CapOnDartArt size={36} />}
-                  title="Cap"
-                  sub="Your pilot · chat is not connected yet"
-                />
-                <div className="flex min-h-0 flex-1 items-center justify-center px-12 text-center text-[14px] text-muted">
-                  Cap’s chat and morning brief need data JobPilot does not have yet. Nothing is shown until it is real.
-                </div>
-                <Composer placeholder="Message Cap (not connected yet)" onSend={() => undefined} disabled />
-                <ShortcutBar shortcuts={SHORTCUTS.pilot} />
-              </section>
+              <CapLayout />
               <PilotSidePanel />
             </>
           ) : waitingForRefill && filling ? (

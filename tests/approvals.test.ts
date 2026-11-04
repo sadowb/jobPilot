@@ -42,6 +42,7 @@ let submitRuns: number;
 let auth: SubmitAuthorisation | undefined;
 let prepare: () => Promise<void>;
 let hold: Promise<void> | undefined;
+let held: Set<string>;
 
 const agent: AgentProvider = {
   id: 'claude',
@@ -75,6 +76,15 @@ const browser: BrowserProvider = {
     if (!tabs.has(runId)) throw new Error('Run tab is unavailable.');
     return { hash, fields: formFields };
   },
+  holdTab: (runId) => {
+    if (!tabs.has(runId)) return false;
+    held.add(runId);
+    return true;
+  },
+  releaseTab: (runId) => void held.delete(runId),
+  isHeld: (runId) => held.has(runId),
+  tabLocation: async (runId) =>
+    tabs.has(runId) ? { tabId: `tab-${runId}`, url: 'https://careers.example.org/role/1' } : null,
 };
 
 const form = (n: number): PostingFormDto => ({
@@ -159,6 +169,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'jobpilot-approvals-'));
   services = [];
   tabs = new Set();
+  held = new Set();
   hash = 'a'.repeat(64);
   formFields = [
     { label: 'Full name', value: 'Sara Benali' },
@@ -403,5 +414,38 @@ describe('answering what a run asked', () => {
       }),
     ).rejects.toThrow(/not allowed/);
     expect(sqlite.prepare('SELECT count(*) AS n FROM application_answer').get()).toEqual({ n: 0 });
+  });
+
+  describe('owner take-over (#243)', () => {
+    it('names the tab by host only and refuses when there is no open tab', async () => {
+      const { svc, entry } = await review();
+      expect(await svc.goToTab(entry.runId)).toEqual({ tabId: `tab-${entry.runId}`, host: 'careers.example.org' });
+      tabs.clear();
+      await expect(svc.goToTab(entry.runId)).rejects.toThrow(/no open tab/);
+    });
+
+    it('blocks approve while the owner holds the tab, never submits, and resumes after hand back', async () => {
+      const { svc, entry } = await review();
+      expect(entry.takenOver).toBe(false);
+      svc.takeOver(entry.runId);
+      const held = svc.listInbox().find((item) => item.kind === 'approval');
+      expect(held?.takenOver).toBe(true);
+      await expect(svc.approve(entry.approvalId)).rejects.toThrow(/Hand it back/);
+      expect(submitRuns).toBe(0);
+      expect(rows().at(-1)!.status).toBe('awaiting_approval');
+      svc.handBack(entry.runId);
+      svc.handBack(entry.runId); // idempotent
+      expect(svc.listInbox().find((item) => item.kind === 'approval')?.takenOver).toBe(false);
+      expect((await svc.approve(entry.approvalId)).outcome).toBe('submitting');
+      expect(vi.mocked(AuditService.record).mock.calls.map(([event]) => event.type)).toEqual(
+        expect.arrayContaining(['takeover_started', 'takeover_ended']),
+      );
+    });
+
+    it('only a run with an open tab can be taken over', async () => {
+      const { svc, entry } = await review();
+      tabs.clear();
+      expect(() => svc.takeOver(entry.runId)).toThrow(/no open tab/);
+    });
   });
 });
