@@ -86,6 +86,10 @@ export function agentHandlers(service: AgentSettingsService) {
   ];
 }
 
+export function browserHandlers(browser: { status(): Promise<unknown> }) {
+  return [defineHandler(Channels.getBrowserStatus, z.void(), () => browser.status())];
+}
+
 export function memoryHandlers(service: MemorySettingsService) {
   return [
     defineHandler(Channels.getMemory, z.void(), () => service.status()),

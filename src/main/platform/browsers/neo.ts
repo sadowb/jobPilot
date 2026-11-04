@@ -5,9 +5,13 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { Logger } from 'pino';
+import type { BrowserStatus } from '../../../shared/dto';
 import type { McpServerConfig } from '../agents/types';
 import type { BrowserProvider, BrowserTab } from './types';
 import { NeoMcp, allowlistedErrorCode } from './neo-mcp';
+import { discoverNeoEndpoint, validateLoopbackEndpoint } from './neo-discovery';
+
+export { candidateConfigPaths, discoverNeoEndpoint, parseNeoConfig, validateLoopbackEndpoint } from './neo-discovery';
 
 const HttpsUrl = z.url({ protocol: /^https$/ }).refine((value) => {
   const url = new URL(value);
@@ -178,7 +182,8 @@ export class NeoBrowserProvider implements BrowserProvider {
   readonly id = 'neo' as const;
   readonly installHint =
     'Install BrowserOS neo from https://www.browseros.com/ and open it; enable its local MCP endpoint.';
-  private readonly mcp: NeoMcp;
+  private mcp?: NeoMcp;
+  private endpoint?: string;
   // hosts: every host the run's own clicks took the tab to, so closeTab still recognises it.
   private readonly tabs = new Map<string, { tabId: string; hosts: Set<string> }>();
   private readonly runLocks = new Map<string, Promise<unknown>>();
@@ -186,29 +191,64 @@ export class NeoBrowserProvider implements BrowserProvider {
 
   constructor(
     private readonly logger: Pick<Logger, 'debug' | 'warn'>,
-    endpoint = 'http://127.0.0.1:9200/mcp',
+    endpoint?: string,
+    private readonly getOverride?: () => string | undefined,
   ) {
-    const url = new URL(z.url().parse(endpoint));
-    if (
-      url.protocol !== 'http:' ||
-      !['127.0.0.1', '[::1]'].includes(url.hostname) ||
-      url.username ||
-      url.password ||
-      url.hash
-    ) {
-      throw new Error('Neo MCP must use a loopback HTTP endpoint without credentials or a fragment');
+    if (endpoint) {
+      this.endpoint = validateLoopbackEndpoint(endpoint);
+      this.mcp = new NeoMcp(this.endpoint);
     }
-    this.mcp = new NeoMcp(url.href);
   }
 
-  async status(): Promise<'installed' | 'not_installed' | 'not_running'> {
-    return this.serial(async () => {
+  resolveEndpoint(paths?: string[]): { port: number; endpoint: string } | undefined {
+    const override = this.getOverride?.();
+    if (override) {
       try {
+        const validated = validateLoopbackEndpoint(override);
+        const url = new URL(validated);
+        const port = url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80;
+        return { port, endpoint: validated };
+      } catch (error) {
+        this.logger.warn(
+          { error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+          'Invalid browser override endpoint',
+        );
+      }
+    }
+    if (this.endpoint) {
+      const url = new URL(this.endpoint);
+      const port = url.port ? Number(url.port) : 80;
+      return { port, endpoint: this.endpoint };
+    }
+    return discoverNeoEndpoint(paths);
+  }
+
+  private async getMcp(): Promise<NeoMcp> {
+    const resolved = this.resolveEndpoint();
+    if (!resolved) {
+      if (this.mcp) return this.mcp;
+      throw new Error(`Neo not detected. ${this.installHint}`);
+    }
+    if (!this.mcp || (this.mcp.endpoint && this.mcp.endpoint !== resolved.endpoint)) {
+      this.mcp = new NeoMcp(resolved.endpoint);
+    }
+    return this.mcp;
+  }
+
+  async status(): Promise<BrowserStatus> {
+    return this.serial(async () => {
+      const resolved = this.resolveEndpoint();
+      if (!resolved) {
+        return { status: 'not_detected', installHint: this.installHint };
+      }
+      try {
+        const mcp = new NeoMcp(resolved.endpoint);
         const { tools } = z
           .object({ tools: z.array(z.object({ name: z.string() })) })
-          .parse(await this.mcp.call('tools/list'));
+          .parse(await mcp.call('tools/list'));
         if (!tools.some(({ name }) => name === 'tabs')) throw new Error('Neo tabs tool unavailable');
-        return 'installed';
+        this.mcp = mcp;
+        return { status: 'connected', port: resolved.port, endpoint: resolved.endpoint };
       } catch (error) {
         const neoErrorCode = allowlistedErrorCode(error);
         this.logger.debug(
@@ -249,7 +289,11 @@ export class NeoBrowserProvider implements BrowserProvider {
                 join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'BrowserOS', 'BrowserOS.exe'),
               ]
             : ['/Applications/BrowserOS neo.app', join(homedir(), 'Applications/BrowserOS neo.app')];
-        return locations.some(existsSync) ? 'not_running' : 'not_installed';
+        return {
+          status: locations.some(existsSync) ? 'not_running' : 'not_installed',
+          port: resolved.port,
+          installHint: this.installHint,
+        };
       }
     });
   }
@@ -261,9 +305,8 @@ export class NeoBrowserProvider implements BrowserProvider {
     const call = async (name: string, args: Record<string, unknown>) => {
       signal.throwIfAborted();
       if (this.tabs.get(runId) !== tab) throw new Error('Run tab is unavailable.');
-      const result = await this.runSerial(runId, () =>
-        this.mcp.call('tools/call', { name, arguments: { ...args, page } }),
-      );
+      const mcp = await this.getMcp();
+      const result = await this.runSerial(runId, () => mcp.call('tools/call', { name, arguments: { ...args, page } }));
       signal.throwIfAborted();
       return z
         .object({
@@ -336,6 +379,7 @@ export class NeoBrowserProvider implements BrowserProvider {
     z.string().min(1).parse(runId);
     const canonicalUrl = HttpsUrl.parse(url);
     const host = new URL(canonicalUrl).host;
+    await this.getMcp();
     return this.serial(async () => {
       const existing = this.tabs.get(runId);
       if (existing) return { tabId: existing.tabId };
@@ -392,15 +436,17 @@ export class NeoBrowserProvider implements BrowserProvider {
     z.string().min(1).parse(runId);
     const tab = this.tabs.get(runId);
     if (!tab) throw new Error('Run tab is unavailable.');
+    const mcp = await this.getMcp();
     const page = PageId.parse(Number(tab.tabId));
     const result = await this.runSerial(runId, () =>
-      this.mcp.call('tools/call', { name: 'snapshot', arguments: { page, mode: 'interactive', depth: 30 } }),
+      mcp.call('tools/call', { name: 'snapshot', arguments: { page, mode: 'interactive', depth: 30 } }),
     );
     return computeFormHash(result, this.logger);
   }
 
   private async tabsTool(args: Record<string, unknown>): Promise<unknown> {
-    const result = ToolResult.parse(await this.mcp.call('tools/call', { name: 'tabs', arguments: args }));
+    const mcp = await this.getMcp();
+    const result = ToolResult.parse(await mcp.call('tools/call', { name: 'tabs', arguments: args }));
     if (result.isError) throw new Error('Neo tabs tool failed');
     return result.structuredContent;
   }

@@ -9,6 +9,7 @@ import type {
   ProfileSave,
   ClaudeKeyStatus,
   ClaudeKeyTest,
+  BrowserStatus,
   MemoryStatus,
   ThemeSource,
   ThemeState,
@@ -36,6 +37,7 @@ export const IpcValidationErrorSchema = z.object({
 export type IpcValidationError = z.infer<typeof IpcValidationErrorSchema>;
 
 export const Channels = {
+  getBrowserStatus: 'browser:status',
   getAgent: 'agents:get',
   detectAgent: 'agents:detect',
   chooseAgentPath: 'agents:choosePath',
@@ -112,6 +114,9 @@ export const RestoreBackupSchema = z.object({
 });
 
 export interface JobPilotBridge {
+  browser: {
+    status(): Promise<BrowserStatus>;
+  };
   agent: {
     get(): Promise<AgentState>;
     detect(): Promise<AgentState>;

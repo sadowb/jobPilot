@@ -17,7 +17,13 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../src/main/platform/db/schema';
 import type { JobPilotDb } from '../src/main/platform/db/database';
 import { AppSettingsSchema, UpdateSettingsSchema } from '../src/shared/dto';
-import { applyConcurrency, getSettings, updateSettings } from '../src/main/modules/settings/settings.service';
+import {
+  applyConcurrency,
+  browserEndpointOverride,
+  getSettings,
+  setBrowserEndpointOverride,
+  updateSettings,
+} from '../src/main/modules/settings/settings.service';
 import * as queueModule from '../src/renderer/src/features/dashboard/upnext/queue';
 
 const key = (over: Partial<KeyEventLike> = {}): KeyEventLike => ({
@@ -211,5 +217,23 @@ describe('sites bound (F5)', () => {
     const sites = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`s${i}`, 'auto' as const]));
     expect(UpdateSettingsSchema.safeParse({ sites: sites(500) }).success).toBe(true);
     expect(UpdateSettingsSchema.safeParse({ sites: sites(501) }).success).toBe(false);
+  });
+});
+
+describe('browser endpoint override (#196)', () => {
+  it('reads undefined by default, stores validated loopback endpoint, and rejects non-loopback', () => {
+    const sqlite = new Database(':memory:');
+    sqlite.exec('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL);');
+    const testDb = drizzle(sqlite, { schema }) as JobPilotDb;
+
+    expect(browserEndpointOverride(testDb)).toBeUndefined();
+
+    setBrowserEndpointOverride('http://127.0.0.1:9215/mcp', testDb);
+    expect(browserEndpointOverride(testDb)).toBe('http://127.0.0.1:9215/mcp');
+
+    expect(() => setBrowserEndpointOverride('http://192.168.1.1:9215/mcp', testDb)).toThrow();
+
+    setBrowserEndpointOverride(null, testDb);
+    expect(browserEndpointOverride(testDb)).toBeUndefined();
   });
 });

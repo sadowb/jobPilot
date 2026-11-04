@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Channels } from '../../../shared/ipc';
 import { loggerFor } from '../observability/log.service';
+import { validateLoopbackEndpoint } from '../../platform/browsers/neo-discovery';
 import {
   AgentPreferencesSchema,
   AppSettingsSchema,
@@ -154,4 +155,23 @@ export function lastConsolidation(database: JobPilotDb): number | undefined {
 
 export function markConsolidated(database: JobPilotDb, at: number): void {
   new SettingsRepository(database).markConsolidated(at);
+}
+
+export function browserEndpointOverride(database: JobPilotDb = db): string | undefined {
+  const raw = new SettingsRepository(database).browserEndpoint();
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      return validateLoopbackEndpoint(raw.trim());
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+export function setBrowserEndpointOverride(endpoint: string | null, database: JobPilotDb = db): void {
+  if (endpoint !== null) {
+    validateLoopbackEndpoint(endpoint);
+  }
+  new SettingsRepository(database).storeBrowserEndpoint(endpoint);
 }
