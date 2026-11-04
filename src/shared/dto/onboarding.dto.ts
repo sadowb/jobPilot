@@ -16,6 +16,8 @@ export const CvExtractionSchema = z.object({
   /** International format with country code when the CV states one. */
   phone: field(z.string().trim().max(40)),
   city: field(line),
+  /** Profile URL as written in the CV; optional so older extractions still parse. */
+  linkedin: field(z.string().trim().max(200)).optional(),
   countryCode: field(z.string().trim().max(2)),
   nationalities: field(z.array(z.string().trim().max(2)).max(4)),
   education: field(
@@ -70,7 +72,7 @@ export const CapFactSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('nationality'), code: z.string().trim().length(2), remove: z.boolean().optional() }),
   z.object({
     kind: z.literal('personal'),
-    field: z.enum(['firstName', 'lastName', 'headline', 'email', 'phone', 'city', 'countryCode']),
+    field: z.enum(['firstName', 'lastName', 'headline', 'email', 'phone', 'city', 'countryCode', 'linkedin']),
     value: z.string().trim().min(1).max(200),
   }),
 ]);
