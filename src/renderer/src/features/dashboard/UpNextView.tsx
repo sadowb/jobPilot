@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppButton } from './components/AppButton';
 import { cn } from '../../components/ui';
 import { V17Icon } from '../../components/V17Icon';
@@ -17,7 +18,8 @@ import {
   useSettings,
   useStartRun,
 } from '../../lib/api';
-import { CREW_DEFAULT } from '../../../../shared/dto';
+import { CREW_DEFAULT, type RunSummaryDto } from '../../../../shared/dto';
+import { useRunPreflight } from './upnext/preflight';
 import {
   formatCrewTime,
   minutesLeft,
@@ -26,6 +28,7 @@ import {
   visibleQueue,
   type QueueAction,
   type QueueFilter,
+  type QueueItem,
   type QueueState,
 } from './upnext/queue';
 import { actionTargets, queueKeyToResult } from './upnext/queueKeys';
@@ -97,21 +100,78 @@ export function UpNextView({
   const setPaused = useSetRunsPaused();
   const togglePause = useCallback(() => setPaused.mutate(!paused), [setPaused, paused]);
 
+  const navigate = useNavigate();
+  const preflight = useRunPreflight();
   const startRun = useStartRun();
   const cancelRun = useCancelRun();
   const { data: runs } = useRuns();
   const cancelIds = useMemo(() => cancellableRuns(runs), [runs]);
   const [runError, setRunError] = useState<string | null>(null);
   const runBusy = startRun.isPending || cancelRun.isPending;
+
+  const runsByApp = useMemo(() => {
+    const map = new Map<string, RunSummaryDto[]>();
+    for (const r of runs ?? []) {
+      const list = map.get(r.applicationId) ?? [];
+      list.push(r);
+      map.set(r.applicationId, list);
+    }
+    return map;
+  }, [runs]);
+
+  const [failedToast, setFailedToast] = useState<{
+    runId: string;
+    error: string;
+    company?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!failedToast) return;
+    const timer = window.setTimeout(() => setFailedToast(null), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [failedToast]);
+
+  const seenRunStatuses = useRef<Map<string, string>>(new Map());
+  const pendingStarts = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!runs) return;
+    for (const r of runs) {
+      const prevStatus = seenRunStatuses.current.get(r.id);
+      const isPending = pendingStarts.current.has(r.applicationId);
+      if (r.status === 'failed' && (isPending || (prevStatus && prevStatus !== 'failed'))) {
+        const app = state.items.find((i) => i.id === r.applicationId);
+        setFailedToast({
+          runId: r.id,
+          error: r.error ?? 'Provider failed or returned an invalid result',
+          company: app?.company,
+        });
+        pendingStarts.current.delete(r.applicationId);
+      }
+      seenRunStatuses.current.set(r.id, r.status);
+    }
+  }, [runs, state.items]);
+
   // Main enforces the trust gate and the pause flag; a refusal arrives as a short message we show as-is.
   const start = useCallback(
     async (ids: string[]) => {
       setRunError(null);
+      if (!preflight.canStart) {
+        const msg = preflight.reason ?? 'Cannot start the run.';
+        setRunError(msg);
+        setFailedToast({ runId: 'preflight', error: msg });
+        return;
+      }
+      ids.forEach((id) => pendingStarts.current.add(id));
       const results = await Promise.allSettled(ids.map((id) => startRun.mutateAsync(id)));
       const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
-      if (failed) setRunError(runErrorMessage(failed.reason, 'Could not start the run.'));
+      if (failed) {
+        const msg = runErrorMessage(failed.reason, 'Could not start the run.');
+        setRunError(msg);
+        setFailedToast({ runId: 'start-error', error: msg });
+      }
     },
-    [startRun],
+    [startRun, preflight, setFailedToast],
   );
   const cancel = useCallback(
     (runId: string) => {
@@ -207,6 +267,21 @@ export function UpNextView({
                 : 'Paused because JobPilot stopped unexpectedly with jobs in progress. Resume when ready.'}
             </div>
           ) : null}
+          {!preflight.canStart && (
+            <div
+              role="alert"
+              className="flex items-center justify-between rounded-lg border border-line-2 px-3.5 py-2.5 text-[13.5px] text-need"
+            >
+              <span>{preflight.reason}</span>
+              <button
+                type="button"
+                onClick={() => navigate('/settings')}
+                className="cursor-pointer font-semibold text-brand-text underline"
+              >
+                Open Settings
+              </button>
+            </div>
+          )}
           {runError ? (
             <div role="alert" className="rounded-lg border border-line-2 px-3.5 py-2.5 text-[13.5px] text-need">
               {runError}
@@ -281,42 +356,95 @@ export function UpNextView({
                 {state.items.length === 0 ? 'Nothing queued. Add jobs to start the crew.' : 'No queued jobs match.'}
               </div>
             )}
-            {rows.slice(paging.start, paging.start + paging.size).map((item) => (
-              <QueueRow
-                added={addedIds.includes(item.id)}
-                key={item.id}
-                item={item}
-                position={queuePosition(state.items, item.id)}
-                selected={state.selected.includes(item.id)}
-                cursor={state.cursor === item.id}
-                onCursor={() => dispatch({ type: 'cursor', id: item.id })}
-                onToggle={() => dispatch({ type: 'toggle', id: item.id })}
-                onMoveToTop={() => dispatch({ type: 'moveToTop', ids: [item.id] })}
-                onHold={() => hold([item.id])}
-                onRemove={() => remove([item.id])}
-                onStart={() => void start([item.id])}
-                onCancel={cancelIds.has(item.id) ? () => cancel(cancelIds.get(item.id)!) : undefined}
-                runBusy={runBusy}
-                onOpenInbox={onOpenInbox}
-                onConfirm={(postingId) => confirmPosting(postingId)}
-                onDragStart={() => {
-                  dragId.current = item.id;
-                }}
-                onDropOn={() => {
-                  if (dragId.current) dispatch({ type: 'reorder', id: dragId.current, beforeId: item.id });
-                  dragId.current = null;
-                }}
-              />
-            ))}
+            {rows.slice(paging.start, paging.start + paging.size).map((item) => {
+              const itemRuns = runsByApp.get(item.id) ?? [];
+              const latestRun = itemRuns[0];
+              const lastError = latestRun?.status === 'failed' ? (latestRun.error ?? 'Run failed') : item.lastError;
+              const rowItem: QueueItem = {
+                ...item,
+                lastError,
+                runHistory: itemRuns,
+                agent: latestRun?.status === 'running' ? 'work' : latestRun?.status === 'failed' ? 'need' : item.agent,
+              };
+              return (
+                <QueueRow
+                  added={addedIds.includes(item.id)}
+                  key={item.id}
+                  item={rowItem}
+                  position={queuePosition(state.items, item.id)}
+                  selected={state.selected.includes(item.id)}
+                  cursor={state.cursor === item.id}
+                  onCursor={() => dispatch({ type: 'cursor', id: item.id })}
+                  onToggle={() => dispatch({ type: 'toggle', id: item.id })}
+                  onMoveToTop={() => dispatch({ type: 'moveToTop', ids: [item.id] })}
+                  onHold={() => hold([item.id])}
+                  onRemove={() => remove([item.id])}
+                  onStart={() => void start([item.id])}
+                  onCancel={cancelIds.has(item.id) ? () => cancel(cancelIds.get(item.id)!) : undefined}
+                  runBusy={runBusy}
+                  onOpenInbox={onOpenInbox}
+                  onConfirm={(postingId) => confirmPosting(postingId)}
+                  canStart={preflight.canStart}
+                  startDisabledReason={preflight.reason}
+                  onFixPreflight={() => navigate('/settings')}
+                  onDragStart={() => {
+                    dragId.current = item.id;
+                  }}
+                  onDropOn={() => {
+                    if (dragId.current) dispatch({ type: 'reorder', id: dragId.current, beforeId: item.id });
+                    dragId.current = null;
+                  }}
+                />
+              );
+            })}
           </div>
           <Pagination paging={paging} />
         </div>
       </main>
       {state.removed && <UndoToast batch={state.removed} now={now} onUndo={() => dispatch({ type: 'undoRemove' })} />}
+      {failedToast && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="absolute bottom-[88px] left-1/2 z-[3] box-border w-[540px] -translate-x-1/2 overflow-hidden rounded-2xl border border-need bg-bg shadow-float"
+        >
+          <div className="flex flex-nowrap items-center justify-between gap-3 px-4 py-3 text-[13.5px]">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="inline-block rounded-full bg-need/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-need">
+                Failed
+              </span>
+              <span className="truncate text-ink" title={failedToast.error}>
+                {failedToast.company ? `${failedToast.company}: ` : ''}
+                {failedToast.error}
+              </span>
+            </div>
+            <div className="flex flex-none items-center gap-3">
+              <button
+                type="button"
+                className="flex cursor-pointer flex-nowrap items-center gap-1 border-0 bg-transparent p-0 text-[13px]! font-semibold! text-brand-text! hover:underline"
+                onClick={() => {
+                  setFailedToast(null);
+                  navigate('/settings');
+                }}
+              >
+                Open Settings
+              </button>
+              <button
+                type="button"
+                aria-label="Dismiss error"
+                className="grid size-6 cursor-pointer place-items-center rounded-full border-0 bg-hover p-0 text-[12px] text-muted hover:text-ink"
+                onClick={() => setFailedToast(null)}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {state.selected.length > 0 && (
         <BulkBar
           count={state.selected.length}
-          startable={startable.length}
+          startable={preflight.canStart ? startable.length : 0}
           runBusy={runBusy}
           onStart={() => void start(startable)}
           onRemove={() => remove(state.selected)}

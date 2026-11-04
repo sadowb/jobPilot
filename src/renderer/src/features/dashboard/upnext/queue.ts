@@ -1,3 +1,4 @@
+import type { RunSummaryDto } from '../../../../../shared/dto';
 import type { AgentState } from '../../../components/v17-agent-state';
 
 export type QueueSource = 'Extension' | 'Pasted' | 'Sheet';
@@ -25,6 +26,10 @@ export interface QueueItem {
   heldAt?: string;
   /** Set for custom pages accepted on apply-form evidence only; runs stay blocked until the owner confirms. */
   unverifiedPostingId?: string;
+  /** Stored error message from the latest failed run, if any. */
+  lastError?: string;
+  /** Past runs for this application, newest first. */
+  runHistory?: RunSummaryDto[];
 }
 
 /** How long a removal can be undone. The toast shows the seconds left. */
