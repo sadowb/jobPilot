@@ -26,6 +26,68 @@ const isCountry = (code: string) => code !== EU_CODE && countryName(code) !== un
 const upper = (code: string) => code.trim().toUpperCase();
 const uniq = <T>(items: readonly T[]) => [...new Set(items)];
 
+const YEAR = /^\d{4}$/;
+const OPEN_ENDED = new Set([PRESENT, 'current', 'now', 'ongoing']);
+
+/** A CV date as YYYY-MM; a bare year becomes January (start) or December (end). Anything else is unusable. */
+function monthOf(raw: string, edge: 'start' | 'end'): string | null {
+  const value = raw.trim();
+  if (MONTH.test(value)) return value;
+  return YEAR.test(value) ? `${value}-${edge === 'start' ? '01' : '12'}` : null;
+}
+
+/** Maps CV jobs to profile career rows. Jobs without a role, organisation or readable dates are returned in `dropped` so the owner is told, never lost silently. */
+export function parseCareer(jobs: CvExtraction['career']['value']) {
+  const kept: PersonalProfile['career'][number][] = [];
+  const dropped: string[] = [];
+  for (const job of jobs) {
+    const start = monthOf(job.start, 'start');
+    const rawEnd = job.end.trim().toLowerCase();
+    const end = OPEN_ENDED.has(rawEnd) || rawEnd === '' ? PRESENT : monthOf(job.end, 'end');
+    if (job.role && job.organisation && start && end && (end === PRESENT || end >= start))
+      kept.push({ id: crypto.randomUUID(), role: job.role, organisation: job.organisation, start, end });
+    else dropped.push([job.role, job.organisation].filter(Boolean).join(' at ') || 'a job');
+  }
+  return { kept, dropped };
+}
+
+const LINKEDIN = /^(?:https?:\/\/)?(?:[\w-]+\.)?linkedin\.com\/in\/[\w%-]+\/?$/i;
+/** A LinkedIn profile URL with a scheme, or null when the text is not one. */
+export function linkedinUrl(raw: string): string | null {
+  const value = raw.trim();
+  return LINKEDIN.test(value) ? (/^https?:\/\//i.test(value) ? value : `https://${value}`) : null;
+}
+
+/** Facts the draft will refuse (and why), so Cap can say so instead of leaving the owner thinking they were saved. `key` is the matching missing-item key. */
+export function rejectedFacts(facts: readonly CapFact[]): { key: string; message: string }[] {
+  const out: { key: string; message: string }[] = [];
+  for (const fact of facts) {
+    if (fact.kind !== 'personal') continue;
+    const value = fact.value.trim();
+    if (fact.field === 'phone' && phoneProblem(value) !== null)
+      out.push({
+        key: 'phone',
+        message: `I could not save the phone number "${value}": it is not a valid number (check the digits and include the country code). Could you check it?`,
+      });
+    else if (fact.field === 'email' && emailProblem(value) !== null)
+      out.push({
+        key: 'email',
+        message: `I could not save the email "${value}": it is not a valid address. Could you check it?`,
+      });
+    else if (fact.field === 'countryCode' && !isCountry(upper(value)))
+      out.push({
+        key: 'location',
+        message: `I could not save "${value}" as your country. Which country do you live in?`,
+      });
+    else if (fact.field === 'linkedin' && linkedinUrl(value) === null)
+      out.push({
+        key: 'linkedin',
+        message: `I could not save the LinkedIn address "${value}": it should look like linkedin.com/in/your-name.`,
+      });
+  }
+  return out;
+}
+
 export const EMPTY_DRAFT: Draft = {
   personal: EMPTY_PROFILE,
   flagged: [],
@@ -45,14 +107,7 @@ export function draftFromExtraction(x: CvExtraction): Draft {
   const phoneOk = phoneRaw !== '' && phoneProblem(phoneRaw) === null;
   const countryCode = upper(x.countryCode.value);
   const home = isCountry(countryCode) ? countryCode : '';
-  const career = x.career.value.flatMap((job) => {
-    const start = job.start.trim();
-    const end = job.end.trim().toLowerCase() === PRESENT ? PRESENT : job.end.trim();
-    const endOk = end === PRESENT || (MONTH.test(end) && end >= start);
-    return job.role && job.organisation && MONTH.test(start) && endOk
-      ? [{ id: crypto.randomUUID(), role: job.role, organisation: job.organisation, start, end }]
-      : [];
-  });
+  const { kept: career } = parseCareer(x.career.value);
   const languages = x.languages.value
     .filter((entry) => entry.language.trim())
     .map((entry) => {
@@ -87,6 +142,7 @@ export function draftFromExtraction(x: CvExtraction): Draft {
       email: email && emailProblem(email) === null ? email : '',
       phone: phoneOk ? normalizePhone(phoneRaw) : '',
       city: x.city.value,
+      linkedin: linkedinUrl(x.linkedin?.value ?? '') ?? '',
       countryCode: home,
       country: home ? (countryName(home) ?? '') : '',
       school: school?.school ?? '',
@@ -129,6 +185,10 @@ function applyPersonal(draft: Draft, field: Extract<CapFact, { kind: 'personal' 
     case 'firstName':
     case 'lastName':
       return set({ [field]: value }, 'name');
+    case 'linkedin': {
+      const url = linkedinUrl(value);
+      return url ? set({ linkedin: url }) : draft;
+    }
     case 'headline':
     case 'city':
       return set({ [field]: value });

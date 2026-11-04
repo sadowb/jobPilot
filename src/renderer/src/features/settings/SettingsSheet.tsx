@@ -262,7 +262,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </Section>
       </div>
       <div className="flex flex-none items-center justify-between gap-3 border-t border-line px-7 pt-4 pb-6">
-        <span className={cn(S, 'text-[13px]')}>Saved as you change them</span>
+        <span className={cn(S, 'text-[13px]')}>
+          Switches and limits apply as you change them. Agent and API key changes need Save.
+        </span>
         <button
           type="button"
           className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0"

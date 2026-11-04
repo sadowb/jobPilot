@@ -9,7 +9,17 @@ import { documentContentError, documentError } from '../profile/personal';
 import { DOCUMENTS_CHANGED } from '../profile/useDocumentCount';
 import { setProfileData } from '../profile/profileStorage';
 import { A_POP, A_RISE, BUBBLE, REDUCE_ALL } from '../shared-ui';
-import { EMPTY_DRAFT, applyFacts, draftFromExtraction, knownSummary, missingItems, toSaves, type Draft } from './draft';
+import {
+  EMPTY_DRAFT,
+  applyFacts,
+  draftFromExtraction,
+  knownSummary,
+  missingItems,
+  parseCareer,
+  rejectedFacts,
+  toSaves,
+  type Draft,
+} from './draft';
 import { OnboardingHeader } from './OnboardingHeader';
 import { CapAvatar, PRESS, Spinner } from './parts';
 import { ProfilePanel } from './ProfilePanel';
@@ -88,8 +98,12 @@ export function AboutStep() {
       if (!alive.current) return;
       // Functional updates: the owner may have edited the panel while the agent was thinking.
       setDraft((current) => applyFacts(current, out.facts));
-      setResolved((current) => new Set([...current, ...out.settled]));
+      // A rejected value stays open: the agent may say "saved" for a number the profile refuses.
+      const rejected = rejectedFacts(out.facts);
+      const refused = new Set(rejected.map((r) => r.key));
+      setResolved((current) => new Set([...current, ...out.settled.filter((key) => !refused.has(key))]));
       push('cap', out.reply);
+      for (const r of rejected) push('cap', r.message);
       setSuggestions(out.suggestions);
     } catch {
       if (alive.current) setRetry({ text: message, history });
@@ -111,6 +125,12 @@ export function AboutStep() {
       setHasDraft(true);
       setStage('asking');
       await turn(next, resolved, [], null);
+      const { dropped } = parseCareer(x.career.value);
+      if (dropped.length)
+        push(
+          'cap',
+          `I could not read the dates for ${dropped.join(', ')}, so I left ${dropped.length === 1 ? 'it' : 'them'} out. You can add ${dropped.length === 1 ? 'it' : 'them'} on your profile.`,
+        );
     } catch (cause) {
       if (!alive.current) return;
       setStage('drop');
