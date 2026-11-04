@@ -7,6 +7,7 @@ import type { JobPilotDb } from '../src/main/platform/db/database';
 import * as schema from '../src/main/platform/db/schema';
 import type { PostingFormDto } from '../src/shared/dto';
 import { ApplicationsService } from '../src/main/modules/applications/applications.service';
+import type { MemoryProvider } from '../src/main/platform/memory/types';
 import { CapChatService } from '../src/main/modules/cap/cap.service';
 import { InboxChatService } from '../src/main/modules/inbox/inbox.service';
 import { PostingsRepository } from '../src/main/modules/postings/postings.repository';
@@ -109,6 +110,27 @@ describe('per-job chat (#242)', () => {
   it('refuses an application that does not exist', async () => {
     await expect(new InboxChatService(db, agent).send('0'.repeat(26), 'hi')).rejects.toThrow(/no longer exists/);
     expect(count('SELECT COUNT(*) c FROM inbox_message')).toBe(0);
+  });
+});
+
+describe('Cap long-term memory (Mnemosyne)', () => {
+  const memory = {
+    mcpServerConfig: () => ({ type: 'stdio' as const, command: 'mnemosyne' }),
+  } as unknown as MemoryProvider;
+
+  it('attaches only recall and remember when the owner installed memory', async () => {
+    const cap = new CapChatService(db, agent, new InboxChatService(db, agent), () => [], memory);
+    await cap.send('I never want to relocate');
+    expect(Object.keys(specs[0]!.mcpServers)).toEqual(['memory']);
+    expect(specs[0]!.toolAllowlist).toEqual({ memory: ['mnemosyne_recall', 'mnemosyne_remember'] });
+    expect(specs[0]!.prompt).toContain('mnemosyne_recall');
+  });
+
+  it('stays tool-less when memory is not installed', async () => {
+    const none = { mcpServerConfig: () => undefined } as unknown as MemoryProvider;
+    await new CapChatService(db, agent, new InboxChatService(db, agent), () => [], none).send('hi');
+    expect(specs[0]!.mcpServers).toEqual({});
+    expect(specs[0]!.toolAllowlist).toBeUndefined();
   });
 });
 

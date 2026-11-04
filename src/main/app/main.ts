@@ -229,7 +229,7 @@ if (logsError) {
       );
       runsService = new RunsService(db, app.getPath('userData'), agent, browser, memory);
       const jobChat = new InboxChatService(db, agent, () => runsService.listInbox());
-      const capChat = new CapChatService(db, agent, jobChat, () => runsService.listInbox());
+      const capChat = new CapChatService(db, agent, jobChat, () => runsService.listInbox(), memory);
       grants.onRevoked((kind, provider) => {
         runsService
           .cancelUsing(kind, provider)
