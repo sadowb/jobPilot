@@ -4,29 +4,34 @@ import type { InboxEntry } from '../../../shared/dto';
 import { V17AgentBot } from '../components/V17AgentBot';
 import { CapOnDartArt } from '../components/CapOnDartArt';
 import { Button } from '../components/ui';
-import { Btn } from '../features/inbox/Btn';
 import { Composer } from '../features/inbox/Composer';
 import { ShortcutBar, ThreadHeader } from '../features/inbox/Frame';
 import { MessageStream, type ThreadMessage } from '../features/inbox/Messages';
 import { SHORTCUTS, entryKey, entryToItem, formatAge, type StepRow } from '../features/inbox/model';
 import { ClearCenter, NeedsYouSidePanel, PilotSidePanel, ReviewSidePanel } from '../features/inbox/Panels';
 import { ThreadList } from '../features/inbox/ThreadList';
-import { useApprovalFlow, type ApprovalFlow } from '../features/inbox/useApprovalFlow';
-import { ApprovalWidget, QuestionsWidget } from '../features/inbox/Widgets';
+import { useApprovalFlow, type ApprovalMutations } from '../features/inbox/useApprovalFlow';
+import { ApprovalWidget, QuestionsWidget, type AnswerState } from '../features/inbox/Widgets';
 import { isTypingTarget } from '../features/inbox/dom';
-import { useApplications, useInbox } from '../lib/api';
+import { useAnswerRun, useApplications, useApprove, useInbox, useReject, useStartRun } from '../lib/api';
 
 type Approval = Extract<InboxEntry, { kind: 'approval' }>;
 type NeedsYou = Extract<InboxEntry, { kind: 'needs_you' }>;
 
-const day = (at: number): ThreadMessage => ({
-  kind: 'day',
-  label: `Today · ${new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-});
+const dayLabel = (at: number): ThreadMessage => {
+  const d = new Date(at);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return {
+    kind: 'day',
+    label: `${d.toDateString() === new Date().toDateString() ? 'Today' : d.toLocaleDateString()} · ${time}`,
+  };
+};
+
+const steps = (rows: StepRow[]) => rows.filter((r) => r.tone === 'ok').length;
 
 function approvalThread(item: Approval, widget: ThreadMessage): ThreadMessage[] {
   const submitting = item.state === 'submitting';
-  const steps: StepRow[] = [
+  const rows: StepRow[] = [
     { tone: 'ok', label: 'Read the posting', meta: item.siteHost },
     { tone: 'ok', label: `Filled ${item.summary.fields.length} fields`, meta: String(item.summary.fields.length) },
     ...(submitting
@@ -38,8 +43,8 @@ function approvalThread(item: Approval, widget: ThreadMessage): ThreadMessage[] 
   ];
   const written = item.summary.answers.filter((a) => a.source === 'agent').length;
   return [
-    day(item.createdAt),
-    { kind: 'steps', title: submitting ? 'Approved · submitting' : `Did ${steps.length - 1} steps`, rows: steps },
+    dayLabel(item.createdAt),
+    { kind: 'steps', title: submitting ? 'Approved · submitting' : `Did ${steps(rows)} steps`, rows },
     {
       kind: 'bubble',
       text: `The form is filled with ${item.summary.fields.length} fields, read back from the page.${written ? ` ${written} answer${written > 1 ? 's were' : ' was'} written by me, not taken from your profile, so please check ${written > 1 ? 'them' : 'it'}.` : ''}`,
@@ -51,7 +56,7 @@ function approvalThread(item: Approval, widget: ThreadMessage): ThreadMessage[] 
 function needsYouThread(item: NeedsYou, widget: ThreadMessage): ThreadMessage[] {
   const stuck = item.questions.length === 0;
   return [
-    day(item.createdAt),
+    dayLabel(item.createdAt),
     {
       kind: 'steps',
       title: stuck ? 'Stopped' : 'Stopped at a question',
@@ -66,30 +71,7 @@ function needsYouThread(item: NeedsYou, widget: ThreadMessage): ThreadMessage[] 
   ];
 }
 
-function ApprovalThread({ item, flow }: { item: Approval; flow: ApprovalFlow }) {
-  const messages = approvalThread(item, { kind: 'widget', node: <ApprovalWidget item={item} flow={flow} /> });
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
-      if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) flow.ask();
-      else if (e.key.toLowerCase() === 'r') flow.reject();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-  return (
-    <>
-      <Header
-        item={item}
-        sub={`${item.siteHost} · ${item.state === 'submitting' ? 'submitting' : 'ready to review'}`}
-      />
-      <MessageStream messages={messages} threadKey={item.approvalId} />
-      <Composer placeholder="Messaging this agent is not connected yet" onSend={() => undefined} disabled />
-      <ShortcutBar shortcuts={SHORTCUTS.approval} />
-    </>
-  );
-}
-
+/** Go to tab / Take over need browser control JobPilot does not expose yet: say so in text instead of dead buttons. */
 function Header({ item, sub }: { item: InboxEntry; sub: string }) {
   return (
     <ThreadHeader
@@ -97,15 +79,64 @@ function Header({ item, sub }: { item: InboxEntry; sub: string }) {
       title={`${item.company} · ${item.title}`}
       sub={sub}
     >
-      <Btn size="sm" variant="ghost" disabled title="Not connected yet">
-        Go to tab
-      </Btn>
-      <Btn size="sm" variant="ghost" disabled title="Not connected yet">
-        Take over
-      </Btn>
+      <span className="text-[12.5px] text-muted">Go to tab and Take over are not connected yet</span>
     </ThreadHeader>
   );
 }
+
+function ApprovalLayout({ item, mutations, now }: { item: Approval; mutations: ApprovalMutations; now: number }) {
+  const flow = useApprovalFlow(item, mutations);
+  const messages = approvalThread(item, { kind: 'widget', node: <ApprovalWidget item={item} flow={flow} /> });
+  return (
+    <>
+      <section className="flex min-h-0 min-w-0 flex-col bg-ground">
+        <Header
+          item={item}
+          sub={`${item.siteHost} · ${item.state === 'submitting' ? 'submitting' : 'ready to review'} · ${formatAge(item.createdAt, now)}`}
+        />
+        <MessageStream messages={messages} threadKey={item.approvalId} />
+        <Composer placeholder="Messaging this agent is not connected yet" onSend={() => undefined} disabled />
+        <ShortcutBar shortcuts={SHORTCUTS.approval} />
+      </section>
+      <ReviewSidePanel item={item} flow={flow} />
+    </>
+  );
+}
+
+function NeedsLayout({
+  item,
+  answer,
+  restart,
+  now,
+}: {
+  item: NeedsYou;
+  answer: AnswerState;
+  restart: { pending: boolean; error: unknown; run: () => void };
+  now: number;
+}) {
+  const messages = needsYouThread(item, {
+    kind: 'widget',
+    node: <QuestionsWidget item={item} answer={answer} restart={restart} />,
+  });
+  return (
+    <>
+      <section className="flex min-h-0 min-w-0 flex-col bg-ground">
+        <Header item={item} sub={`${item.siteHost} · waiting ${formatAge(item.createdAt, now)}`} />
+        <MessageStream messages={messages} threadKey={item.runId} />
+        <Composer placeholder="Messaging this agent is not connected yet" onSend={() => undefined} disabled />
+        <ShortcutBar shortcuts={SHORTCUTS.needs_you} />
+      </section>
+      <NeedsYouSidePanel item={item} />
+    </>
+  );
+}
+
+const centerNote = (title: string, body: string) => (
+  <section className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-2 bg-ground px-12 text-center">
+    <h2 className="m-0 text-[16px] font-semibold">{title}</h2>
+    <p className="m-0 max-w-[420px] text-[14px] leading-[1.5] text-muted">{body}</p>
+  </section>
+);
 
 /** Everything that waits on the owner: one thread per job, with what will be sent in the right column. */
 export function Inbox() {
@@ -113,32 +144,73 @@ export function Inbox() {
   const searchRef = useRef<HTMLInputElement>(null);
   const { data: entries = [], isError, isPending } = useInbox();
   const { data: applications = [] } = useApplications();
+  const approve = useApprove();
+  const reject = useReject();
+  const answer = useAnswerRun();
+  const restart = useStartRun();
   const [selected, setSelected] = useState<string | undefined>();
   const [query, setQuery] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [filling, setFilling] = useState<{ applicationId: string; company: string; title: string; at: number } | null>(
+    null,
+  );
+  const [now, setNow] = useState(() => Date.now());
 
-  const items = useMemo(() => entries.map((entry) => entryToItem(entry)), [entries]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const items = useMemo(() => entries.map((entry) => entryToItem(entry, now)), [entries, now]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? items.filter((i) => `${i.agent} ${i.role} ${i.preview}`.toLowerCase().includes(q)) : items;
   }, [items, query]);
   const keys = ['cap', ...shown.map((i) => i.key)];
+  // The open thread is always one of the rows the list shows, so the search box and the thread cannot disagree.
   const current =
     selected === 'cap'
       ? undefined
-      : (entries.find((e) => entryKey(e) === selected) ?? entries.find((e) => entryKey(e) === shown[0]?.key));
+      : (shown.find((i) => i.key === selected) ?? shown[0]) &&
+        entries.find((e) => entryKey(e) === (shown.find((i) => i.key === selected) ?? shown[0])!.key);
   const view = selected === 'cap' ? 'cap' : current ? entryKey(current) : undefined;
+  const waitingForRefill =
+    filling !== null &&
+    // Only while the refill is really under way; a run that ended some other way must not pin the placeholder.
+    ['queued', 'running'].includes(applications.find((a) => a.id === filling.applicationId)?.latestRunStatus ?? '') &&
+    !entries.some((e) => e.applicationId === filling.applicationId && e.createdAt > filling.at);
+
+  // The next thread takes over after a decision; keep keyboard focus on a stable element instead of losing it.
+  const count = useRef(entries.length);
+  useEffect(() => {
+    if (entries.length < count.current) document.getElementById('inbox-heading')?.focus();
+    count.current = entries.length;
+  }, [entries.length]);
+
+  // Errors belong to the thread they happened in.
+  useEffect(() => {
+    approve.reset();
+    reject.reset();
+    answer.reset();
+    restart.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when the open thread changes
+  }, [view]);
+
+  const select = (key: string) => {
+    setFilling(null);
+    setSelected(key);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === '/' && !isTypingTarget(e.target)) {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+      if (e.key === '/') {
         e.preventDefault();
         searchRef.current?.focus();
-      } else if ((e.key === 'j' || e.key === 'k') && !isTypingTarget(e.target)) {
+      } else if (e.key === 'j' || e.key === 'k') {
         const at = keys.indexOf(view ?? 'cap');
         const next = keys[Math.max(0, Math.min(keys.length - 1, at + (e.key === 'j' ? 1 : -1)))];
-        if (next) setSelected(next);
+        if (next) select(next);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -153,7 +225,8 @@ export function Inbox() {
     },
     { label: 'Sent', value: String(applications.filter((a) => a.appliedAt !== null).length) },
   ];
-  const clear = !isPending && !isError && entries.length === 0;
+  const clear = !isPending && !isError && entries.length === 0 && !waitingForRefill;
+  const mutations: ApprovalMutations = { approve, reject, onNotice: setNotice };
 
   return (
     <main className="box-border flex h-[calc(100vh-var(--app-toolbar-height))] min-h-0 flex-col">
@@ -178,14 +251,15 @@ export function Inbox() {
             ref={searchRef}
             items={shown}
             pendingCount={entries.length}
+            loading={isPending}
             selected={view ?? null}
             query={query}
             onQuery={setQuery}
-            onSelect={setSelected}
+            onSelect={select}
           />
           {clear ? (
             <div className="col-span-2 flex min-h-0 [@media(max-width:1194px)]:col-span-1 [@media(max-width:1194px)]:row-span-2">
-              <ClearCenter stats={stats} onDashboard={() => void navigate('/')} onAddJobs={() => void navigate('/')} />
+              <ClearCenter stats={stats} onDashboard={() => void navigate('/')} />
             </div>
           ) : view === 'cap' ? (
             <>
@@ -203,42 +277,51 @@ export function Inbox() {
               </section>
               <PilotSidePanel />
             </>
+          ) : waitingForRefill && filling ? (
+            centerNote(
+              'Saved, filling again',
+              `${filling.company} · ${filling.title} is being filled with your answers. It comes back here when it needs you again or is ready to review.`,
+            )
           ) : current?.kind === 'approval' ? (
-            <ApprovalLayout key={current.approvalId} item={current} onNotice={setNotice} />
+            <ApprovalLayout key={current.approvalId} item={current} mutations={mutations} now={now} />
           ) : current?.kind === 'needs_you' ? (
-            <NeedsLayout key={current.runId} item={current} />
+            <NeedsLayout
+              key={current.runId}
+              item={current}
+              now={now}
+              answer={{
+                pending: answer.isPending,
+                error: answer.error,
+                submit: (answers) =>
+                  answer.mutate(
+                    { runId: current.runId, answers },
+                    {
+                      onSuccess: () =>
+                        setFilling({
+                          applicationId: current.applicationId,
+                          company: current.company,
+                          title: current.title,
+                          at: Date.now(),
+                        }),
+                    },
+                  ),
+              }}
+              restart={{
+                pending: restart.isPending,
+                error: restart.error,
+                run: () => restart.mutate(current.applicationId),
+              }}
+            />
           ) : (
-            <section className="min-h-0 min-w-0 bg-ground" />
+            centerNote(
+              query ? 'No match' : 'Nothing selected',
+              query
+                ? 'No thread matches your search. Clear it to see every job that needs you.'
+                : 'Pick a job on the left.',
+            )
           )}
         </div>
       )}
     </main>
-  );
-}
-
-function ApprovalLayout({ item, onNotice }: { item: Approval; onNotice: (text: string) => void }) {
-  const flow = useApprovalFlow(item, onNotice);
-  return (
-    <>
-      <section className="flex min-h-0 min-w-0 flex-col bg-ground">
-        <ApprovalThread item={item} flow={flow} />
-      </section>
-      <ReviewSidePanel item={item} flow={flow} />
-    </>
-  );
-}
-
-function NeedsLayout({ item }: { item: NeedsYou }) {
-  const messages = needsYouThread(item, { kind: 'widget', node: <QuestionsWidget item={item} /> });
-  return (
-    <>
-      <section className="flex min-h-0 min-w-0 flex-col bg-ground">
-        <Header item={item} sub={`${item.siteHost} · waiting ${formatAge(item.createdAt)}`} />
-        <MessageStream messages={messages} threadKey={item.runId} />
-        <Composer placeholder="Messaging this agent is not connected yet" onSend={() => undefined} disabled />
-        <ShortcutBar shortcuts={SHORTCUTS.needs_you} />
-      </section>
-      <NeedsYouSidePanel item={item} />
-    </>
   );
 }

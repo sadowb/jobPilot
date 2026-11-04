@@ -81,7 +81,9 @@ export function ReviewSidePanel({ item, flow }: { item: ApprovalItem; flow: Appr
   return (
     <PanelFrame>
       <div className="flex flex-none items-center justify-between gap-3">
-        <Eyebrow>What will be sent · {summary.fields.length}</Eyebrow>
+        <h2 className="m-0">
+          <Eyebrow>What will be sent · {summary.fields.length}</Eyebrow>
+        </h2>
         <span className="text-[12.5px] text-muted">{item.siteHost}</span>
       </div>
       <div className="-mt-1.5 flex-none text-[12.5px] leading-[1.5] text-muted">
@@ -157,7 +159,7 @@ export function ReviewSidePanel({ item, flow }: { item: ApprovalItem; flow: Appr
       </Section>
       {flow.error ? (
         <div role="alert" className="flex-none rounded-2xl border border-line bg-panel px-3.5 py-2.5 text-[13px]">
-          {runErrorMessage(flow.error, 'Something went wrong. Nothing was sent.')}
+          {runErrorMessage(flow.error, 'Something went wrong. Check this application before trying again.')}
         </div>
       ) : null}
       <div className="mt-auto flex flex-none flex-wrap items-center gap-2">
@@ -195,7 +197,9 @@ export function NeedsYouSidePanel({ item }: { item: NeedsYouItem }) {
   return (
     <PanelFrame>
       <div className="flex flex-none items-center justify-between gap-3">
-        <Eyebrow>What Cap needs · {Math.max(1, item.questions.length)}</Eyebrow>
+        <h2 className="m-0">
+          <Eyebrow>What Cap needs · {Math.max(1, item.questions.length)}</Eyebrow>
+        </h2>
         <span className="text-[12.5px] text-muted">{item.siteHost}</span>
       </div>
       <div className={NEED_CARD}>
@@ -231,11 +235,9 @@ export function PilotSidePanel() {
 export function ClearCenter({
   stats,
   onDashboard,
-  onAddJobs,
 }: {
   stats: ReadonlyArray<{ label: string; value: string }>;
   onDashboard: () => void;
-  onAddJobs: () => void;
 }) {
   return (
     <section className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-[26px] bg-ground px-12 py-8 text-center">
@@ -283,7 +285,6 @@ export function ClearCenter({
         <Btn variant="primary" onClick={onDashboard}>
           Back to Dashboard
         </Btn>
-        <Btn onClick={onAddJobs}>Add jobs</Btn>
       </div>
     </section>
   );

@@ -19,36 +19,11 @@ export function ThreadHeader({
       <div className="flex min-w-0 items-center gap-3">
         {lead}
         <div className="min-w-0">
-          <div className={`text-[15px] font-semibold ${ELLIPSIS}`}>{title}</div>
+          <h2 className={`m-0 text-[15px] font-semibold ${ELLIPSIS}`}>{title}</h2>
           <div className={`text-[12.5px] text-muted ${ELLIPSIS}`}>{sub}</div>
         </div>
       </div>
       <div className="flex flex-none items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-/** "You have control of …" bar above the thread while the owner drives. */
-export function ControlBanner({ agent }: { agent: string }) {
-  return (
-    <div role="status" className="flex flex-none items-center gap-3 bg-pri px-7 py-3 text-on-pri">
-      <span className="grid size-[26px] flex-none place-items-center rounded-full bg-on-pri text-pri">
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M5 3l14 8-6 2-3 6z" />
-        </svg>
-      </span>
-      <b className="text-[14.5px]">You have control of {agent} · its agent is paused</b>
-      <span className="ml-auto text-[13px] whitespace-nowrap opacity-75">The rest of the crew keeps working</span>
     </div>
   );
 }

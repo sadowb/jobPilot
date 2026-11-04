@@ -96,6 +96,8 @@ export interface ThreadListProps {
   items: readonly InboxItem[];
   /** Pending count before the search filter (drives the headings). */
   pendingCount: number;
+  /** The first load has not finished: show neither "All clear" nor a count. */
+  loading?: boolean;
   /** An item key, or 'cap' for the pinned pilot thread. */
   selected: string | null;
   query: string;
@@ -105,16 +107,24 @@ export interface ThreadListProps {
 
 /** Left column: title, search, pinned Cap thread, and one thread per job that needs the owner. */
 export const ThreadList = forwardRef<HTMLInputElement, ThreadListProps>(function ThreadList(
-  { items, pendingCount, selected, query, onQuery, onSelect },
+  { items, pendingCount, loading = false, selected, query, onQuery, onSelect },
   searchRef,
 ) {
-  const clear = pendingCount === 0;
+  const clear = !loading && pendingCount === 0;
   return (
     <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-line bg-bg [@media(max-width:1194px)]:col-start-1 [@media(max-width:1194px)]:row-[1/3]">
       <div className="flex flex-none flex-col gap-3.5 px-5 pt-[22px] pb-3">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="m-0 font-serif text-[36px] leading-[1.02] font-[350] tracking-[-0.025em]">Inbox</h1>
-          <span className="text-[12.5px] text-muted">{clear ? 'All clear' : `${pendingCount} need you`}</span>
+          <h1
+            id="inbox-heading"
+            tabIndex={-1}
+            className="m-0 font-serif outline-none text-[36px] leading-[1.02] font-[350] tracking-[-0.025em]"
+          >
+            Inbox
+          </h1>
+          <span className="text-[12.5px] text-muted">
+            {loading ? '' : clear ? 'All clear' : `${pendingCount} need you`}
+          </span>
         </div>
         <label
           className={`flex h-[38px] min-w-0 items-center gap-2 rounded-full border border-line-2 bg-bg px-3.5 text-[13.5px] text-muted ${FOCUS_WITHIN}`}
@@ -136,11 +146,15 @@ export const ThreadList = forwardRef<HTMLInputElement, ThreadListProps>(function
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto *:shrink-0">
         <SectionLabel>Pilot</SectionLabel>
         <CapRow on={selected === 'cap'} onSelect={() => onSelect('cap')} />
-        <SectionLabel>{clear ? 'Needs you · 0' : `Needs you · ${pendingCount} · newest first`}</SectionLabel>
+        <SectionLabel>
+          {loading ? 'Needs you' : clear ? 'Needs you · 0' : `Needs you · ${pendingCount} · newest first`}
+        </SectionLabel>
         {clear ? (
           <div className={EMPTY_NOTE}>Nothing is waiting on you. Sent jobs leave the Inbox.</div>
+        ) : loading ? (
+          <div className={EMPTY_NOTE}>Loading…</div>
         ) : items.length === 0 ? (
-          <div className={EMPTY_NOTE}>No match for “{query}”.</div>
+          <div className={`${EMPTY_NOTE} break-words`}>No match for “{query.slice(0, 60)}”.</div>
         ) : (
           items.map((item) => (
             <ItemRow key={item.key} item={item} on={selected === item.key} onSelect={() => onSelect(item.key)} />

@@ -101,7 +101,7 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
     await window.setViewportSize({ width: 1280, height: 800 });
     await skipOnboarding(window);
     await allowFakeConnections(window);
-    await seed(app, 6);
+    await seed(app, 7);
     await window.getByRole('link', { name: 'Inbox' }).click();
     await expect(window.getByRole('status')).toContainText('Nothing needs you');
 
@@ -238,6 +238,11 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
 
     // 5. Consent: a revoked browser grant stops approval before anything changes.
     const run5 = await fill(app, window, id(105), { ...BASE_RESULT, status: 'filled' });
+    // The answered job's "Saved, filling again" card stays until the owner opens another thread.
+    await window
+      .getByRole('button', { name: /Review/ })
+      .first()
+      .click();
     await window.evaluate(async () => {
       const grant = (await window.jobpilot!.grants.list()).find((g) => g.kind === 'browser')!;
       await window.jobpilot!.grants.revoke(grant.id);
@@ -269,16 +274,38 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
     const current = window.locator('[aria-current="true"]');
     await expect(current).toHaveCount(1);
     const before = (await current.textContent()) ?? '';
+    // The open thread may be first or last in the list: J and K together must reach the other one and come back.
     await window.keyboard.press('j');
-    await expect(current).not.toHaveText(before);
+    const afterJ = (await current.textContent()) ?? '';
     await window.keyboard.press('k');
-    await expect(current).toHaveText(before);
+    const afterK = (await current.textContent()) ?? '';
+    expect(new Set([before, afterJ, afterK]).size).toBeGreaterThan(1);
+    await window
+      .getByRole('button', { name: /Review/ })
+      .first()
+      .click();
     const reject = window.getByRole('complementary', { name: 'Details' }).getByRole('button', { name: 'Reject' });
     await reject.focus();
     await window.keyboard.press('Enter');
     await expect
       .poll(async () => (await rows(app!, "SELECT status FROM approval WHERE status = 'rejected'")).length)
       .toBe(1);
+    // 7. Enter never approves: Escape backs out of the confirm step, a stray Enter then does nothing, and there is
+    // exactly one confirm control while confirming.
+    const run7 = await fill(app, window, id(107), { ...BASE_RESULT, status: 'filled' });
+    await window
+      .getByRole('button', { name: /Review/ })
+      .first()
+      .click();
+    const panel = window.getByRole('complementary', { name: 'Details' });
+    await panel.getByRole('button', { name: 'Approve and send' }).click();
+    await expect(window.getByRole('button', { name: /^Yes, send to/ })).toHaveCount(1);
+    await window.keyboard.press('Escape');
+    await expect(panel.getByRole('button', { name: 'Approve and send' })).toBeVisible();
+    await window.keyboard.press('Enter');
+    await window.keyboard.press('r');
+    await window.waitForTimeout(300);
+    expect(await rows(app, `SELECT status FROM approval WHERE run_id = '${run7}'`)).toEqual([{ status: 'pending' }]);
     for (const theme of ['light', 'dark'] as const) {
       await window.evaluate((source) => window.jobpilot!.theme.set(source), theme);
       await window.screenshot({ path: testInfo.outputPath(`inbox-after-reject-${theme}.png`), animations: 'disabled' });

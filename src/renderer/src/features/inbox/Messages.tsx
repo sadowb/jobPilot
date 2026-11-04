@@ -21,7 +21,6 @@ export type ThreadMessage =
   | { kind: 'day'; label: string }
   | { kind: 'steps'; title: string; rows: readonly StepRow[] }
   | { kind: 'bubble'; text: string }
-  | { kind: 'event'; text: string }
   /** An interactive widget card owned by the page. */
   | { kind: 'widget'; node: ReactNode };
 
@@ -71,15 +70,6 @@ function renderMessage(m: ThreadMessage, i: number): ReactNode {
     case 'bubble':
       return (
         <div key={i} className={BUBBLE}>
-          {m.text}
-        </div>
-      );
-    case 'event':
-      return (
-        <div
-          key={i}
-          className="inline-flex items-center gap-2 self-center rounded-full bg-panel px-3 py-1.5 text-[13px] text-muted"
-        >
           {m.text}
         </div>
       );

@@ -63,8 +63,6 @@ export interface StepRow {
 /** Shortcuts shown on the footer bar. Only keys that are bound are listed. */
 export const SHORTCUTS = {
   approval: [
-    { keys: ['↵'], label: 'approve' },
-    { keys: ['R'], label: 'reject' },
     { keys: ['J', 'K'], label: 'next job' },
     { keys: ['/'], label: 'search' },
   ],
@@ -73,5 +71,4 @@ export const SHORTCUTS = {
     { keys: ['/'], label: 'search' },
   ],
   pilot: [{ keys: ['J', 'K'], label: 'next job' }],
-  clear: [{ keys: ['/'], label: 'search' }],
 } as const;

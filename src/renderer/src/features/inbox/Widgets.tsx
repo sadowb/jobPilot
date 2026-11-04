@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import type { ApprovalItem, NeedsYouItem } from '../../../../shared/dto';
 import { Field, Select, Textarea } from '../../components/ui';
-import { useAnswerRun, useStartRun } from '../../lib/api';
 import { runErrorMessage } from '../dashboard/upnext/rowActions';
 import { Btn } from './Btn';
-import { KeyHint as KeyCap } from './KeyHint';
 import { ACTIVE_WIDGET, WIDGET_FOOT, WIDGET_HEAD, WIDGET_TITLE, WidgetPill } from './Messages';
 import type { ApprovalFlow } from './useApprovalFlow';
 
-/** The review card in the thread. The right column lists every field; this is where the decision is made. */
+/**
+ * The review card in the thread. It carries no decision button: the one Approve / Reject / confirm control lives in
+ * "What will be sent", next to the fields it decides on, so there is never a second Yes to hit by accident.
+ */
 export function ApprovalWidget({ item, flow }: { item: ApprovalItem; flow: ApprovalFlow }) {
   const submitting = item.state === 'submitting';
   return (
@@ -22,51 +23,43 @@ export function ApprovalWidget({ item, flow }: { item: ApprovalItem; flow: Appro
         <div className="mt-2 text-[13.5px] leading-[1.5] text-muted">
           {submitting
             ? 'You approved it. JobPilot is clicking submit now, once. This card goes away when it is done.'
-            : 'Check “What will be sent” on the right. If the page changes before you send, nothing is sent and you review it again.'}
+            : flow.confirming
+              ? 'Confirm with the button in “What will be sent”. Escape backs out.'
+              : 'Check “What will be sent”, then approve or reject it there. If the page changes before you send, nothing is sent and you review it again.'}
         </div>
-      </div>
-      <div className={WIDGET_FOOT}>
-        <Btn size="sm" variant="ghost" disabled={flow.busy} onClick={flow.reject}>
-          Reject&nbsp;<KeyCap>R</KeyCap>
-        </Btn>
-        {flow.confirming ? (
-          <>
-            <Btn size="sm" disabled={flow.busy} onClick={flow.back}>
-              Back
-            </Btn>
-            <Btn size="sm" variant="primary" disabled={flow.busy} onClick={flow.send}>
-              {flow.sending ? 'Sending…' : `Yes, send to ${item.company}`}
-            </Btn>
-          </>
-        ) : (
-          <Btn size="sm" variant="primary" disabled={flow.busy} onClick={flow.ask}>
-            {submitting ? 'Submitting…' : 'Approve'}&nbsp;<KeyCap>↵</KeyCap>
-          </Btn>
-        )}
       </div>
     </div>
   );
 }
 
+export interface AnswerState {
+  pending: boolean;
+  error: unknown;
+  submit: (answers: Array<{ fieldKey: string; answer: string }>) => void;
+}
+
 /** The run's own questions, one card per job. No suggested answer exists yet, so none is prefilled. */
-export function QuestionsWidget({ item }: { item: NeedsYouItem }) {
-  const answer = useAnswerRun();
-  const retry = useStartRun();
+export function QuestionsWidget({
+  item,
+  answer,
+  restart,
+}: {
+  item: NeedsYouItem;
+  answer: AnswerState;
+  restart: { pending: boolean; error: unknown; run: () => void };
+}) {
   const [values, setValues] = useState<Record<string, string>>({});
-  const complete = item.questions.every((q) => (values[q.fieldKey] ?? '').trim().length > 0);
-  const busy = answer.isPending || retry.isPending;
-  const failure = answer.error ?? retry.error;
+  const missing = item.questions.filter((q) => (values[q.fieldKey] ?? '').trim().length === 0).length;
+  const busy = answer.pending || restart.pending;
+  const failure = answer.error ?? restart.error;
   const stuck = item.questions.length === 0;
   return (
     <form
       className={ACTIVE_WIDGET}
       onSubmit={(event) => {
         event.preventDefault();
-        if (stuck || !complete || busy) return;
-        answer.mutate({
-          runId: item.runId,
-          answers: item.questions.map((q) => ({ fieldKey: q.fieldKey, answer: (values[q.fieldKey] ?? '').trim() })),
-        });
+        if (stuck || missing > 0 || busy) return;
+        answer.submit(item.questions.map((q) => ({ fieldKey: q.fieldKey, answer: (values[q.fieldKey] ?? '').trim() })));
       }}
     >
       <div className={WIDGET_HEAD}>
@@ -106,13 +99,18 @@ export function QuestionsWidget({ item }: { item: NeedsYouItem }) {
         ))}
       </div>
       <div className={WIDGET_FOOT}>
+        {!stuck && missing > 0 && (
+          <span className="mr-auto text-[12.5px] text-muted">
+            {missing === 1 ? 'Answer the last question to continue.' : `Answer ${missing} more questions to continue.`}
+          </span>
+        )}
         {stuck ? (
-          <Btn size="sm" variant="primary" disabled={busy} onClick={() => retry.mutate(item.applicationId)}>
-            {retry.isPending ? 'Starting…' : 'Run again'}
+          <Btn size="sm" variant="primary" disabled={busy} onClick={restart.run}>
+            {restart.pending ? 'Starting…' : 'Run again'}
           </Btn>
         ) : (
-          <Btn type="submit" size="sm" variant="primary" disabled={!complete || busy}>
-            {answer.isPending ? 'Saving…' : 'Save and fill again'}
+          <Btn type="submit" size="sm" variant="primary" disabled={missing > 0 || busy}>
+            {answer.pending ? 'Saving…' : 'Save and fill again'}
           </Btn>
         )}
       </div>
