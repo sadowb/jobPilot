@@ -107,17 +107,23 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
 
     // 1. Happy path: review shows what will be sent; approve needs a second, explicit confirmation.
     const run1 = await fill(app, window, id(101), { ...BASE_RESULT, status: 'filled' });
-    await expect(window.getByRole('heading', { name: 'Fake employer' })).toBeVisible();
-    await expect(window.getByText('What will be sent · 2 fields')).toBeVisible();
-    await expect(window.getByText('Sara Benali')).toBeVisible();
+    await expect(window.getByRole('log')).toContainText('The form is filled with 2 fields');
+    await expect(window.getByRole('complementary', { name: 'Details' })).toContainText('What will be sent · 2');
+    await expect(window.getByRole('complementary', { name: 'Details' })).toContainText('Sara Benali');
     for (const theme of ['light', 'dark'] as const) {
       await window.evaluate((source) => window.jobpilot!.theme.set(source), theme);
       await window.screenshot({ path: testInfo.outputPath(`inbox-review-${theme}.png`), animations: 'disabled' });
     }
     await window.evaluate((source) => window.jobpilot!.theme.set(source), 'light');
-    await window.getByRole('button', { name: 'Approve and send' }).click();
+    await window
+      .getByRole('complementary', { name: 'Details' })
+      .getByRole('button', { name: 'Approve and send' })
+      .click();
     expect(await rows(app, 'SELECT status FROM approval')).toEqual([{ status: 'pending' }]);
-    await window.getByRole('button', { name: 'Yes, send to Fake employer' }).click();
+    await window
+      .getByRole('complementary', { name: 'Details' })
+      .getByRole('button', { name: 'Yes, send to Fake employer' })
+      .click();
     await expect.poll(async () => (await rows(app!, 'SELECT status FROM approval'))[0]?.status).toBe('approved');
     await expect
       .poll(() =>
@@ -146,10 +152,18 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
 
     // 2. Form drift between review and approve: nothing is sent, a new review is produced.
     const run2 = await fill(app, window, id(102), { ...BASE_RESULT, status: 'filled' });
-    await expect(window.getByRole('button', { name: 'Approve and send' })).toBeVisible();
+    await expect(
+      window.getByRole('complementary', { name: 'Details' }).getByRole('button', { name: 'Approve and send' }),
+    ).toBeVisible();
     await inMain(app, (main, runId) => main.fakeBrowser!.drift.set(runId, 1), run2);
-    await window.getByRole('button', { name: 'Approve and send' }).click();
-    await window.getByRole('button', { name: /^Yes, send to/ }).click();
+    await window
+      .getByRole('complementary', { name: 'Details' })
+      .getByRole('button', { name: 'Approve and send' })
+      .click();
+    await window
+      .getByRole('complementary', { name: 'Details' })
+      .getByRole('button', { name: /^Yes, send to/ })
+      .click();
     await expect(window.getByRole('alert')).toContainText('The page changed after you reviewed it');
     expect(await rows(app, `SELECT status FROM run WHERE id = '${run2}'`)).toEqual([{ status: 'failed' }]);
     expect(await rows(app, `SELECT status FROM approval WHERE run_id = '${run2}'`)).toEqual([{ status: 'expired' }]);
@@ -176,7 +190,7 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
       questions_needed: [{ field_key: 'why', question: 'Why this role?' }],
     });
     await window.getByLabel('Why this role?').fill('Because the mission fits my background.');
-    await window.getByRole('button', { name: 'Save answers and fill again' }).click();
+    await window.getByRole('button', { name: 'Save and fill again' }).click();
     await expect
       .poll(async () =>
         (await rows(app!, `SELECT status FROM run WHERE application_id = '${id(103)}' ORDER BY created_at`)).map(
@@ -228,8 +242,14 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
       const grant = (await window.jobpilot!.grants.list()).find((g) => g.kind === 'browser')!;
       await window.jobpilot!.grants.revoke(grant.id);
     });
-    await window.getByRole('button', { name: 'Approve and send' }).click();
-    await window.getByRole('button', { name: /^Yes, send to/ }).click();
+    await window
+      .getByRole('complementary', { name: 'Details' })
+      .getByRole('button', { name: 'Approve and send' })
+      .click();
+    await window
+      .getByRole('complementary', { name: 'Details' })
+      .getByRole('button', { name: /^Yes, send to/ })
+      .click();
     await expect(window.getByRole('alert').filter({ hasText: 'not allowed' })).toBeVisible();
     expect(await rows(app, `SELECT status FROM approval WHERE run_id = '${run5}'`)).toEqual([{ status: 'pending' }]);
     expect(
@@ -240,24 +260,25 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
       ),
     ).toBe(2);
 
-    // 6. Keyboard: arrows move through the list, and Reject works from the keyboard alone.
+    // 6. Keyboard: J/K move through the threads, and Reject works from the keyboard alone.
     // The Allow runs a short test call; let the fake agent answer it quickly, then hold runs again.
     await inMain(app, (main) => (main.fakeAgent!.delayMs = 300), 0);
     await allowFakeConnections(window);
     await inMain(app, (main) => (main.fakeAgent!.delayMs = 60_000), 0);
     await fill(app, window, id(106), { ...BASE_RESULT, status: 'filled' });
-    const options = window.getByRole('option');
-    await expect(options).toHaveCount(2);
-    await options.first().focus();
-    await window.keyboard.press('ArrowDown');
-    await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true');
-    await expect(options.nth(1)).toBeFocused();
-    await window.keyboard.press('ArrowUp');
-    await expect(options.first()).toHaveAttribute('aria-selected', 'true');
-    await window.getByRole('button', { name: 'Reject' }).focus();
+    const current = window.locator('[aria-current="true"]');
+    await expect(current).toHaveCount(1);
+    const before = (await current.textContent()) ?? '';
+    await window.keyboard.press('j');
+    await expect(current).not.toHaveText(before);
+    await window.keyboard.press('k');
+    await expect(current).toHaveText(before);
+    const reject = window.getByRole('complementary', { name: 'Details' }).getByRole('button', { name: 'Reject' });
+    await reject.focus();
     await window.keyboard.press('Enter');
-    await expect(options).toHaveCount(1);
-    expect(await rows(app, "SELECT status FROM approval WHERE status = 'rejected'")).toHaveLength(1);
+    await expect
+      .poll(async () => (await rows(app!, "SELECT status FROM approval WHERE status = 'rejected'")).length)
+      .toBe(1);
     for (const theme of ['light', 'dark'] as const) {
       await window.evaluate((source) => window.jobpilot!.theme.set(source), theme);
       await window.screenshot({ path: testInfo.outputPath(`inbox-after-reject-${theme}.png`), animations: 'disabled' });
