@@ -446,21 +446,21 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
       main.fakeAgent!.reply = () => ({ status: 'invalid_status_forced_to_fail' });
     });
 
-    await configured.getByPlaceholder('Search company, role, site').fill('Fake job 15');
-    const failedRow = configured.getByRole('row').filter({ hasText: 'Fake job 15' });
+    await configured.getByPlaceholder('Search company, role, site').fill('Fake job 16');
+    const failedRow = configured.getByRole('row').filter({ hasText: 'Fake job 16' });
     await failedRow.hover();
-    await failedRow.getByRole('button', { name: 'Start Fake employer Fake job 15 application' }).click();
+    await failedRow.getByRole('button', { name: 'Start Fake employer Fake job 16 application' }).click();
 
     const toast = configured.getByRole('alert');
     await expect(toast).toBeVisible();
-    await expect(toast.getByText('Failed')).toBeVisible();
+    await expect(toast.getByText('Failed', { exact: true })).toBeVisible();
     await expect(toast.getByRole('button', { name: 'Open Settings' })).toBeVisible();
-    await expect(failedRow.getByText('Failed')).toBeVisible();
+    await expect(failedRow.getByText('Failed', { exact: true })).toBeVisible();
 
     await expect
       .poll(async () => {
         const item = (await configured.evaluate(() => window.jobpilot!.runs.list())).find(
-          (r) => r.applicationId === applicationIds[14],
+          (r) => r.applicationId === applicationIds[15],
         );
         return { status: item?.status, hasError: !!item?.error };
       })

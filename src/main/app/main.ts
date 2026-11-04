@@ -259,7 +259,7 @@ if (logsError) {
           ...runsHandlers(runsService),
           ...settingsHandlers,
           ...dataHandlers(removeEverything),
-          ...agentHandlers(agentSettings),
+          ...agentHandlers(fakeAgent ? fakeClaudeControl : agentSettings),
           ...browserHandlers(rawBrowser as NeoBrowserProvider),
           ...memoryHandlers(new MemorySettingsService(memory)),
           ...claudeKeyHandlers(claudeKeyService(db)),

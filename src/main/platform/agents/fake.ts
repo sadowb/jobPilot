@@ -112,4 +112,6 @@ export const fakeClaudeControl = {
     { value: 'sonnet', label: 'Sonnet' },
   ],
   save: async (): Promise<AgentState> => fakeClaudeControl.state(),
+  detect: async (): Promise<AgentState> => fakeClaudeControl.state(),
+  chooseCandidate: async (): Promise<AgentState> => fakeClaudeControl.state(),
 };

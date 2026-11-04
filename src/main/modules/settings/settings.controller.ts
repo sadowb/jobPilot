@@ -73,7 +73,7 @@ export function claudeKeyHandlers(service: ReturnType<typeof claudeKeyService>) 
   ];
 }
 
-export function agentHandlers(service: AgentSettingsService) {
+export function agentHandlers(service: Pick<AgentSettingsService, 'state' | 'detect' | 'chooseCandidate' | 'save'>) {
   return [
     defineHandler(Channels.getAgent, z.void(), () => service.state()),
     defineHandler(Channels.detectAgent, z.void(), () => service.detect()),
