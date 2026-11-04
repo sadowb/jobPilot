@@ -117,7 +117,7 @@ describe('Neo snapshot traversal error handling (#147)', () => {
     });
 
     const fields = extractFormFields(json, logger);
-    expect(fields).toEqual([{ field: 'e1:Full Name', value: 'Sara Benali' }]);
+    expect(fields).toEqual([{ field: 'e1:Full Name', value: 'Sara Benali', kind: '', state: '' }]);
     expect(logs.length).toBe(0);
   });
 
@@ -450,5 +450,50 @@ describe('Neo browser tools: hash-checked submit', () => {
       expect(NEVER_ACTION.test(label), label).toBe(false);
       expect(SUBMIT_ACTION.test(label), label).toBe(false);
     }
+  });
+});
+
+describe('form hash is canonical and fails closed', () => {
+  const form = (...lines: string[]) => lines.join('\n');
+  const hash = (text: string) => computeFormHash(text);
+
+  it('keeps URL values and values with colons whole', () => {
+    expect(extractFormFields('textbox "Portfolio" [ref=e1]: https://example.com/a:b').map((f) => f.value)).toEqual([
+      'https://example.com/a:b',
+    ]);
+    expect(extractFormFields('textbox "Time" [ref=e2]: 10:30:00').map((f) => f.value)).toEqual(['10:30:00']);
+  });
+
+  it('distinguishes URL values and colon-suffixed values that a last-colon parser would conflate', () => {
+    expect(hash('textbox "Site" [ref=e1]: https://a.example')).not.toBe(
+      hash('textbox "Site" [ref=e1]: https://b.example'),
+    );
+    expect(hash('textbox "Note" [ref=e1]: ratio 1:2')).not.toBe(hash('textbox "Note" [ref=e1]: ratio 1:3'));
+  });
+
+  it('distinguishes near-identical forms: one value, one checked state, one type', () => {
+    const base = form('textbox "Name" [ref=e1]: Sara', 'checkbox "Sponsorship" [ref=e2] [checked]: ');
+    expect(hash(base)).toBe(hash(base));
+    expect(hash(base)).not.toBe(
+      hash(form('textbox "Name" [ref=e1]: Sarah', 'checkbox "Sponsorship" [ref=e2] [checked]: ')),
+    );
+    expect(hash(base)).not.toBe(hash(form('textbox "Name" [ref=e1]: Sara', 'checkbox "Sponsorship" [ref=e2]: ')));
+    expect(hash('textbox "A" [ref=e1]: x')).not.toBe(hash('combobox "A" [ref=e1]: x'));
+  });
+
+  it('is independent of line order and page chrome, but sees a field that changes after approval', () => {
+    const a = form('heading "Apply"', 'textbox "Name" [ref=e1]: Sara', 'textbox "Email" [ref=e2]: s@example.com');
+    const reordered = form(
+      'textbox "Email" [ref=e2]: s@example.com',
+      'link "Home" [ref=e9]',
+      'textbox "Name" [ref=e1]: Sara',
+    );
+    expect(hash(a)).toBe(hash(reordered));
+    expect(hash(a)).not.toBe(hash(a.replace('s@example.com', 's@example.org')));
+  });
+
+  it('has no hash for a snapshot without recognisable inputs', () => {
+    expect(() => computeFormHash('heading "Apply"\nbutton "Submit" [ref=e3]')).toThrow(/structured/);
+    expect(() => computeFormHash('')).toThrow(/structured/);
   });
 });

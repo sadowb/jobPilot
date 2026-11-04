@@ -23,7 +23,31 @@ const ToolResult = z.object({ isError: z.boolean().optional(), structuredContent
 export interface FormField {
   field: string;
   value: string;
+  /** Control type/role (textbox, checkbox, file ...). Part of the hash: a text box and a checkbox never collide. */
+  kind: string;
+  /** Checked / selected / disabled markers, sorted and comma-joined. */
+  state: string;
 }
+
+/** Roles that hold a value the owner is submitting. Anything else in a snapshot is page chrome and not hashed. */
+const INPUT_ROLES = new Set([
+  'textbox',
+  'searchbox',
+  'textarea',
+  'input',
+  'combobox',
+  'select',
+  'listbox',
+  'spinbutton',
+  'slider',
+  'checkbox',
+  'radio',
+  'switch',
+  'file',
+  'upload',
+  'date',
+]);
+const STATE_FLAGS = new Set(['checked', 'selected', 'disabled', 'required', 'pressed', 'expanded']);
 
 export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn'>): FormField[] {
   const fields: FormField[] = [];
@@ -47,7 +71,9 @@ export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn
 
     if (hasValue && (ref || label)) {
       const fieldId = ref && label ? `${ref}:${label}` : (ref ?? label)!;
-      fields.push({ field: fieldId, value: String(obj.value) });
+      const kind = [obj.role, obj.type].find((item): item is string => typeof item === 'string') ?? '';
+      const state = [...STATE_FLAGS].filter((flag) => obj[flag] === true || obj[flag] === 'true').join(',');
+      fields.push({ field: fieldId, value: String(obj.value), kind: kind.toLowerCase(), state });
     }
 
     for (const [k, v] of Object.entries(obj)) {
@@ -62,38 +88,33 @@ export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn
     }
   }
 
+  /**
+   * Snapshot lines look like `textbox "Label" [ref=e1] [checked]: value`. The value is everything after the first colon
+   * that follows the label and the bracketed attributes, taken verbatim (URLs and values with colons stay whole).
+   * Only input roles count; a line that is not one is page chrome.
+   */
   function parseText(text: string) {
-    const lines = text.split(/\r?\n/);
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) continue;
-
-      const refMatch = line.match(/(?:\[ref=(e\d+)\]|\[(e\d+)\]|@?(e\d+)\b)/);
-      const ref = refMatch ? (refMatch[1] ?? refMatch[2] ?? refMatch[3]) : undefined;
-
-      const labelMatch = line.match(
-        /(?:(?:textbox|input|combobox|select|textarea|field|checkbox|radio)\s+["']([^"']+)["']|label=["']([^"']+)["'])/i,
-      );
-      const label = labelMatch ? (labelMatch[1] ?? labelMatch[2])?.trim() : undefined;
-
-      let value: string | undefined;
-      const valueAttrMatch = line.match(/value=["']([^"']*)["']/);
-      if (valueAttrMatch) {
-        value = valueAttrMatch[1];
-      } else {
-        const colonIndex = line.lastIndexOf(':');
-        if (colonIndex !== -1 && (ref || label)) {
-          const afterColon = line.slice(colonIndex + 1).trim();
-          if (!afterColon.startsWith('//')) {
-            value = afterColon;
-          }
-        }
+    for (const rawLine of text.split(/\r?\n/)) {
+      const head = rawLine.match(/^\s*(?:-\s*)?(?:\[ref=(e\d+)\]\s*)?([A-Za-z]+)(?:\s+"((?:[^"\\]|\\.)*)")?/);
+      if (!head || !INPUT_ROLES.has(head[2]!.toLowerCase())) continue;
+      let rest = rawLine.slice(head[0].length);
+      const attrs: string[] = [];
+      for (let m = rest.match(/^\s*\[([^\]]*)\]/); m; m = rest.match(/^\s*\[([^\]]*)\]/)) {
+        attrs.push(m[1]!);
+        rest = rest.slice(m[0].length);
       }
-
-      if ((ref || label) && value !== undefined) {
-        const fieldId = ref && label ? `${ref}:${label}` : (ref ?? label)!;
-        fields.push({ field: fieldId, value });
-      }
+      const ref = head[1] ?? attrs.map((a) => a.match(/^ref=(e\d+)$/)?.[1]).find(Boolean);
+      const label = head[3]?.trim();
+      const colon = rest.match(/^\s*:\s?/);
+      const value = colon ? rest.slice(colon[0].length).trim() : undefined;
+      const state = [...STATE_FLAGS].filter((flag) => attrs.some((a) => a === flag || a === `${flag}=true`)).join(',');
+      if (!(ref || label) || (value === undefined && !state && !/checkbox|radio|switch/i.test(head[2]!))) continue;
+      fields.push({
+        field: ref && label ? `${ref}:${label}` : (ref ?? label)!,
+        value: value ?? '',
+        kind: head[2]!.toLowerCase(),
+        state,
+      });
     }
   }
 
@@ -147,26 +168,23 @@ export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn
   return fields;
 }
 
+/**
+ * Canonical hash of the structured form: every input's id, type, state and exact value, sorted by id. Fails closed: a
+ * snapshot with no recognisable inputs has no hash, so nothing can be approved against it (ADR 0020).
+ */
 export function computeFormHash(snapshot: unknown, logger?: Pick<Logger, 'warn'>): string {
   const fields = extractFormFields(snapshot, logger);
-  fields.sort((a, b) => {
-    const c = a.field.localeCompare(b.field);
-    return c !== 0 ? c : a.value.localeCompare(b.value);
-  });
-  if (fields.length === 0) {
-    let text = '';
-    if (typeof snapshot === 'string') text = snapshot;
-    else if (snapshot && typeof snapshot === 'object' && Array.isArray((snapshot as { content?: unknown[] }).content)) {
-      text = (snapshot as { content: Array<{ text?: string }> }).content.map((c) => c.text ?? '').join('\n');
-    }
-    const cleanLines = text
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l && !/^(?:timestamp|cursor|rendered_at|scroll|time):/i.test(l))
-      .sort();
-    return createHash('sha256').update(JSON.stringify(cleanLines)).digest('hex');
-  }
-  return createHash('sha256').update(JSON.stringify(fields)).digest('hex');
+  if (fields.length === 0) throw new Error('The form could not be read in a structured way.');
+  const canonical = fields
+    .map(({ field, kind, state, value }) => [field, kind, state, value] as const)
+    .sort((a, b) => {
+      for (let i = 0; i < 4; i++) {
+        const [x, y] = [a[i]!, b[i]!];
+        if (x !== y) return x < y ? -1 : 1;
+      }
+      return 0;
+    });
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
 }
 
 /** Never clicked, with or without an approval: they act for real in the owner's logged-in browser. */
@@ -349,8 +367,14 @@ export class NeoBrowserProvider implements BrowserProvider {
       signal.throwIfAborted();
       const fresh = await this.rawSnapshot(runId, tab);
       signal.throwIfAborted();
-      if (snapshotForm(fresh, this.logger).hash !== submit.formHash)
-        return refused('Refused: the form changed after approval. Nothing was sent.');
+      let liveHash: string | undefined;
+      try {
+        liveHash = snapshotForm(fresh, this.logger).hash;
+      } catch {
+        liveHash = undefined; // unreadable form: no hash, no click
+      }
+      if (liveHash !== submit.formHash)
+        return refused('Refused: the form changed after approval or could not be read. Nothing was sent.');
       lastSnapshot = textOf(fresh);
       const line = clickTargetLine(lastSnapshot, target);
       if (line === undefined || !/\bbutton\b/i.test(line) || NEVER_ACTION.test(line) || !SUBMIT_ACTION.test(line))

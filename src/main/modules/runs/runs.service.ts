@@ -31,6 +31,8 @@ import { RunsRepository } from './runs.repository';
 import { UserFacingError } from '../../platform/ipc/user-facing-error';
 
 const MAX_ATTEMPTS = 3;
+/** The posting description is untrusted agent-read text; only this much goes into the prompt, inside the JSON block. */
+const MAX_PROMPT_DESCRIPTION = 8_000;
 /** Cap on the agent's structured result before it is parsed and stored. */
 const MAX_RESULT_BYTES = 256 * 1024;
 
@@ -670,7 +672,11 @@ export class RunsService {
             : []),
           JSON.stringify({
             tabId: tab.tabId,
-            posting: { url: posting.canonicalUrl, title: posting.title, description: posting.description },
+            posting: {
+              url: posting.canonicalUrl,
+              title: posting.title,
+              description: posting.description?.slice(0, MAX_PROMPT_DESCRIPTION) ?? null,
+            },
             fillPlan,
             profile: getProfile(this.db),
           }),
@@ -702,15 +708,15 @@ export class RunsService {
       let unreadable = false;
       if (status === 'awaiting_approval') {
         // Read the form back from the tab: the owner reviews what the page holds, not what the agent says it typed.
-        const snapshot = await this.browser.formSnapshot(runId);
-        formHash = snapshot.hash;
-        unreadable = snapshot.fields.length === 0;
+        const snapshot = await this.browser.formSnapshot(runId).catch(() => undefined);
+        formHash = snapshot?.hash;
+        unreadable = !snapshot || snapshot.fields.length === 0;
         summary = ApprovalSummarySchema.parse({
-          fields: snapshot.fields.slice(0, MAX_SNAPSHOT_FIELDS).map(({ label, value }) => ({
+          fields: (snapshot?.fields ?? []).slice(0, MAX_SNAPSHOT_FIELDS).map(({ label, value }) => ({
             label: label.slice(0, 300),
             value: value.slice(0, MAX_SNAPSHOT_VALUE_CHARS),
           })),
-          truncated: snapshot.fields.length > MAX_SNAPSHOT_FIELDS,
+          truncated: (snapshot?.fields.length ?? 0) > MAX_SNAPSHOT_FIELDS,
           answers: result.answers_used.map(({ field_key, answer, source }) => ({
             fieldKey: field_key,
             answer: answer.slice(0, MAX_SNAPSHOT_VALUE_CHARS),
