@@ -229,19 +229,54 @@ export class PostingsRepository {
       linkedin_url: profileRow?.linkedinUrl ?? null,
       website_url: profileRow?.portfolioUrl ?? null,
     };
-    const entries = questions.map((q) => {
-      const key = q.canonicalKey ?? canonicalKey(q.label);
-      const libraryValue = q.answer ?? (key ? (answerMap.get(key) ?? null) : null);
-      const profileValue = key ? (profileAnswers[key] ?? null) : null;
-      const value = libraryValue ?? profileValue;
-      return {
-        field_key: q.fieldKey,
-        label: q.label,
-        value,
-        source: libraryValue ? ('library' as const) : profileValue ? ('profile' as const) : null,
-        required: q.required,
-      };
-    });
+    // The owner's own answers (typed in the Inbox) beat the library and the profile, and cover agent-found fields.
+    const ownerAnswers = new Map(
+      this.db
+        .select({
+          fieldKey: schema.applicationAnswer.fieldKey,
+          text: schema.applicationAnswer.questionText,
+          answer: schema.applicationAnswer.answer,
+        })
+        .from(schema.applicationAnswer)
+        .where(
+          and(eq(schema.applicationAnswer.applicationId, applicationId), eq(schema.applicationAnswer.source, 'owner')),
+        )
+        .all()
+        .filter((row) => row.answer !== null)
+        .map((row) => [row.fieldKey, row] as const),
+    );
+    const known = new Set(questions.map((q) => q.fieldKey));
+    const entries = [
+      ...questions.map((q) => {
+        const key = q.canonicalKey ?? canonicalKey(q.label);
+        const ownerValue = ownerAnswers.get(q.fieldKey)?.answer ?? null;
+        const libraryValue = q.answer ?? (key ? (answerMap.get(key) ?? null) : null);
+        const profileValue = key ? (profileAnswers[key] ?? null) : null;
+        const value = ownerValue ?? libraryValue ?? profileValue;
+        return {
+          field_key: q.fieldKey,
+          label: q.label,
+          value,
+          source: ownerValue
+            ? ('owner' as const)
+            : libraryValue
+              ? ('library' as const)
+              : profileValue
+                ? ('profile' as const)
+                : null,
+          required: q.required,
+        };
+      }),
+      ...[...ownerAnswers.entries()]
+        .filter(([fieldKey]) => !known.has(fieldKey))
+        .map(([fieldKey, row]) => ({
+          field_key: fieldKey,
+          label: row.text,
+          value: row.answer,
+          source: 'owner' as const,
+          required: false,
+        })),
+    ];
     return {
       application_id: applicationId,
       entries,

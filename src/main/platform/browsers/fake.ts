@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { BrowserStatus } from '../../../shared/dto';
-import type { BrowserProvider } from './types';
+import type { BrowserProvider, FormSnapshot, SubmitAuthorisation } from './types';
 
 export class FakeBrowserProvider implements BrowserProvider {
   readonly id = 'neo';
@@ -10,7 +10,18 @@ export class FakeBrowserProvider implements BrowserProvider {
     return { status: 'connected', port: 9210, endpoint: 'http://127.0.0.1:9210/mcp' };
   }
 
-  async mcpServerConfig() {
+  /** The authorisation a run's browser was configured with; E2E stands in for the agent's click with `clickSubmit`. */
+  readonly submit = new Map<string, SubmitAuthorisation>();
+
+  /** Mirrors the real guard: the live form must still hash to the approved value, then the single claim is taken. */
+  async clickSubmit(runId: string): Promise<'clicked' | 'refused'> {
+    const authorisation = this.submit.get(runId);
+    if (!authorisation || (await this.formSnapshot(runId)).hash !== authorisation.formHash) return 'refused';
+    return authorisation.claim() ? 'clicked' : 'refused';
+  }
+
+  async mcpServerConfig(runId?: string, _signal?: AbortSignal, submit?: SubmitAuthorisation) {
+    if (runId && submit) this.submit.set(runId, submit);
     return { type: 'stdio' as const, command: 'jobpilot-fake-browser' };
   }
 
@@ -24,7 +35,18 @@ export class FakeBrowserProvider implements BrowserProvider {
     this.tabs.delete(runId);
   }
 
-  async formHash(runId: string): Promise<string> {
-    return createHash('sha256').update(`fake-form-${runId}`).digest('hex');
+  /** Test seam: bump a run's version to simulate the page changing after review. */
+  readonly drift = new Map<string, number>();
+
+  async formSnapshot(runId: string): Promise<FormSnapshot> {
+    if (!this.tabs.has(runId)) throw new Error('Run tab is unavailable.');
+    const version = this.drift.get(runId) ?? 0;
+    return {
+      hash: createHash('sha256').update(`fake-form-${runId}-${version}`).digest('hex'),
+      fields: [
+        { label: 'Full name', value: 'Sara Benali' },
+        { label: 'Email', value: 'sara.benali@example.com' },
+      ],
+    };
   }
 }

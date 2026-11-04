@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
+  AnswerRunInput,
   CapTurnInput,
   ProfileSave,
   ProfileData,
@@ -44,6 +45,7 @@ const invalidateRuns = () =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.runs.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.applications.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.inbox.all }),
   ]);
 
 export const useStartRun = () =>
@@ -51,6 +53,18 @@ export const useStartRun = () =>
 
 export const useCancelRun = () =>
   useMutation({ mutationFn: (runId: string) => bridge().runs.cancel(runId), onSettled: invalidateRuns });
+
+export const useInbox = () => useQuery({ queryKey: queryKeys.inbox.list(), queryFn: () => bridge().inbox.list() });
+
+/** Main decides what an approval means (hash re-check, idempotency); these only refetch what a decision touches. */
+export const useApprove = () =>
+  useMutation({ mutationFn: (approvalId: string) => bridge().inbox.approve(approvalId), onSettled: invalidateRuns });
+
+export const useReject = () =>
+  useMutation({ mutationFn: (approvalId: string) => bridge().inbox.reject(approvalId), onSettled: invalidateRuns });
+
+export const useAnswerRun = () =>
+  useMutation({ mutationFn: (input: AnswerRunInput) => bridge().runs.answer(input), onSettled: invalidateRuns });
 
 export const useApplications = () =>
   useQuery({ queryKey: queryKeys.applications.list(), queryFn: () => bridge().applications.list() });

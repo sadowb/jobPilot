@@ -7,7 +7,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import type { Logger } from 'pino';
 import type { BrowserStatus } from '../../../shared/dto';
 import type { McpServerConfig } from '../agents/types';
-import type { BrowserProvider, BrowserTab } from './types';
+import type { BrowserProvider, BrowserTab, FormSnapshot, SubmitAuthorisation } from './types';
 import { NeoMcp, allowlistedErrorCode } from './neo-mcp';
 import { discoverNeoEndpoint, validateLoopbackEndpoint } from './neo-discovery';
 
@@ -169,13 +169,35 @@ export function computeFormHash(snapshot: unknown, logger?: Pick<Logger, 'warn'>
   return createHash('sha256').update(JSON.stringify(fields)).digest('hex');
 }
 
-/** Controls an agent must never click: the owner's browser is logged in, so these act for real. */
-export const FINAL_ACTION =
-  /\b(submit|send|confirm|finish|complete (my )?application|place order|pay|purchase|buy|checkout|delete|remove|withdraw|sign out|log ?out|unsubscribe)\b/i;
+/** Never clicked, with or without an approval: they act for real in the owner's logged-in browser. */
+export const NEVER_ACTION =
+  /\b(place order|pay|purchase|buy|checkout|delete|remove|withdraw|sign out|log ?out|unsubscribe)\b/i;
+/** Completes the application. Refused unless the run was given a `SubmitAuthorisation` (the approval path). */
+export const SUBMIT_ACTION = /\b(submit|send|confirm|finish|complete (my )?application)\b/i;
+/** Every control the agent may not click on its own. */
+export const FINAL_ACTION = new RegExp(`${NEVER_ACTION.source}|${SUBMIT_ACTION.source}`, 'i');
+
+/** The field values and hash of one raw snapshot reply. The hash is computed on the raw reply, exactly as at approval time. */
+export function snapshotForm(raw: unknown, logger?: Pick<Logger, 'warn'>): FormSnapshot {
+  return {
+    hash: computeFormHash(raw, logger),
+    fields: extractFormFields(raw, logger).map(({ field, value }) => {
+      const label = field.replace(/^e\d+:/, '');
+      return { label: /^e\d+$/.test(label) ? `Field ${label}` : label, value };
+    }),
+  };
+}
 
 /** The snapshot line for a ref, matched exactly ([ref=e1] never matches e12); undefined when absent. */
 export function clickTargetLine(snapshot: string, ref: string): string | undefined {
   return snapshot.split(/\r?\n/).find((line) => line.includes(`[ref=${ref}]`));
+}
+
+function textOf(raw: unknown): string {
+  const content = (raw as { content?: Array<{ text?: unknown }> } | null)?.content;
+  return Array.isArray(content)
+    ? content.map((item) => (typeof item.text === 'string' ? item.text : '')).join('\n')
+    : '';
 }
 
 export class NeoBrowserProvider implements BrowserProvider {
@@ -298,7 +320,7 @@ export class NeoBrowserProvider implements BrowserProvider {
     });
   }
 
-  async mcpServerConfig(runId: string, signal: AbortSignal): Promise<McpServerConfig> {
+  async mcpServerConfig(runId: string, signal: AbortSignal, submit?: SubmitAuthorisation): Promise<McpServerConfig> {
     const tab = this.tabs.get(runId);
     if (!tab) throw new Error('Run tab is unavailable.');
     const page = PageId.parse(Number(tab.tabId));
@@ -318,6 +340,27 @@ export class NeoBrowserProvider implements BrowserProvider {
     const ref = z.string().regex(/^e\d+$/);
     const refused = (text: string) => ({ content: [{ type: 'text' as const, text }], isError: true });
     let lastSnapshot = '';
+    /**
+     * The one path to a submit click (ADR 0020): re-read the live form, require the approved hash, re-find the control in
+     * that fresh read (refs can move), claim the single durable attempt, then click.
+     */
+    const submitClick = async (target: string) => {
+      if (!submit) return refused('Refused: submitting is not authorised.');
+      signal.throwIfAborted();
+      const fresh = await this.rawSnapshot(runId, tab);
+      signal.throwIfAborted();
+      if (snapshotForm(fresh, this.logger).hash !== submit.formHash)
+        return refused('Refused: the form changed after approval. Nothing was sent.');
+      lastSnapshot = textOf(fresh);
+      const line = clickTargetLine(lastSnapshot, target);
+      if (line === undefined || !/\bbutton\b/i.test(line) || NEVER_ACTION.test(line) || !SUBMIT_ACTION.test(line))
+        return refused(`Refused: ${target} is not a submit button on the approved form. Nothing was sent.`);
+      if (!submit.claim()) return refused('Refused: a submit was already attempted for this approval.');
+      const result = await call('act', { kind: 'click', ref: target, diff: 'summary' });
+      lastSnapshot = '';
+      await this.rememberTabHost(runId, tab);
+      return result;
+    };
     // No generic MCP forwarding: tab management, URL navigation, scripts, credentials and submission stay unavailable.
     return createSdkMcpServer({
       name: 'browser',
@@ -334,7 +377,14 @@ export class NeoBrowserProvider implements BrowserProvider {
           async ({ ref: target }) => {
             const line = clickTargetLine(lastSnapshot, target);
             if (line === undefined) return refused(`${target} is not in the latest snapshot. Take a snapshot first.`);
-            if (FINAL_ACTION.test(line)) return refused(`Refused: ${target} looks like a final action. Never submit.`);
+            if (NEVER_ACTION.test(line))
+              return refused(
+                `Refused: ${target} looks like a final action (payment, deletion, sign-out). Never click it.`,
+              );
+            if (SUBMIT_ACTION.test(line)) {
+              if (!submit) return refused(`Refused: ${target} looks like a final action. Never submit.`);
+              return submitClick(target);
+            }
             const result = await call('act', { kind: 'click', ref: target, diff: 'summary' });
             lastSnapshot = ''; // Refs may be stale after a click; force a fresh snapshot.
             await this.rememberTabHost(runId, tab);
@@ -432,16 +482,21 @@ export class NeoBrowserProvider implements BrowserProvider {
     });
   }
 
-  async formHash(runId: string): Promise<string> {
+  async formSnapshot(runId: string): Promise<FormSnapshot> {
     z.string().min(1).parse(runId);
     const tab = this.tabs.get(runId);
     if (!tab) throw new Error('Run tab is unavailable.');
+    return snapshotForm(await this.rawSnapshot(runId, tab), this.logger);
+  }
+
+  /** The snapshot reply exactly as Neo sent it: the approval hash and the click-time check must hash the same shape. */
+  private async rawSnapshot(runId: string, tab: { tabId: string }): Promise<unknown> {
+    if (this.tabs.get(runId) !== tab) throw new Error('Run tab is unavailable.');
     const mcp = await this.getMcp();
     const page = PageId.parse(Number(tab.tabId));
-    const result = await this.runSerial(runId, () =>
+    return this.runSerial(runId, () =>
       mcp.call('tools/call', { name: 'snapshot', arguments: { page, mode: 'interactive', depth: 30 } }),
     );
-    return computeFormHash(result, this.logger);
   }
 
   private async tabsTool(args: Record<string, unknown>): Promise<unknown> {

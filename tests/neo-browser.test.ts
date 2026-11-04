@@ -7,7 +7,9 @@ import {
   computeFormHash,
   extractFormFields,
   FINAL_ACTION,
+  NEVER_ACTION,
   NeoBrowserProvider,
+  SUBMIT_ACTION,
   parseNeoConfig,
 } from '../src/main/platform/browsers/neo';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -282,5 +284,171 @@ describe('Neo endpoint discovery and config parsing (#196)', () => {
 
     const providerWithInvalid = new NeoBrowserProvider(logger, undefined, () => 'http://192.168.1.1:9215/mcp');
     expect(providerWithInvalid.resolveEndpoint([])).toBeUndefined();
+  });
+});
+
+describe('Neo browser tools: hash-checked submit', () => {
+  const FIELDS = ['textbox "Full name" [ref=e1]: Sara Benali', 'textbox "Email" [ref=e2]: sara.benali@example.com'];
+  const FORM = [...FIELDS, 'button "Submit application" [ref=e3]', 'button "Delete account" [ref=e4]'].join('\n');
+
+  type RunResult = { isError?: boolean; content: Array<{ text: string }> };
+
+  async function setup(initial: string) {
+    let snapshotText = initial;
+    const events: string[] = [];
+    const calls: Array<{ name: string; arguments: Record<string, unknown> }> = [];
+    const provider = new NeoBrowserProvider({ debug() {}, warn() {} } as unknown as Logger, 'http://127.0.0.1:59999');
+    (provider as unknown as { mcp: { call: (m: string, p: never) => Promise<unknown> } }).mcp = {
+      call: async (_method, params: { name: string; arguments: Record<string, unknown> }) => {
+        calls.push(params);
+        const action = params.arguments.action;
+        if (params.name === 'tabs' && action === 'new') return { content: [], structuredContent: { page: 7 } };
+        if (params.name === 'tabs' && action === 'list')
+          return {
+            content: [],
+            structuredContent: { pages: [{ page: 7, url: 'https://example.com/careers/1' }] },
+          };
+        if (params.name === 'tabs') return { content: [], structuredContent: {} };
+        if (params.name === 'act') events.push('act');
+        return { content: [{ type: 'text', text: params.name === 'snapshot' ? snapshotText : 'ok' }] };
+      },
+    };
+    await provider.openTab('read-1', 'https://example.com/careers/1');
+    const connect = async (submit?: { formHash: string; claim: () => boolean }) => {
+      const server = (await provider.mcpServerConfig('read-1', new AbortController().signal, submit)) as unknown as {
+        instance: {
+          _registeredTools: Record<string, { handler: (args: object, extra: object) => Promise<RunResult> }>;
+        };
+      };
+      return (name: string, args: object = {}) => server.instance._registeredTools[name]!.handler(args, {});
+    };
+    const claimFor = (formHash: string, ok = true) =>
+      vi.fn((): boolean => {
+        events.push('claim');
+        return ok;
+      });
+    return {
+      provider,
+      calls,
+      events,
+      connect,
+      claimFor,
+      setText: (text: string) => {
+        snapshotText = text;
+      },
+    };
+  }
+
+  it('refuses a submit click when no submit authorisation was passed', async () => {
+    const { calls, connect } = await setup(FORM);
+    const run = await connect();
+    await run('snapshot');
+    const refused = await run('click', { ref: 'e3' });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]!.text).toMatch(/final action/);
+    expect(calls.filter(({ name }) => name === 'act')).toEqual([]);
+  });
+
+  it('clicks the submit button once, claiming the attempt before the act call', async () => {
+    const { provider, calls, events, connect, claimFor } = await setup(FORM);
+    const approved = (await provider.formSnapshot('read-1')).hash;
+    const claim = claimFor(approved);
+    const run = await connect({ formHash: approved, claim });
+    await run('snapshot');
+    const result = await run('click', { ref: 'e3' });
+    expect(result.isError).toBeFalsy();
+    const acts = calls.filter(({ name }) => name === 'act');
+    expect(acts).toHaveLength(1);
+    expect(acts[0]!.arguments).toMatchObject({ kind: 'click', ref: 'e3' });
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(events).toEqual(['claim', 'act']);
+  });
+
+  it('refuses the submit when a field value changed after approval, without claiming', async () => {
+    const { provider, calls, connect, claimFor, setText } = await setup(FORM);
+    const approved = (await provider.formSnapshot('read-1')).hash;
+    const claim = claimFor(approved);
+    const run = await connect({ formHash: approved, claim });
+    await run('snapshot');
+    setText(FORM.replace('sara.benali@example.com', 'attacker@example.com'));
+    const refused = await run('click', { ref: 'e3' });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]!.text).toMatch(/form changed after approval/);
+    expect(claim).not.toHaveBeenCalled();
+    expect(calls.filter(({ name }) => name === 'act')).toEqual([]);
+  });
+
+  it('refuses when the ref now points at a non-submit control in the fresh read, without claiming', async () => {
+    const { provider, calls, connect, claimFor, setText } = await setup(FORM);
+    const approved = (await provider.formSnapshot('read-1')).hash;
+    const claim = claimFor(approved);
+    const run = await connect({ formHash: approved, claim });
+    // Stale lastSnapshot still shows e3 as Submit; the fresh read moves Submit to e9 and puts a link on e3.
+    await run('snapshot');
+    setText(
+      [
+        ...FIELDS,
+        'link "Back to search" [ref=e3]',
+        'button "Submit application" [ref=e9]',
+        'button "Delete account" [ref=e4]',
+      ].join('\n'),
+    );
+    const refused = await run('click', { ref: 'e3' });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]!.text).toMatch(/not a submit button/);
+    expect(claim).not.toHaveBeenCalled();
+    expect(calls.filter(({ name }) => name === 'act')).toEqual([]);
+  });
+
+  it('refuses a second submit when the approval was already claimed', async () => {
+    const { provider, calls, connect, claimFor } = await setup(FORM);
+    const approved = (await provider.formSnapshot('read-1')).hash;
+    const claim = claimFor(approved, false);
+    const run = await connect({ formHash: approved, claim });
+    await run('snapshot');
+    const refused = await run('click', { ref: 'e3' });
+    expect(refused.isError).toBe(true);
+    expect(refused.content[0]!.text).toMatch(/already attempted/);
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(calls.filter(({ name }) => name === 'act')).toEqual([]);
+  });
+
+  it('keeps NEVER_ACTION controls refused even with submit authorised', async () => {
+    const form = [...FIELDS, 'button "Delete account" [ref=e4]', 'button "Submit and pay" [ref=e5]'].join('\n');
+    const { provider, calls, connect, claimFor } = await setup(form);
+    const approved = (await provider.formSnapshot('read-1')).hash;
+    const claim = claimFor(approved);
+    const run = await connect({ formHash: approved, claim });
+    await run('snapshot');
+    for (const ref of ['e4', 'e5']) {
+      const refused = await run('click', { ref });
+      expect(refused.isError, ref).toBe(true);
+      expect(refused.content[0]!.text, ref).toMatch(/final action/);
+    }
+    expect(claim).not.toHaveBeenCalled();
+    expect(calls.filter(({ name }) => name === 'act')).toEqual([]);
+  });
+
+  it('refuses a non-button control that matches the submit pattern, without claiming', async () => {
+    const form = [...FIELDS, 'link "Send me job alerts" [ref=e6]'].join('\n');
+    const { provider, calls, connect, claimFor } = await setup(form);
+    const approved = (await provider.formSnapshot('read-1')).hash;
+    const claim = claimFor(approved);
+    const run = await connect({ formHash: approved, claim });
+    await run('snapshot');
+    const refused = await run('click', { ref: 'e6' });
+    expect(refused.isError).toBe(true);
+    expect(claim).not.toHaveBeenCalled();
+    expect(calls.filter(({ name }) => name === 'act')).toEqual([]);
+  });
+
+  it('classifies submit, never and neutral labels as specified', () => {
+    for (const label of ['Submit application', 'Send']) expect(SUBMIT_ACTION.test(label), label).toBe(true);
+    for (const label of ['Submit application', 'Send']) expect(NEVER_ACTION.test(label), label).toBe(false);
+    expect(NEVER_ACTION.test('Confirm and pay')).toBe(true);
+    for (const label of ['Show more', 'Next']) {
+      expect(NEVER_ACTION.test(label), label).toBe(false);
+      expect(SUBMIT_ACTION.test(label), label).toBe(false);
+    }
   });
 });

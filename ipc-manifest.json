@@ -28,6 +28,14 @@
     "schema": "SetApplicationStatusSchema"
   },
   {
+    "channel": "approvals:approve",
+    "schema": "DecideApprovalSchema"
+  },
+  {
+    "channel": "approvals:reject",
+    "schema": "DecideApprovalSchema"
+  },
+  {
     "channel": "browser:status",
     "schema": "z.void()"
   },
@@ -42,6 +50,10 @@
   {
     "channel": "grants:revoke",
     "schema": "RevokeGrantSchema"
+  },
+  {
+    "channel": "inbox:list",
+    "schema": "z.void()"
   },
   {
     "channel": "memory:install",
@@ -122,6 +134,10 @@
   {
     "channel": "recovery:state",
     "schema": "z.void()"
+  },
+  {
+    "channel": "runs:answer",
+    "schema": "AnswerRunSchema"
   },
   {
     "channel": "runs:cancel",

@@ -76,7 +76,7 @@ const browser: BrowserProvider = {
   closeTab: async (runId) => {
     closed.push(runId);
   },
-  formHash: async () => 'hash',
+  formSnapshot: async () => ({ hash: 'hash', fields: [{ label: 'Name', value: 'Sara' }] }),
 };
 
 const form = (url: string): PostingFormDto => ({

@@ -43,6 +43,24 @@ export class ApplyWorker {
     return false;
   }
 
+  /**
+   * Run `task` for a run that is not in the queue (an approved submit) under the same abort, quit and slot handling.
+   * A second call for a run that is already active is a no-op, so a repeated trigger can never start two.
+   */
+  detach(runId: string, task: (signal: AbortSignal) => Promise<void>): void {
+    if (this.stopping || this.active.has(runId)) return;
+    const controller = new AbortController();
+    this.active.set(runId, controller);
+    const run: Promise<void> = task(controller.signal)
+      .catch((error: unknown) => this.hooks.onError(error, runId))
+      .finally(() => {
+        this.active.delete(runId);
+        this.running.delete(run);
+        this.pump();
+      });
+    this.running.add(run);
+  }
+
   async cancel(runId: string): Promise<void> {
     this.active.get(runId)?.abort();
     await this.hooks.closeTab(runId);

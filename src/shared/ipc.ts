@@ -14,6 +14,9 @@ import type {
   ThemeSource,
   ThemeState,
   RunSummaryDto,
+  AnswerRunInput,
+  ApproveResult,
+  InboxEntry,
   RunsState,
   AppSettings,
   UpdateSettingsInput,
@@ -56,6 +59,10 @@ export const Channels = {
   resumeRuns: 'runs:resume',
   listRuns: 'runs:list',
   getRunsState: 'runs:state',
+  listInbox: 'inbox:list',
+  approveApproval: 'approvals:approve',
+  rejectApproval: 'approvals:reject',
+  answerRun: 'runs:answer',
   ingestPosting: 'postings:ingest',
   confirmPosting: 'postings:confirm',
   cancelIngestPosting: 'postings:cancel-ingest',
@@ -143,6 +150,14 @@ export interface JobPilotBridge {
     resume(): Promise<boolean>;
     list(): Promise<RunSummaryDto[]>;
     state(): Promise<RunsState>;
+    /** The owner's answers to a run's questions; the run is filled again with them. */
+    answer(input: AnswerRunInput): Promise<RunSummaryDto>;
+  };
+  inbox: {
+    list(): Promise<InboxEntry[]>;
+    /** Binds to the form hash stored with the approval; main re-checks the live form before anything is sent. */
+    approve(approvalId: string): Promise<ApproveResult>;
+    reject(approvalId: string): Promise<RunSummaryDto>;
   };
   postings: {
     ingest(url: string): Promise<IngestResult>;

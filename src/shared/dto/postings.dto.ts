@@ -49,7 +49,7 @@ export const FillPlanEntrySchema = z.object({
   field_key: z.string(),
   label: z.string(),
   value: z.string().nullable(),
-  source: z.enum(['library', 'profile']).nullable(),
+  source: z.enum(['library', 'profile', 'owner']).nullable(),
   required: z.boolean(),
 });
 export type FillPlanEntry = z.infer<typeof FillPlanEntrySchema>;

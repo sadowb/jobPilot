@@ -21,6 +21,10 @@ import {
   RunsStateSchema,
   StartRunSchema,
   CancelRunSchema,
+  AnswerRunSchema,
+  ApproveResultSchema,
+  DecideApprovalSchema,
+  InboxEntrySchema,
   ApplicationListItemSchema,
   IngestResultSchema,
   PostingReadStateSchema,
@@ -147,6 +151,24 @@ const bridge: JobPilotBridge = {
     },
     async resume() {
       return z.boolean().parse(await invoke(Channels.resumeRuns));
+    },
+    async answer(input) {
+      return RunSummarySchema.parse(await invoke(Channels.answerRun, parseInput(AnswerRunSchema, input)));
+    },
+  },
+  inbox: {
+    async list() {
+      return z.array(InboxEntrySchema).parse(await invoke(Channels.listInbox));
+    },
+    async approve(approvalId) {
+      return ApproveResultSchema.parse(
+        await invoke(Channels.approveApproval, parseInput(DecideApprovalSchema, { approvalId })),
+      );
+    },
+    async reject(approvalId) {
+      return RunSummarySchema.parse(
+        await invoke(Channels.rejectApproval, parseInput(DecideApprovalSchema, { approvalId })),
+      );
     },
   },
   postings: {

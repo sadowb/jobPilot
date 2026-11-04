@@ -1,0 +1,1 @@
+ALTER TABLE `approval` ADD `submit_claimed_at` integer;
