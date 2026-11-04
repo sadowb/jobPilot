@@ -748,7 +748,12 @@ export class RunsService {
       });
     } catch (error) {
       loggerFor('runs').error(
-        { run_id: runId, error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+        {
+          run_id: runId,
+          error_class: error instanceof Error ? error.constructor.name : 'Unknown',
+          // Paths and codes only: zod messages can quote the offending value.
+          issues: error instanceof z.ZodError ? error.issues.map((i) => `${i.path.join('.')}:${i.code}`) : undefined,
+        },
         'Run execution failed',
       );
       const current = this.repository.get(runId);

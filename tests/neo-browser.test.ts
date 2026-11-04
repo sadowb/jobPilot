@@ -12,6 +12,7 @@ import {
   SUBMIT_ACTION,
   parseNeoConfig,
 } from '../src/main/platform/browsers/neo';
+import { tabsReply } from '../src/main/platform/browsers/neo';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
 
@@ -495,5 +496,33 @@ describe('form hash is canonical and fails closed', () => {
   it('has no hash for a snapshot without recognisable inputs', () => {
     expect(() => computeFormHash('heading "Apply"\nbutton "Submit" [ref=e3]')).toThrow(/structured/);
     expect(() => computeFormHash('')).toThrow(/structured/);
+  });
+});
+
+describe('Neo tabs tool replies in plain text (live test of #111)', () => {
+  const text = (...parts: string[]) => ({ content: parts.map((part) => ({ text: part })) });
+  it('reads the new page id and the tab list, ignoring the trailing tips', () => {
+    expect(tabsReply({ action: 'new' }, text('opened page 5', '\n--- Additional context (auto-included) ---'))).toEqual(
+      {
+        page: 5,
+      },
+    );
+    expect(
+      tabsReply(
+        { action: 'list' },
+        text(
+          "User's tabs:\n[1] chrome://newtab/ (BrowserOS neo)\n\nOther agents' tabs:\n[2] https://a.example/jobs/1 (T), owned by jobpilot",
+        ),
+      ),
+    ).toEqual({
+      pages: [
+        { page: 1, url: 'chrome://newtab/' },
+        { page: 2, url: 'https://a.example/jobs/1' },
+      ],
+    });
+  });
+  it('prefers structured content when a build sends it, and yields nothing for an unreadable open', () => {
+    expect(tabsReply({ action: 'new' }, { structuredContent: { page: 9 } })).toEqual({ page: 9 });
+    expect(tabsReply({ action: 'new' }, text('something else'))).toBeUndefined();
   });
 });

@@ -18,7 +18,29 @@ const HttpsUrl = z.url({ protocol: /^https$/ }).refine((value) => {
   return !url.username && !url.password;
 }, 'Posting URL must not contain credentials');
 const PageId = z.number().int().nonnegative().max(0xffffffff);
-const ToolResult = z.object({ isError: z.boolean().optional(), structuredContent: z.unknown().optional() });
+const ToolResult = z.object({
+  isError: z.boolean().optional(),
+  structuredContent: z.unknown().optional(),
+  content: z.array(z.object({ text: z.string().optional() })).optional(),
+});
+
+/**
+ * Neo 0.51 answers the tabs tool in plain text only ("opened page 5", "[5] https://… (title), owned by …"), with no
+ * structuredContent. Older builds sent structured data, which still wins when present.
+ */
+export function tabsReply(args: Record<string, unknown>, result: z.infer<typeof ToolResult>): unknown {
+  if (result.structuredContent !== undefined) return result.structuredContent;
+  const text = (result.content ?? []).map((part) => part.text ?? '').join('\n');
+  if (args.action === 'new') {
+    const page = /^opened page (\d+)/m.exec(text)?.[1];
+    return page === undefined ? undefined : { page: Number(page) };
+  }
+  if (args.action === 'list') {
+    const pages = [...text.matchAll(/^\[(\d+)\]\s+(\S+)/gm)].map((m) => ({ page: Number(m[1]), url: m[2]! }));
+    return { pages };
+  }
+  return {};
+}
 
 export interface FormField {
   field: string;
@@ -527,7 +549,7 @@ export class NeoBrowserProvider implements BrowserProvider {
     const mcp = await this.getMcp();
     const result = ToolResult.parse(await mcp.call('tools/call', { name: 'tabs', arguments: args }));
     if (result.isError) throw new Error('Neo tabs tool failed');
-    return result.structuredContent;
+    return tabsReply(args, result);
   }
 
   private runSerial<T>(runId: string, operation: () => Promise<T>): Promise<T> {
