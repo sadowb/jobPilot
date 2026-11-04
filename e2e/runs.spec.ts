@@ -154,7 +154,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
         (a) => a.run_id === row.id,
       );
       expect(approval).toBeDefined();
-      const expectedFormHash = createHash('sha256').update(`fake-form-${row.id}`).digest('hex');
+      const expectedFormHash = createHash('sha256').update(`fake-form-${row.id}-0`).digest('hex');
       expect(approval!.form_hash).toBe(expectedFormHash);
       expect(approval!.form_hash).not.toBe(`fake-${row.id}`);
     }
@@ -264,7 +264,7 @@ test('apply queue limits concurrency, pauses, cancels, validates results, and re
     const retryApproval = ((await inspect(app)).approvals as Array<{ run_id: string; form_hash: string }>).find(
       (a) => a.run_id === retry.id,
     );
-    expect(retryApproval?.form_hash).toBe(createHash('sha256').update(`fake-form-${retry.id}`).digest('hex'));
+    expect(retryApproval?.form_hash).toBe(createHash('sha256').update(`fake-form-${retry.id}-0`).digest('hex'));
     expect(retryApproval).toMatchObject({ status: 'pending' });
     expect((await inspect(app)).tabs).toContain(retry.id);
 

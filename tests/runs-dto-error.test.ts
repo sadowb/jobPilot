@@ -94,7 +94,7 @@ describe('Issue #197: RunsService carries stored error on failed transitions', (
     mcpServerConfig: async () => ({ type: 'http', url: 'http://127.0.0.1:1/mcp' }),
     openTab: async (runId) => ({ tabId: `tab-${runId}` }),
     closeTab: async () => undefined,
-    formHash: async () => 'hash',
+    formSnapshot: async () => ({ hash: 'hash', fields: [{ label: 'Full name', value: 'Sara Benali' }] }),
   };
 
   const form = (url: string): PostingFormDto => ({
