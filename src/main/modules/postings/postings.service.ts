@@ -1,6 +1,9 @@
-import { PostingFormSchema, type FillPlanDto, type IngestResult } from '../../../shared/dto';
+import { PostingFormSchema, type FillPlanDto, type IngestResult, type ProfileData } from '../../../shared/dto';
 import { BoardUrlError, fetchPosting, NotAJobPageError, type CustomPageReader } from './ats';
 import { ApplicationsService } from '../applications/applications.service';
+import { fetchFormSchema } from './ats/schema';
+import { canonicalKey } from './canonical';
+import { buildFillPlan, postingCountry } from './fill-plan';
 import { toPostingForm, type PostingReader } from './posting-reader.service';
 import { PostingsRepository, type PostingsDb } from './postings.repository';
 
@@ -94,6 +97,56 @@ export class PostingService {
 
   resolveFillPlan(applicationId: string): FillPlanDto {
     return this.repository.resolveFillPlan(applicationId);
+  }
+
+  /**
+   * The plan for a run, from the ATS's own form definition fetched before any browser opens. Without an adapter, or when
+   * the definition cannot be fetched (404, timeout, invalid), the page-reading plan is returned and the agent reads the page.
+   */
+  async planFill(
+    applicationId: string,
+    input: { profile: ProfileData; cv: { fileName: string; text: string | null } | null },
+    signal?: AbortSignal,
+  ): Promise<FillPlanDto> {
+    const inputs = this.repository.planInputs(applicationId);
+    try {
+      const schema = await fetchFormSchema(inputs.canonicalUrl, signal);
+      if (schema)
+        return buildFillPlan(applicationId, schema, {
+          ...input,
+          library: inputs.library,
+          owner: inputs.owner,
+          postingCountry: postingCountry(inputs.location),
+        });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      this.logger.warn(
+        { host: new URL(inputs.canonicalUrl).hostname, error_type: error instanceof Error ? error.name : 'unknown' },
+        'Form definition unavailable; the agent reads the page',
+      );
+    }
+    return this.resolveFillPlan(applicationId);
+  }
+
+  /** Answers the owner gave to stable, repeated questions (notice period, LinkedIn...) are kept for every later job. */
+  rememberAnswers(answers: Array<{ questionText: string; answer: string }>): void {
+    const keep = new Set([
+      'notice_period',
+      'linkedin_url',
+      'website_url',
+      'salary_expectation',
+      'relocation',
+      'referral_source',
+      'eeo_gender',
+      'eeo_race_ethnicity',
+      'eeo_veteran_status',
+      'eeo_disability_status',
+    ]);
+    const rows = answers.flatMap(({ questionText, answer }) => {
+      const key = canonicalKey(questionText);
+      return key && keep.has(key) ? [{ canonicalKey: key, questionText, answer }] : [];
+    });
+    if (rows.length) this.repository.remember(rows);
   }
 
   confirm(postingId: string) {
