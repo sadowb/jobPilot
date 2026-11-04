@@ -32,6 +32,18 @@ describe('Remove all data (ADR 0016 rule 3)', () => {
     expect(order).toEqual(['log', 'stop', 'db', 'logs', 'rm', 'keychain', 'exit:0']);
   });
 
+  it('runs deleteTranscripts hook before close db if provided', async () => {
+    const order: string[] = [];
+    await removeAllData(
+      steps(order, {
+        deleteTranscripts: () => {
+          order.push('transcripts');
+        },
+      }),
+    );
+    expect(order).toEqual(['log', 'stop', 'transcripts', 'db', 'logs', 'rm', 'keychain', 'exit:0']);
+  });
+
   it('keeps the Keychain item and exits non-zero when deletion fails', async () => {
     const order: string[] = [];
     const write = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
