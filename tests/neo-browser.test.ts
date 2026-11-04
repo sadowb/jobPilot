@@ -12,7 +12,7 @@ import {
   SUBMIT_ACTION,
   parseNeoConfig,
 } from '../src/main/platform/browsers/neo';
-import { tabsReply } from '../src/main/platform/browsers/neo';
+import { attachedFiles, snapshotForm, tabsReply } from '../src/main/platform/browsers/neo';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
 
@@ -571,5 +571,30 @@ describe('Neo upload_cv attaches only the stored CV (live test of #111)', () => 
     const sent = calls.filter(({ name }) => name === 'upload');
     expect(sent).toHaveLength(1);
     expect(sent[0]!.arguments).toEqual({ ref: 'e6', file: '/data/run-1/Sara_Benali_CV.pdf', page: 7 });
+  });
+});
+
+describe('read-back of a real Greenhouse snapshot (live test of #111)', () => {
+  const text = [
+    '    - textbox "First Name" [required] [ref=e3]: "Sara"',
+    '    - group "Resume/CV*"',
+    '      - button "Remove file" [ref=e43]',
+    '    - group "Cover Letter"',
+    '      - button "Attach" [ref=e13]',
+    '    - textbox "LinkedIn Profile" [ref=e38]',
+  ].join('\n');
+  it("shows an attached file as a field and prints values without Neo's quotes", () => {
+    expect(attachedFiles(text)).toEqual([
+      { field: 'group:Resume/CV', value: 'File attached', kind: 'file', state: '' },
+    ]);
+    const form = snapshotForm({ content: [{ type: 'text', text }] });
+    expect(form.fields).toContainEqual({ label: 'First Name', value: 'Sara' });
+    expect(form.fields).toContainEqual({ label: 'Resume/CV', value: 'File attached' });
+  });
+  it('changes the hash when the file is removed', () => {
+    const without = text.replace('      - button "Remove file" [ref=e43]\n', '      - button "Attach" [ref=e43]\n');
+    expect(snapshotForm({ content: [{ type: 'text', text }] }).hash).not.toBe(
+      snapshotForm({ content: [{ type: 'text', text: without }] }).hash,
+    );
   });
 });

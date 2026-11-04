@@ -71,6 +71,26 @@ const INPUT_ROLES = new Set([
 ]);
 const STATE_FLAGS = new Set(['checked', 'selected', 'disabled', 'required', 'pressed', 'expanded']);
 
+/**
+ * Neo's snapshot shows an attached file only as a "Remove file" button inside the field's group, with no file name.
+ * Surface it as a field so the owner sees the attachment and removing it later changes the form hash.
+ */
+export function attachedFiles(text: string): FormField[] {
+  const lines = text.split(/\r?\n/);
+  const found: FormField[] = [];
+  lines.forEach((line, i) => {
+    const group = /^(\s*)-?\s*group\s+"([^"]+)"/.exec(line);
+    if (!group) return;
+    for (let j = i + 1; j < lines.length && /^\s*/.exec(lines[j]!)![0].length > group[1]!.length; j++) {
+      if (/button\s+"(?:remove|delete) (?:file|attachment|resume|cv)/i.test(lines[j]!)) {
+        found.push({ field: `group:${group[2]!.replace(/\*$/, '')}`, value: 'File attached', kind: 'file', state: '' });
+        break;
+      }
+    }
+  });
+  return found;
+}
+
 export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn'>): FormField[] {
   const fields: FormField[] = [];
 
@@ -116,6 +136,7 @@ export function extractFormFields(snapshot: unknown, logger?: Pick<Logger, 'warn
    * Only input roles count; a line that is not one is page chrome.
    */
   function parseText(text: string) {
+    fields.push(...attachedFiles(text));
     for (const rawLine of text.split(/\r?\n/)) {
       const head = rawLine.match(/^\s*(?:-\s*)?(?:\[ref=(e\d+)\]\s*)?([A-Za-z]+)(?:\s+"((?:[^"\\]|\\.)*)")?/);
       if (!head || !INPUT_ROLES.has(head[2]!.toLowerCase())) continue;
@@ -221,9 +242,15 @@ export const FINAL_ACTION = new RegExp(`${NEVER_ACTION.source}|${SUBMIT_ACTION.s
 export function snapshotForm(raw: unknown, logger?: Pick<Logger, 'warn'>): FormSnapshot {
   return {
     hash: computeFormHash(raw, logger),
-    fields: extractFormFields(raw, logger).map(({ field, value }) => {
+    fields: extractFormFields(raw, logger).map(({ field, kind, value }) => {
       const label = field.replace(/^e\d+:/, '');
-      return { label: /^e\d+$/.test(label) ? `Field ${label}` : label, value };
+      // Neo prints text values in quotes; the owner reads the value, not the syntax. A dropdown's choice is not
+      // exposed in the snapshot, so an empty one is "not readable", never "empty".
+      const shown = value.replace(/^"(.*)"$/s, '$1');
+      return {
+        label: /^e\d+$/.test(label) ? `Field ${label}` : label.replace(/^group:/, ''),
+        value: shown === '' && /^(combobox|select|listbox)$/.test(kind) ? 'Choice not shown by the page' : shown,
+      };
     }),
   };
 }

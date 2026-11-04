@@ -99,7 +99,7 @@ export function ReviewSidePanel({ item, flow }: { item: ApprovalItem; flow: Appr
                 {cv.fileName} · {bytes(cv.sizeBytes)}
               </div>
               <div className="mt-1 text-[12.5px] text-muted">
-                Your stored CV. The agent attaches this file to the form; the file name should show under Fields.
+                Your stored CV, attached by the agent. Fields shows whether the form holds a file.
               </div>
             </>
           ) : (

@@ -755,7 +755,11 @@ export class RunsService {
           ...(result.status === 'submitted' ? { error: 'Submission is not authorized' } : {}),
         });
         if (next === 'awaiting_approval' && summary) {
-          const approvalRow = this.repository.requestApproval(runId, application.cvVersionId, summary);
+          const approvalRow = this.repository.requestApproval(
+            runId,
+            application.cvVersionId ?? cv?.versionId ?? null,
+            summary,
+          );
           AuditService.record({
             applicationId: application.id,
             runId,

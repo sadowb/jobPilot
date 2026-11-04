@@ -6,6 +6,7 @@ import { DocumentsRepository } from './documents.repository';
 
 /** A CV file ready to hand to the browser: a private copy under its real, readable name. */
 export interface RunCv {
+  versionId: string;
   fileName: string;
   text: string | null;
   /** Absolute path of the copy made for this run. Only this path can ever be uploaded. */
@@ -51,6 +52,6 @@ export class CvDocumentsService {
     mkdirSync(into, { recursive: true, mode: 0o700 });
     const path = join(into, safeName(row.fileName));
     copyFileSync(join(this.userData, 'documents', row.storagePath), path);
-    return { fileName: row.fileName, text: row.parsedText, path };
+    return { versionId: row.id, fileName: row.fileName, text: row.parsedText, path };
   }
 }
