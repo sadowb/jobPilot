@@ -12,3 +12,9 @@ Read the [root AGENTS.md](../../../../AGENTS.md) first (layering, logging, schem
 - `isJobPosting: false` throws `NotAJobPageError` with the agent's reason. A failed read or no configured agent returns `null`, so the apply-form heuristic decides and the result carries an owner-facing `note` (`ok` result) or a suffix on the message.
 - The page is untrusted: never put page text in the reader prompt, never widen `READER_TOOLS`, never add a free-form field to `AgentPostingSchema`. Everything the agent returns goes through the ATS normalisers (`str`, `question`, `salaryRange`, `toCountryCode`).
 - `ingest(url, signal)` is cancelled through `postings:cancel-ingest`; `postings:read-state` tells the add-jobs row the agent is reading.
+
+## Schema-first fill plan (#237)
+
+- `ats/schema.ts`: one `AtsSchemaAdapter` per ATS that publishes its form definition (Greenhouse `?questions=true` first; Lever and Ashby add an adapter, nothing else changes). The response is zod-bounded, stripped of control/format characters and capped (`MAX_SCHEMA_FIELDS`, option and label lengths) because it is remote text that ends up in the agent prompt. Fetch is bounded by `SCHEMA_DEADLINE_MS` and the run's signal.
+- `fill-plan.ts` (pure): resolves each real field name from the owner's answers, the confirmed profile (wins over the CV), the answer library, then the CV; maps free values onto the form's option labels (`mapNumberToOption`, `matchOption`). Each entry is `fill | select | upload_cv | draft | skip | ask`; nothing is dropped silently.
+- `PostingService.planFill` returns the page-reading plan (`origin: 'page'`) when the ATS has no adapter or the definition cannot be fetched. `RunsService.execute` turns `ask` entries into Inbox questions (file asks into blockers) before any tab opens; answers to stable questions (`rememberAnswers`) land in `answer_library`.
