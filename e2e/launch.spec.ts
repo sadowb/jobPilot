@@ -320,7 +320,7 @@ test('launches JobPilot and verifies encrypted storage, migrations, backups, and
         });
       const errorEntry = logText
         .split('\n')
-        .filter(Boolean)
+        .filter((line) => line.startsWith('{')) // sealed transcript records (v1.…) are not JSON
         .map((line) => JSON.parse(line))
         .find((entry) => entry.msg === 'Error redaction fixture');
       return {
