@@ -67,7 +67,7 @@ import {
   openDatabase,
   startDailyBackups,
 } from '../platform/db/database';
-import { originCheck, registerIpc } from '../platform/ipc/registry';
+import { originCheck, registerIpc, stopAcceptingIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
 import { installAppMenu } from './menu';
@@ -253,7 +253,10 @@ if (logsError) {
           log: () => logger.warn('Remove all JobPilot data requested'),
           stopOwnedWork,
           deleteTranscripts: () => RunTraceService.clear(),
-          closeDatabase,
+          closeDatabase: () => {
+            stopAcceptingIpc();
+            closeDatabase();
+          },
           closeLogs,
           deleteUserData: () =>
             rm(app.getPath('userData'), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
@@ -265,6 +268,7 @@ if (logsError) {
         });
       app.on('before-quit', (event) => {
         event.preventDefault();
+        stopAcceptingIpc();
         // app.exit() emits no further quit events, so the quit is never re-entered.
         if (!stopping)
           void stopOwnedWork()
