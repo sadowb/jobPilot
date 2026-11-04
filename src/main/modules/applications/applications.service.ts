@@ -32,6 +32,20 @@ export class ApplicationsService {
     return item;
   }
 
+  /** Owner removed a job from Up next; the posting can be added again afterwards. */
+  remove(id: string): void {
+    if (this.repository.remove(id)) {
+      AuditService.record({ applicationId: id, type: 'removed', actor: 'owner' });
+      emitDataChanged({ entity: 'application', id });
+    }
+  }
+
+  restore(id: string) {
+    const item = this.repository.restore(id);
+    emitDataChanged({ entity: 'application', id });
+    return item;
+  }
+
   /** Owner-recorded outcome. Idempotent: setting the current status writes no event. */
   setStatus(id: string, status: OwnerStatus) {
     const { item, changed } = this.repository.setStatus(id, status, (from) =>

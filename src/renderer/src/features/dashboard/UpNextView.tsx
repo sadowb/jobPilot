@@ -12,6 +12,8 @@ import { BulkBar } from './upnext/BulkBar';
 import {
   useCancelRun,
   useConfirmPosting,
+  useRemoveApplication,
+  useRestoreApplication,
   useRuns,
   useRunsState,
   useSetRunsPaused,
@@ -22,6 +24,7 @@ import { CREW_DEFAULT, type RunSummaryDto } from '../../../../shared/dto';
 import { useRunPreflight } from './upnext/preflight';
 import {
   formatCrewTime,
+  isEditable,
   minutesLeft,
   queueFilterCounts,
   queuePosition,
@@ -181,7 +184,25 @@ export function UpNextView({
     [cancelRun],
   );
 
-  const remove = useCallback((ids: string[]) => dispatch({ type: 'remove', ids, now: Date.now() }), [dispatch]);
+  // Main owns the removal (soft delete), so a removed posting can be added again; the board only mirrors what main accepted.
+  const removeApplication = useRemoveApplication();
+  const restoreApplication = useRestoreApplication();
+  const remove = useCallback(
+    async (ids: string[]) => {
+      const targets = state.items.filter((i) => ids.includes(i.id) && isEditable(i)).map((i) => i.id);
+      const results = await Promise.allSettled(targets.map((id) => removeApplication.mutateAsync(id)));
+      const removed = targets.filter((_, index) => results[index]!.status === 'fulfilled');
+      if (removed.length) dispatch({ type: 'remove', ids: removed, now: Date.now() });
+      const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (failed) setRunError(runErrorMessage(failed.reason, 'Could not remove the job.'));
+    },
+    [state.items, dispatch, removeApplication],
+  );
+  const undoRemove = useCallback(() => {
+    const entries = state.removed?.entries ?? [];
+    dispatch({ type: 'undoRemove' });
+    for (const { item } of entries) restoreApplication.mutate(item.id);
+  }, [state.removed, dispatch, restoreApplication]);
   const hold = useCallback((ids: string[]) => dispatch({ type: 'hold', ids, at: clockTime() }), [dispatch]);
 
   useEffect(() => {
@@ -195,15 +216,15 @@ export function UpNextView({
       if (res.effect === 'focusSearch') searchRef.current?.focus();
       else if (res.effect === 'blurSearch') searchRef.current?.blur();
       const targets = actionTargets(state);
-      if (res.remove) remove(targets);
+      if (res.remove) void remove(targets);
       if (res.hold) hold(targets);
       if (res.moveToTop) dispatch({ type: 'moveToTop', ids: targets });
-      if (res.undo) dispatch({ type: 'undoRemove' });
+      if (res.undo) undoRemove();
       if (res.togglePause) togglePause();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [state, dispatch, remove, hold, modalOpen, togglePause]);
+  }, [state, dispatch, remove, undoRemove, hold, modalOpen, togglePause]);
 
   const { data: settings } = useSettings();
   const confirmPosting = useConfirmPosting();
@@ -401,7 +422,7 @@ export function UpNextView({
           <Pagination paging={paging} />
         </div>
       </main>
-      {state.removed && <UndoToast batch={state.removed} now={now} onUndo={() => dispatch({ type: 'undoRemove' })} />}
+      {state.removed && <UndoToast batch={state.removed} now={now} onUndo={undoRemove} />}
       {failedToast && (
         <div
           role="alert"

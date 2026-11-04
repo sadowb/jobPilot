@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Channels } from '../../../shared/ipc';
-import { CreateApplicationSchema, SetApplicationStatusSchema } from '../../../shared/dto';
+import { ApplicationIdSchema, CreateApplicationSchema, SetApplicationStatusSchema } from '../../../shared/dto';
 import { db } from '../../platform/db/database';
 import { defineHandler } from '../../platform/ipc/registry';
 import { ApplicationsService } from './applications.service';
@@ -13,4 +13,6 @@ export const applicationsHandlers = [
   defineHandler(Channels.setApplicationStatus, SetApplicationStatusSchema, ({ id, status }) =>
     new ApplicationsService(db).setStatus(id, status),
   ),
+  defineHandler(Channels.removeApplication, ApplicationIdSchema, ({ id }) => new ApplicationsService(db).remove(id)),
+  defineHandler(Channels.restoreApplication, ApplicationIdSchema, ({ id }) => new ApplicationsService(db).restore(id)),
 ];

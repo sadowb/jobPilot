@@ -24,6 +24,14 @@
     "schema": "z.void()"
   },
   {
+    "channel": "applications:remove",
+    "schema": "ApplicationIdSchema"
+  },
+  {
+    "channel": "applications:restore",
+    "schema": "ApplicationIdSchema"
+  },
+  {
     "channel": "applications:set-status",
     "schema": "SetApplicationStatusSchema"
   },

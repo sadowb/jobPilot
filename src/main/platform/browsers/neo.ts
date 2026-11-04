@@ -537,12 +537,51 @@ export class NeoBrowserProvider implements BrowserProvider {
     return this.serial(async () => {
       const existing = this.tabs.get(runId);
       if (existing) return { tabId: existing.tabId };
-      const result = await this.tabsTool({ action: 'new', url: canonicalUrl });
-      const { page } = z.object({ page: PageId }).parse(result);
+      const before = await this.pageIds();
+      let page: number;
+      try {
+        page = z.object({ page: PageId }).parse(await this.tabsTool({ action: 'new', url: canonicalUrl })).page;
+      } catch (error) {
+        // Neo may have opened the tab even though its reply was unreadable; nothing else knows its id, so close it here.
+        await this.closeStrayTabs(runId, host, before);
+        throw error;
+      }
       const tab = { tabId: String(page), hosts: new Set([host]) };
       this.tabs.set(runId, tab);
       return { tabId: tab.tabId };
     });
+  }
+
+  /** Open page ids, or undefined when the list is unreadable (then no stray tab can be told apart from the owner's). */
+  private async pageIds(): Promise<Set<number> | undefined> {
+    try {
+      const { pages } = z
+        .object({ pages: z.array(z.object({ page: PageId })) })
+        .parse(await this.tabsTool({ action: 'list' }));
+      return new Set(pages.map(({ page }) => page));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Closes only pages that appeared since `before` on the posting's host: never a tab the owner already had open. */
+  private async closeStrayTabs(runId: string, host: string, before: Set<number> | undefined): Promise<void> {
+    if (!before) return;
+    try {
+      const { pages } = z
+        .object({ pages: z.array(z.object({ page: PageId, url: z.string().optional() })) })
+        .parse(await this.tabsTool({ action: 'list' }));
+      for (const { page, url } of pages) {
+        if (before.has(page) || !url || !/^https?:/.test(url) || new URL(url).host !== host) continue;
+        await this.tabsTool({ action: 'close', page });
+        this.logger.warn({ run_id: runId }, 'Closed a Neo tab whose id was unreadable');
+      }
+    } catch (error) {
+      this.logger.warn(
+        { run_id: runId, error_class: error instanceof Error ? error.constructor.name : 'Unknown' },
+        'Could not close a stray Neo tab',
+      );
+    }
   }
 
   async closeTab(runId: string): Promise<void> {

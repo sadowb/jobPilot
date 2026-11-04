@@ -231,6 +231,12 @@ const bridge: JobPilotBridge = {
     async setStatus(input) {
       return ApplicationListItemSchema.parse(await invoke(Channels.setApplicationStatus, input));
     },
+    async remove(id) {
+      await invoke(Channels.removeApplication, { id });
+    },
+    async restore(id) {
+      return ApplicationListItemSchema.parse(await invoke(Channels.restoreApplication, { id }));
+    },
   },
   platform: process.platform,
   profile: {

@@ -660,3 +660,51 @@ describe('Neo owner take-over holds the agent (#243)', () => {
     expect(await provider.tabLocation('other-run')).toBeNull();
   });
 });
+
+describe('Neo openTab leaves no stray tab behind (#236)', () => {
+  const textReply = (text: string) => ({ content: [{ type: 'text', text }] });
+
+  function setup(newReply: string) {
+    const closedPages: unknown[] = [];
+    const provider = new NeoBrowserProvider({ debug() {}, warn() {} } as unknown as Logger, 'http://127.0.0.1:59999');
+    let opened = false;
+    (provider as unknown as { mcp: { call: (m: string, p: never) => Promise<unknown> } }).mcp = {
+      call: async (_method, params: { name: string; arguments: Record<string, unknown> }) => {
+        const { action } = params.arguments;
+        if (action === 'new') {
+          opened = true;
+          return textReply(newReply);
+        }
+        if (action === 'close') closedPages.push(params.arguments.page);
+        if (action === 'list')
+          return textReply(
+            [
+              '[1] https://example.com/owner-tab (Owner)',
+              '[2] https://jobs.example.com/other (Other host)',
+              ...(opened ? ['[9] https://jobs.example.com/role/1 (Role)'] : []),
+            ].join('\n'),
+          );
+        return textReply('ok');
+      },
+    };
+    return { provider, closedPages };
+  }
+
+  it('closes the tab Neo opened when its reply carries no readable page id', async () => {
+    const { provider, closedPages } = setup('Opened a tab');
+    await expect(provider.openTab('run-1', 'https://jobs.example.com/role/1')).rejects.toThrow();
+    expect(closedPages).toEqual([9]);
+  });
+
+  it('never closes a tab that was already open, even on the same host', async () => {
+    const { provider, closedPages } = setup('Opened a tab');
+    await expect(provider.openTab('run-1', 'https://example.com/owner-tab')).rejects.toThrow();
+    expect(closedPages).toEqual([]);
+  });
+
+  it('keeps the tab when the reply is readable', async () => {
+    const { provider, closedPages } = setup('opened page 9');
+    await expect(provider.openTab('run-1', 'https://jobs.example.com/role/1')).resolves.toEqual({ tabId: '9' });
+    expect(closedPages).toEqual([]);
+  });
+});
