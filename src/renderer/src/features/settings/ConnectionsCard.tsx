@@ -8,9 +8,11 @@ import {
   useGrants,
   usePreflight,
   useRevokeGrant,
+  useRuns,
 } from '../../lib/api';
 import { ConsentSheet } from '../onboarding/ConsentSheet';
 import { S } from '../shared-ui';
+import { hasLiveRun } from './liveRun';
 
 type Target = { agent: AgentTool } | { browser: BrowserTool };
 
@@ -21,6 +23,8 @@ export function ConnectionsCard() {
   const browsers = useBrowserTools();
   const allow = useAllowConnections();
   const revoke = useRevokeGrant();
+  const runs = useRuns();
+  const [confirming, setConfirming] = useState<string | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
   const [error, setError] = useState('');
   if (!hasBridge()) return null;
@@ -49,6 +53,28 @@ export function ConnectionsCard() {
   // Custom agents and tools that are off or gone still show their grant so it can be revoked.
   const known = new Set(rows.map((r) => `${r.kind}:${r.id}`));
   const orphans = active.filter((g) => !known.has(`${g.kind}:${g.provider}`));
+
+  const turnOff = (grantId: string) => {
+    if (hasLiveRun(runs.data) && confirming !== grantId) return setConfirming(grantId);
+    setConfirming(null);
+    revoke.mutate(grantId);
+  };
+  const offButton = (grantId: string) =>
+    confirming === grantId ? (
+      <span className="flex items-center gap-1.5">
+        <span className={S}>A job is in progress. Turn off anyway?</span>
+        <Button size="sm" variant="danger" disabled={revoke.isPending} onClick={() => turnOff(grantId)}>
+          Turn off
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
+          Keep on
+        </Button>
+      </span>
+    ) : (
+      <Button size="sm" variant="ghost" disabled={revoke.isPending} onClick={() => turnOff(grantId)}>
+        Turn off
+      </Button>
+    );
 
   const submit = async () => {
     if (!target) return;
@@ -81,9 +107,7 @@ export function ConnectionsCard() {
                 <Status kind={grant ? 'done' : 'idle'}>{grant ? 'Allowed' : 'Off'}</Status>
               </span>
               {grant ? (
-                <Button size="sm" variant="ghost" disabled={revoke.isPending} onClick={() => revoke.mutate(grant.id)}>
-                  Turn off
-                </Button>
+                offButton(grant.id)
               ) : (
                 <Button
                   size="sm"
@@ -105,9 +129,7 @@ export function ConnectionsCard() {
               <span className="truncate">{grant.executablePath ?? grant.provider}</span>
               <Status kind="done">Allowed</Status>
             </span>
-            <Button size="sm" variant="ghost" onClick={() => revoke.mutate(grant.id)}>
-              Turn off
-            </Button>
+            {offButton(grant.id)}
           </li>
         ))}
         {rows.length === 0 && orphans.length === 0 && <li className={S}>No AI or browser tool found yet.</li>}
