@@ -144,7 +144,10 @@ export class ChatTurns {
     this.active.delete(chatKey);
     this.emit({ type: 'done', chatKey, replyId, message, outcome, ttftMs });
     if (ttftMs !== null)
-      loggerFor('inbox').debug({ chat: chatKey === 'cap' ? 'cap' : 'job', ttft_ms: ttftMs }, 'Chat first token');
+      loggerFor('inbox').debug(
+        { chat: chatKey === 'cap' ? 'cap' : 'job', first_chunk_ms: ttftMs },
+        'Chat first reply chunk',
+      );
     if (message && outcome === 'ok' && spec.after) {
       try {
         const actions = await spec.after(message);
