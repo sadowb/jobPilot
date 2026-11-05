@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../../../../shared/dto';
 import { runErrorMessage } from '../dashboard/upnext/rowActions';
-import type { LiveChat } from '../../lib/chat-live';
+import type { LiveView } from '../../lib/chat-live';
 import type { ThreadMessage } from './threadMessage';
 
 /**
@@ -9,8 +9,9 @@ import type { ThreadMessage } from './threadMessage';
  */
 export function chatThread(
   saved: readonly ChatMessage[] | undefined,
-  live: LiveChat,
+  live: LiveView,
   retry: (localId: string) => void,
+  chatKey: string,
 ): ThreadMessage[] {
   return [
     ...(saved ?? []).map((m): ThreadMessage => ({ kind: 'bubble', text: m.body, mine: m.role === 'owner' })),
@@ -23,11 +24,11 @@ export function chatThread(
         ? { error: runErrorMessage(new Error(p.error), 'Could not send that.'), onRetry: () => retry(p.localId) }
         : {}),
     })),
-    ...(live.reply === null
+    ...(live.phase === 'none'
       ? []
-      : live.reply.text === ''
+      : live.phase === 'typing'
         ? [{ kind: 'typing' } as const]
-        : [{ kind: 'bubble', text: live.reply.text, streaming: true } as const]),
+        : [{ kind: 'bubble', text: '', streaming: true, liveKey: chatKey } as const]),
     ...live.actions.map((a): ThreadMessage => ({ kind: 'note', text: a.label })),
   ];
 }

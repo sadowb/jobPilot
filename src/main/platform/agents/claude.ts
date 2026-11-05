@@ -114,6 +114,8 @@ function buildQueryOptions(input: {
     // shortcut: login-mode runs cannot resume and restart a fresh session, upgrade when the SDK takes a transcript dir.
     persistSession: apiKey !== '' && !spec.streamText,
     includePartialMessages: spec.streamText === true,
+    // A conversational reply starts writing at once instead of reasoning first.
+    ...(spec.streamText ? { thinking: { type: 'disabled' as const } } : {}),
     ...(spec.resume && apiKey ? { resume: spec.sessionId } : { sessionId: spec.sessionId }),
     mcpServers: spec.mcpServers,
     strictMcpConfig: true,

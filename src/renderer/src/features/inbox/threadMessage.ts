@@ -14,6 +14,8 @@ export type ThreadMessage =
       error?: string;
       /** The reply is still being written. */
       streaming?: boolean;
+      /** With `streaming`: the chat whose live reply text this bubble shows (it reads it itself, so the thread does not re-render per token). */
+      liveKey?: string;
     }
   /** The agent has received the message and has not written anything yet. */
   | { kind: 'typing' }

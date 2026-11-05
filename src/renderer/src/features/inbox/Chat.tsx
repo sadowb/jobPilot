@@ -14,8 +14,8 @@ export function useChatView(applicationId: string | null, before: ThreadMessage[
   const thread = useChatThread(applicationId);
   return {
     thread,
-    messages: [...before, ...chatThread(thread.saved, thread.live, thread.retry)],
-    busy: thread.live.reply !== null,
+    messages: [...before, ...chatThread(thread.saved, thread.live, thread.retry, applicationId ?? 'cap')],
+    busy: thread.live.phase !== 'none',
   };
 }
 
@@ -38,7 +38,7 @@ export function ChatComposer({
     <Composer
       key={applicationId ?? 'cap'}
       placeholder={placeholder}
-      replying={thread.live.reply !== null}
+      replying={thread.live.phase !== 'none'}
       chips={chips}
       onSend={(text) => void thread.send(text)}
       onStop={thread.cancel}

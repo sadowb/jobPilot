@@ -1,23 +1,56 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatEvent, ChatMessage } from '../src/shared/dto';
-import { EMPTY_LIVE, reduceLive, type LiveAction, type LiveChat } from '../src/renderer/src/lib/chat-live';
+import {
+  EMPTY_LIVE,
+  getLiveView,
+  dispatchLive,
+  liveChat,
+  reduceLive,
+  resetLiveChats,
+  type LiveAction,
+  type LiveChat,
+  type LiveView,
+} from '../src/renderer/src/lib/chat-live';
 import { chatThread } from '../src/renderer/src/features/inbox/chatThread';
 
 const R1 = '01J0000000000000000000000A';
 const R2 = '01J0000000000000000000000B';
 const KEY = '01J000000000000000000000AP';
+const viewOf = (live: LiveChat): LiveView => ({
+  pending: live.pending,
+  phase: live.reply === null ? 'none' : live.reply.text === '' ? 'typing' : 'streaming',
+  actions: live.actions,
+});
+const thread = (saved: ChatMessage[], live: LiveChat, retry = vi.fn()) => chatThread(saved, viewOf(live), retry, KEY);
 const run = (...actions: LiveAction[]): LiveChat => actions.reduce(reduceLive, EMPTY_LIVE);
 const event = (
   e: Omit<Extract<ChatEvent, { type: 'delta' }>, 'chatKey'> | { type: 'thinking' | 'done'; replyId: string },
 ) => ({ type: 'event', event: { chatKey: KEY, ...e } }) as LiveAction;
 const delta = (replyId: string, text: string) => event({ type: 'delta', replyId, text });
 
+describe('live chat store (#255)', () => {
+  it('keeps the thread view identical while tokens arrive, so the thread does not re-render per token', () => {
+    resetLiveChats();
+    dispatchLive(KEY, { type: 'sending', localId: 'a', text: 'hi' });
+    dispatchLive(KEY, event({ type: 'thinking', replyId: R1 }));
+    dispatchLive(KEY, delta(R1, 'Hel'));
+    const view = getLiveView(KEY);
+    expect(view.phase).toBe('streaming');
+    dispatchLive(KEY, delta(R1, 'lo'));
+    dispatchLive(KEY, delta(R1, ' there'));
+    expect(getLiveView(KEY)).toBe(view);
+    expect(liveChat(KEY).reply?.text).toBe('Hello there');
+    dispatchLive(KEY, event({ type: 'done', replyId: R1 }));
+    expect(getLiveView(KEY).phase).toBe('none');
+  });
+});
+
 describe('live chat state (#255)', () => {
   it('shows the owner message and the typing indicator the moment they send', () => {
     const live = run({ type: 'sending', localId: 'a', text: 'hello' });
     expect(live.pending).toEqual([{ localId: 'a', text: 'hello', status: 'sending' }]);
     expect(live.reply).toEqual({ replyId: null, text: '' });
-    expect(chatThread([], live, vi.fn()).map((m) => m.kind)).toEqual(['bubble', 'typing']);
+    expect(thread([], live).map((m) => m.kind)).toEqual(['bubble', 'typing']);
   });
 
   it('streams deltas into one growing reply and ends it on done', () => {
@@ -30,7 +63,7 @@ describe('live chat state (#255)', () => {
     );
     expect(live.pending).toEqual([]);
     expect(live.reply).toEqual({ replyId: R1, text: 'Hello' });
-    expect(chatThread([], live, vi.fn()).at(-1)).toMatchObject({ kind: 'bubble', text: 'Hello', streaming: true });
+    expect(thread([], live).at(-1)).toMatchObject({ kind: 'bubble', streaming: true, liveKey: KEY });
     expect(reduceLive(live, event({ type: 'done', replyId: R1 })).reply).toBeNull();
   });
 
@@ -61,7 +94,7 @@ describe('live chat state (#255)', () => {
     );
     expect(live.reply).toBeNull();
     const retry = vi.fn();
-    const [bubble] = chatThread([], live, retry);
+    const [bubble] = thread([], live, retry);
     expect(bubble).toMatchObject({ kind: 'bubble', mine: true, text: 'do not lose me', status: 'failed' });
     (bubble as { onRetry: () => void }).onRetry();
     expect(retry).toHaveBeenCalledWith('a');
@@ -79,6 +112,6 @@ describe('live chat state (#255)', () => {
         event: { type: 'actions', chatKey: KEY, replyId: R1, actions: [{ kind: 'relay', label: 'Passed to Acme' }] },
       },
     );
-    expect(chatThread(saved, live, vi.fn()).map((m) => m.kind)).toEqual(['bubble', 'bubble', 'typing', 'note']);
+    expect(thread(saved, live).map((m) => m.kind)).toEqual(['bubble', 'bubble', 'typing', 'note']);
   });
 });

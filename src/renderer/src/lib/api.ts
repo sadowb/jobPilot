@@ -12,7 +12,7 @@ import type {
   UpdateSettingsInput,
 } from '../../../shared/dto';
 import type { JobPilotBridge } from '../../../shared/ipc';
-import { dispatchLive, useLiveChat } from './chat-live';
+import { dispatchLive, useLiveView } from './chat-live';
 import { invalidateForChange, queryClient, queryKeys } from './query';
 
 /**
@@ -102,7 +102,7 @@ export const useChat = (applicationId: string | null) =>
 export function useChatThread(applicationId: string | null) {
   const key = applicationId ?? 'cap';
   const { data: saved } = useChat(applicationId);
-  const live = useLiveChat(key);
+  const live = useLiveView(key);
   const send = useCallback(
     async (text: string, localId: string = crypto.randomUUID()) => {
       dispatchLive(key, { type: 'sending', localId, text });
