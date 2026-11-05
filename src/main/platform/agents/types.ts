@@ -35,6 +35,8 @@ export const RunEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('tool_call'), callId: z.string(), name: z.string(), input: z.unknown() }),
   z.object({ type: z.literal('tool_result'), callId: z.string(), output: z.unknown(), isError: z.boolean() }),
   z.object({ type: z.literal('status'), text: z.string() }),
+  /** A piece of the reply text, only on a `streamText` run. */
+  z.object({ type: z.literal('delta'), text: z.string() }),
   z.object({
     type: z.literal('cost'),
     inputTokens: z.number().int().nonnegative(),
@@ -55,6 +57,11 @@ export interface RunSpec<S extends z.ZodType = typeof RunResultSchema> {
   /** Final structured output the agent must produce; runs use RunResultSchema, other callers (posting reader) bring their own. */
   outputSchema: S;
   model?: string;
+  /**
+   * A conversational turn: the reply is plain text (`outputSchema` is z.string()), streamed as `delta` events as the model
+   * writes it, instead of one structured result at the end.
+   */
+  streamText?: boolean;
   /** Only the env the agent needs; never the app's full environment. */
   env?: Record<string, string>;
   /** Agent-side session id owned by the run row; first turn creates it, a resumed turn continues it. */
@@ -76,5 +83,7 @@ export interface AgentRun<T = RunResult> {
 export interface AgentProvider {
   readonly id: AgentId;
   prepare?(): Promise<void>;
+  /** Best effort: get ready for a tool-less `streamText` run so its first token comes sooner. Never throws. */
+  warm?(): void;
   run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>>;
 }

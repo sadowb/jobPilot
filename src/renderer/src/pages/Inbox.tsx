@@ -4,7 +4,7 @@ import type { InboxEntry } from '../../../shared/dto';
 import { V17AgentBot } from '../components/V17AgentBot';
 import { CapOnDartArt } from '../components/CapOnDartArt';
 import { Button } from '../components/ui';
-import { ChatComposer, chatBubbles } from '../features/inbox/Chat';
+import { CAP_CHIPS, ChatComposer, JOB_CHIPS, useChatView } from '../features/inbox/Chat';
 import { ShortcutBar, ThreadHeader } from '../features/inbox/Frame';
 import { MessageStream, type ThreadMessage } from '../features/inbox/Messages';
 import { SHORTCUTS, entryKey, entryToItem, formatAge, type StepRow } from '../features/inbox/model';
@@ -14,7 +14,7 @@ import { ThreadList } from '../features/inbox/ThreadList';
 import { useApprovalFlow, type ApprovalMutations } from '../features/inbox/useApprovalFlow';
 import { ApprovalWidget, QuestionsWidget, type AnswerState } from '../features/inbox/Widgets';
 import { isTypingTarget } from '../features/inbox/dom';
-import { useAnswerRun, useApplications, useApprove, useChat, useInbox, useReject, useStartRun } from '../lib/api';
+import { useAnswerRun, useApplications, useApprove, useInbox, useReject, useStartRun } from '../lib/api';
 
 type Approval = Extract<InboxEntry, { kind: 'approval' }>;
 type NeedsYou = Extract<InboxEntry, { kind: 'needs_you' }>;
@@ -87,11 +87,10 @@ function Header({ item, sub }: { item: InboxEntry; sub: string }) {
 
 function ApprovalLayout({ item, mutations, now }: { item: Approval; mutations: ApprovalMutations; now: number }) {
   const flow = useApprovalFlow(item, mutations);
-  const { data: chat } = useChat(item.applicationId);
-  const messages = [
-    ...approvalThread(item, { kind: 'widget', node: <ApprovalWidget item={item} flow={flow} /> }),
-    ...chatBubbles(chat),
-  ];
+  const { thread, messages, busy } = useChatView(
+    item.applicationId,
+    approvalThread(item, { kind: 'widget', node: <ApprovalWidget item={item} flow={flow} /> }),
+  );
   return (
     <>
       <section className="flex min-h-0 min-w-0 flex-col bg-ground">
@@ -99,8 +98,13 @@ function ApprovalLayout({ item, mutations, now }: { item: Approval; mutations: A
           item={item}
           sub={`${item.siteHost} · ${item.state === 'submitting' ? 'submitting' : 'ready to review'} · ${formatAge(item.createdAt, now)}`}
         />
-        <MessageStream messages={messages} threadKey={item.approvalId} />
-        <ChatComposer applicationId={item.applicationId} placeholder="Message this agent" />
+        <MessageStream messages={messages} threadKey={item.approvalId} busy={busy} />
+        <ChatComposer
+          applicationId={item.applicationId}
+          placeholder="Message this agent"
+          thread={thread}
+          chips={JOB_CHIPS}
+        />
         <ShortcutBar shortcuts={SHORTCUTS.approval} />
       </section>
       <ReviewSidePanel item={item} flow={flow} />
@@ -119,20 +123,24 @@ function NeedsLayout({
   restart: { pending: boolean; error: unknown; run: () => void };
   now: number;
 }) {
-  const { data: chat } = useChat(item.applicationId);
-  const messages = [
-    ...needsYouThread(item, {
+  const { thread, messages, busy } = useChatView(
+    item.applicationId,
+    needsYouThread(item, {
       kind: 'widget',
       node: <QuestionsWidget item={item} answer={answer} restart={restart} />,
     }),
-    ...chatBubbles(chat),
-  ];
+  );
   return (
     <>
       <section className="flex min-h-0 min-w-0 flex-col bg-ground">
         <Header item={item} sub={`${item.siteHost} · waiting ${formatAge(item.createdAt, now)}`} />
-        <MessageStream messages={messages} threadKey={item.runId} />
-        <ChatComposer applicationId={item.applicationId} placeholder="Message this agent" />
+        <MessageStream messages={messages} threadKey={item.runId} busy={busy} />
+        <ChatComposer
+          applicationId={item.applicationId}
+          placeholder="Message this agent"
+          thread={thread}
+          chips={JOB_CHIPS}
+        />
         <ShortcutBar shortcuts={SHORTCUTS.needs_you} />
       </section>
       <NeedsYouSidePanel item={item} />
@@ -141,19 +149,17 @@ function NeedsLayout({
 }
 
 function CapLayout() {
-  const { data: chat } = useChat(null);
-  const messages: ThreadMessage[] = [
+  const { thread, messages, busy } = useChatView(null, [
     {
       kind: 'bubble',
       text: 'I’m Cap, your pilot. Ask what any agent is doing or why it chose an answer, or tell me something to pass on: I hand it to that job’s agent for its next fill. I can’t approve or send anything; that stays with you.',
     },
-    ...chatBubbles(chat),
-  ];
+  ]);
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-ground">
       <ThreadHeader lead={<CapOnDartArt size={36} />} title="Cap" sub="Your pilot · read-only" />
-      <MessageStream messages={messages} threadKey="cap" />
-      <ChatComposer applicationId={null} placeholder="Message Cap" />
+      <MessageStream messages={messages} threadKey="cap" busy={busy} />
+      <ChatComposer applicationId={null} placeholder="Message Cap" thread={thread} chips={CAP_CHIPS} />
       <ShortcutBar shortcuts={SHORTCUTS.pilot} />
     </section>
   );

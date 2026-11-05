@@ -18,6 +18,9 @@ export class FakeAgentProvider implements AgentProvider {
   }> = [];
   private readonly pending = new Map<string, (result: unknown) => void>();
 
+  /** The text a conversational (`streamText`) turn writes, word by word across `delayMs`; tests and E2E set it. */
+  streamReply?: (spec: RunSpec<z.ZodType>) => string;
+
   /** Default answer for a run whose schema is not RunResultSchema (the posting reader); tests and E2E set it. */
   reply?: (spec: RunSpec<z.ZodType>) => unknown;
 
@@ -48,7 +51,41 @@ export class FakeAgentProvider implements AgentProvider {
     return toolless && !spec.outputSchema.safeParse(scripted).success ? { ok: true } : scripted;
   }
 
+  /** A streamed chat turn: the reply arrives word by word over `delayMs`, and aborting stops it where it is. */
+  private stream<S extends z.ZodType>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
+    const text = this.streamReply?.(spec as RunSpec<z.ZodType>) ?? 'Noted.';
+    const words = text.split(/(?<= )/);
+    const step = words.length > 0 ? this.delayMs / words.length : 0;
+    const signal = AbortSignal.any([spec.signal, AbortSignal.timeout(spec.timeoutMs)]);
+    let rejectRun!: (error: Error) => void;
+    let resolveRun!: (value: z.infer<S>) => void;
+    const result = new Promise<z.infer<S>>((resolve, reject) => {
+      resolveRun = resolve;
+      rejectRun = reject;
+    });
+    result.catch(() => undefined);
+    const abort = () => {
+      this.aborted.add(spec.runId);
+      rejectRun(new Error('Fake run aborted'));
+    };
+    signal.addEventListener('abort', abort, { once: true });
+    async function* events() {
+      try {
+        for (const word of words) {
+          await new Promise((resolve) => setTimeout(resolve, step));
+          if (signal.aborted) return;
+          yield { type: 'delta' as const, text: word };
+        }
+        resolveRun(spec.outputSchema.parse(text) as z.infer<S>);
+      } finally {
+        signal.removeEventListener('abort', abort);
+      }
+    }
+    return { events: events(), result };
+  }
+
   run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
+    if (spec.streamText) return this.stream(spec);
     const host = /"url":"https?:\/\/([^/"]+)/.exec(spec.prompt)?.[1] ?? '';
     const attached = 'memory' in spec.mcpServers && this.memory !== undefined;
     // Tool-less calls (connection test, CV and Cap turns) are not runs; `history` is the run log specs assert on.

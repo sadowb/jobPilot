@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import type {
   AnswerRunInput,
   ChatMessage,
@@ -11,6 +12,7 @@ import type {
   UpdateSettingsInput,
 } from '../../../shared/dto';
 import type { JobPilotBridge } from '../../../shared/ipc';
+import { dispatchLive, useLiveView } from './chat-live';
 import { invalidateForChange, queryClient, queryKeys } from './query';
 
 /**
@@ -27,7 +29,16 @@ export const hostPlatform = (): string | undefined => window.jobpilot?.platform;
 
 /** Starts forwarding main's data-changed events to query invalidation. Returns the unsubscribe. */
 export function connectDataEvents(): () => void {
-  return window.jobpilot?.onDataChanged((change) => void invalidateForChange(change)) ?? (() => undefined);
+  const offData = window.jobpilot?.onDataChanged((change) => void invalidateForChange(change));
+  // Streamed chat replies: the saved reply joins the cached thread when it ends, the live state follows every event.
+  const offChat = window.jobpilot?.chat.onEvent((event) => {
+    if (event.type === 'done' && event.message) appendChat(event.chatKey, event.message);
+    dispatchLive(event.chatKey, { type: 'event', event });
+  });
+  return () => {
+    offData?.();
+    offChat?.();
+  };
 }
 
 /** Main owns the queue pause flag; this reads it and refetches when main emits a run change. */
@@ -67,24 +78,73 @@ export const useReject = () =>
 export const useAnswerRun = () =>
   useMutation({ mutationFn: (input: AnswerRunInput) => bridge().runs.answer(input), onSettled: invalidateRuns });
 
-const chatKey = (applicationId: string | null) => ['chat', applicationId ?? 'cap'] as const;
+const chatQueryKey = (key: string) => ['chat', key] as const;
+
+/** Puts messages main just saved into the cached thread (once each), then re-reads it so the cache stays authoritative. */
+const appendChat = (key: string, ...added: ChatMessage[]) => {
+  queryClient.setQueryData<ChatMessage[]>(chatQueryKey(key), (old) =>
+    old ? [...old, ...added.filter((a) => !old.some((m) => m.id === a.id))] : old,
+  );
+  void queryClient.invalidateQueries({ queryKey: chatQueryKey(key) });
+};
 
 /** The saved thread with one job's agent (`null`: Cap's pilot chat). */
 export const useChat = (applicationId: string | null) =>
   useQuery({
-    queryKey: chatKey(applicationId),
+    queryKey: chatQueryKey(applicationId ?? 'cap'),
     queryFn: () => (applicationId ? bridge().chat.jobMessages(applicationId) : bridge().chat.capMessages()),
   });
 
-export const useSendChat = (applicationId: string | null) =>
-  useMutation({
-    mutationFn: (text: string) =>
-      applicationId ? bridge().chat.sendToJob({ applicationId, text }) : bridge().chat.sendToCap({ text }),
-    onSuccess: (added) => {
-      queryClient.setQueryData<ChatMessage[]>(chatKey(applicationId), (old) => [...(old ?? []), ...added]);
-      void queryClient.invalidateQueries({ queryKey: chatKey(applicationId) });
+/**
+ * One chat as the owner experiences it: the saved thread plus what is in flight. `send` shows the owner's message at
+ * once and never drops its text (a failure keeps it with a retry); the reply streams in through main's chat events.
+ */
+export function useChatThread(applicationId: string | null) {
+  const key = applicationId ?? 'cap';
+  const { data: saved } = useChat(applicationId);
+  const live = useLiveView(key);
+  const send = useCallback(
+    async (text: string, localId: string = crypto.randomUUID()) => {
+      dispatchLive(key, { type: 'sending', localId, text });
+      try {
+        const result = applicationId
+          ? await bridge().chat.sendToJob({ applicationId, text })
+          : await bridge().chat.sendToCap({ text });
+        appendChat(key, result.owner);
+        dispatchLive(key, { type: 'saved', localId, replyId: result.replyId });
+      } catch (error) {
+        dispatchLive(key, {
+          type: 'send-failed',
+          localId,
+          error: error instanceof Error ? error.message : 'Could not send that.',
+        });
+      }
     },
-  });
+    [applicationId, key],
+  );
+  const retry = useCallback(
+    (localId: string) => {
+      const failed = live.pending.find((p) => p.localId === localId && p.status === 'failed');
+      if (failed) void send(failed.text, localId);
+    },
+    [live.pending, send],
+  );
+  const cancel = useCallback(
+    () =>
+      void bridge()
+        .chat.cancel(key)
+        .catch(() => undefined),
+    [key],
+  );
+  const warm = useCallback(
+    () =>
+      void bridge()
+        .chat.warm(key)
+        .catch(() => undefined),
+    [key],
+  );
+  return { saved, live, send, retry, cancel, warm };
+}
 
 export const useGoToTab = () => useMutation({ mutationFn: (runId: string) => bridge().runs.goToTab(runId) });
 
