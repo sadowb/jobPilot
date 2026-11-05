@@ -4,6 +4,8 @@ import { parseGreenhouseSchema } from '../src/main/modules/postings/ats/schema';
 import {
   buildFillPlan,
   careerYears,
+  degreeOption,
+  monthValue,
   mapNumberToOption,
   matchOption,
   postingCountry,
@@ -76,7 +78,7 @@ describe('Greenhouse plan for the Perpay posting (#237, #233)', () => {
   it('fills identity fields from the confirmed profile and attaches the CV file', () => {
     expect(entry(plan, 'first_name')).toMatchObject({ action: 'fill', value: 'Sara', source: 'profile' });
     expect(entry(plan, 'email')).toMatchObject({ value: 'sara.benali@example.com', source: 'profile' });
-    expect(entry(plan, 'phone')).toMatchObject({ value: '+1 215 555 0100', source: 'profile' });
+    expect(entry(plan, 'phone')).toMatchObject({ value: '(215) 555-0100', source: 'profile' });
     expect(entry(plan, 'resume')).toMatchObject({ action: 'upload_cv', value: 'Sara_Benali_CV.pdf' });
     expect(entry(plan, 'resume_text').action).toBe('skip');
   });
@@ -151,7 +153,7 @@ describe('Greenhouse plan for the Perpay posting (#237, #233)', () => {
       schema,
       ctx({ cv: { fileName: 'cv.pdf', text: 'Phone: +44 20 7946 0000 sara@old.example.org' } }),
     );
-    expect(entry(withCv, 'phone').value).toBe('+1 215 555 0100');
+    expect(entry(withCv, 'phone').phone?.e164).toBe('+12155550100');
     expect(entry(withCv, 'email').value).toBe('sara.benali@example.com');
     const noPhone = buildFillPlan('a', schema, ctx({ profile: saraProfile({ phone: '' }) }));
     expect(entry(noPhone, 'phone').action).toBe('ask');
@@ -169,5 +171,158 @@ describe('Greenhouse plan for the Perpay posting (#237, #233)', () => {
   it('reports a missing CV as a required file ask instead of skipping the upload', () => {
     const none = buildFillPlan('a', schema, ctx({ cv: null }));
     expect(entry(none, 'resume')).toMatchObject({ action: 'ask', kind: 'file' });
+  });
+});
+
+const fixture = (name: string): unknown => JSON.parse(readFileSync(`tests/fixtures/${name}.json`, 'utf8'));
+const names = (file: string) => (fixture(file) as { items: Array<{ text: string }> }).items.map((i) => i.text);
+const withEducation = (profile = saraProfile()) => ({
+  ...profile,
+  personal: {
+    ...profile.personal!,
+    school: 'Drexel University',
+    degree: 'BSc Computer Science',
+    fieldOfStudy: 'Computer Science',
+    schoolStart: '2018-09',
+    graduation: '2022-06',
+  },
+});
+const perpayWithEducation = (lookups = {}) =>
+  parseGreenhouseSchema(fixture('greenhouse-perpay-5003430007'), {
+    degrees: names('greenhouse-education-degrees'),
+    disciplines: names('greenhouse-education-disciplines'),
+    schools: names('greenhouse-education-schools-drexel'),
+    ...lookups,
+  });
+
+describe('education block and phone country (#257)', () => {
+  it('adds the five education inputs the API leaves out of `questions`, optional when the job says so', () => {
+    const fields = perpayWithEducation().fields.filter((f) => f.name.startsWith('education.'));
+    expect(fields.map((f) => f.role)).toEqual(['school', 'degree', 'discipline', 'education_start', 'education_end']);
+    expect(fields.every((f) => !f.required)).toBe(true);
+    expect(fields[1]!.options).toContain("Bachelor's Degree");
+    expect(schema.fields.some((f) => f.name.startsWith('education.'))).toBe(true);
+  });
+
+  it('resolves school, degree, discipline and dates from the profile against the form’s own lists', () => {
+    const plan = buildFillPlan('a', perpayWithEducation(), ctx({ profile: withEducation() }));
+    expect(entry(plan, 'education.school')).toMatchObject({ action: 'select', value: 'Drexel University' });
+    expect(entry(plan, 'education.degree')).toMatchObject({ action: 'select', value: "Bachelor's Degree" });
+    expect(entry(plan, 'education.discipline')).toMatchObject({ action: 'select', value: 'Computer Science' });
+    expect(entry(plan, 'education.start')).toMatchObject({ action: 'fill', value: '2018-09' });
+    expect(entry(plan, 'education.end')).toMatchObject({ action: 'fill', value: '2022-06' });
+    expect(entry(plan, 'education.school').note).toMatch(/Autocomplete/);
+  });
+
+  it('turns a school that is not in the list into an owner question carrying the real options', () => {
+    const profile = withEducation();
+    profile.personal!.school = 'Example State University';
+    const required = perpayWithEducation({ schools: ['Example University', 'State College'] });
+    required.fields.filter((f) => f.name.startsWith('education.')).forEach((f) => (f.required = true));
+    const plan = buildFillPlan('a', required, ctx({ profile }));
+    expect(entry(plan, 'education.school')).toMatchObject({
+      action: 'ask',
+      options: ['Example University', 'State College'],
+    });
+    expect(entry(plan, 'education.school').question).toMatch(/Example State University.*not in the form’s list/);
+    // And the owner’s pick resolves it on the next pass.
+    const answered = buildFillPlan(
+      'a',
+      required,
+      ctx({ profile, owner: new Map([['education.school', 'State College']]) }),
+    );
+    expect(entry(answered, 'education.school')).toMatchObject({ action: 'select', value: 'State College' });
+  });
+
+  it('maps degree names onto the form’s labels', () => {
+    const options = names('greenhouse-education-degrees');
+    expect(degreeOption('MSc Data Science', options)).toBe("Master's Degree");
+    expect(degreeOption('MBA', options)).toBe('Master of Business Administration (M.B.A.)');
+    expect(degreeOption('PhD', options)).toBe('Doctor of Philosophy (Ph.D.)');
+    expect(degreeOption('Bachelor of Science', options)).toBe("Bachelor's Degree");
+    expect(degreeOption('Diploma in Underwater Welding', options)).toBeNull();
+  });
+
+  it('reads months in the formats a profile holds', () => {
+    expect(monthValue('2024-06')).toEqual({ value: '2024-06', yearOnly: false });
+    expect(monthValue('06/2024')).toEqual({ value: '2024-06', yearOnly: false });
+    expect(monthValue('June 2024')).toEqual({ value: '2024-06', yearOnly: false });
+    expect(monthValue('2024')).toEqual({ value: '2024', yearOnly: true });
+    expect(monthValue('soon')).toBeNull();
+  });
+
+  it('splits the profile phone for a country selector, deterministically', () => {
+    const uk = buildFillPlan('a', schema, ctx({ profile: saraProfile({ phone: '+44 20 7946 0958' }) }));
+    expect(entry(uk, 'phone').phone).toEqual({
+      country: 'GB',
+      country_name: 'United Kingdom',
+      calling_code: '44',
+      national: '020 7946 0958',
+      e164: '+442079460958',
+    });
+    expect(entry(uk, 'phone').note).toMatch(/United Kingdom \(\+44\) first/);
+    const bad = buildFillPlan('a', schema, ctx({ profile: saraProfile({ phone: '12345' }) }));
+    expect(entry(bad, 'phone')).toMatchObject({ action: 'ask' });
+  });
+
+  it('does not ask upfront for a conditional question; it tells the agent to handle it if it appears', () => {
+    const conditional = parseGreenhouseSchema({
+      questions: [
+        { label: 'Do you need a visa?', required: true, fields: [{ name: 'q1', type: 'input_text' }] },
+        { label: 'If yes, which visa?', required: true, fields: [{ name: 'q2', type: 'input_text' }] },
+      ],
+    });
+    const plan = buildFillPlan('a', conditional, ctx());
+    expect(entry(plan, 'q1').action).toBe('ask');
+    expect(entry(plan, 'q2')).toMatchObject({ action: 'skip', note: expect.stringMatching(/after another answer/) });
+    expect(plan.unresolved_required.map((u) => u.field_key)).toEqual(['q1']);
+  });
+});
+
+describe('Discord and Figma definitions (#257)', () => {
+  const discord = parseGreenhouseSchema(fixture('greenhouse-discord-8722538002'));
+  const figma = parseGreenhouseSchema(fixture('greenhouse-figma-5426468004'));
+
+  it('reads the demographic block, which has answer_options and no input names', () => {
+    const demo = discord.fields.filter((f) => f.name.startsWith('demographic_'));
+    expect(demo.map((f) => f.label)).toContain('Gender');
+    const gender = demo.find((f) => f.label === 'Gender')!;
+    expect(gender).toMatchObject({ kind: 'select', required: true });
+    expect(gender.options).toContain("I don't wish to answer");
+    expect(demo.find((f) => f.label.startsWith('Race or Ethnicity'))!.kind).toBe('multiselect');
+  });
+
+  it('keeps the location text input and drops the hidden coordinates', () => {
+    expect(discord.fields.find((f) => f.name === 'location')).toMatchObject({ kind: 'text', required: true });
+    expect(discord.fields.some((f) => f.name === 'latitude')).toBe(false);
+    const plan = buildFillPlan('d', discord, ctx());
+    expect(entry(plan, 'location')).toMatchObject({ action: 'fill', value: 'Philadelphia, PA, United States' });
+    expect(entry(plan, 'location').note).toMatch(/Autocomplete/);
+  });
+
+  it('asks required self-identification once with the real options, and a remembered answer resolves it', () => {
+    const plan = buildFillPlan('d', discord, ctx());
+    const gender = discord.fields.find((f) => f.label === 'Gender')!;
+    expect(entry(plan, gender.name)).toMatchObject({ action: 'ask', kind: 'select' });
+    expect(entry(plan, gender.name).options).toContain("I don't wish to answer");
+    const remembered = buildFillPlan(
+      'd',
+      discord,
+      ctx({ library: new Map([['eeo_gender', "I don't wish to answer"]]) }),
+    );
+    expect(entry(remembered, gender.name)).toMatchObject({ action: 'select', value: "I don't wish to answer" });
+    // Optional self-identification is left alone and listed, never asked.
+    const optional = discord.fields.find((f) => f.label.startsWith('Gender Identity'))!;
+    expect(entry(plan, optional.name).action).toBe('skip');
+  });
+
+  it('plans the Figma EEO compliance field and its optional fields without asking', () => {
+    expect(figma.fields.find((f) => f.name === 'veteran_status')).toMatchObject({ kind: 'select', required: false });
+    const plan = buildFillPlan('f', figma, ctx());
+    expect(entry(plan, 'veteran_status').action).toBe('skip');
+    // Optional LinkedIn (Figma) with nothing on file is skipped, not asked.
+    const linkedin = figma.fields.find((f) => f.label === 'LinkedIn Profile')!;
+    const none = buildFillPlan('f', figma, ctx({ cv: null }));
+    expect(entry(none, linkedin.name).action).toBe('skip');
   });
 });

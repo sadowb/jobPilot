@@ -52,11 +52,25 @@ export const FillPlanEntrySchema = z.object({
   value: z.string().nullable(),
   source: z.enum(['library', 'profile', 'owner', 'cv', 'derived']).nullable(),
   required: z.boolean(),
-  kind: z.enum(['text', 'textarea', 'select', 'multiselect', 'file', 'checkbox', 'date', 'number']).optional(),
+  kind: z
+    .enum(['text', 'textarea', 'select', 'multiselect', 'file', 'checkbox', 'date', 'number', 'typeahead'])
+    .optional(),
+  /** Phone entries only: the number split for a form with a country selector (set the country first, then type `national`). */
+  phone: z
+    .object({
+      country: z.string(),
+      country_name: z.string(),
+      calling_code: z.string(),
+      national: z.string(),
+      e164: z.string(),
+    })
+    .optional(),
   /** What the agent does with this field. `fill`/`select` have a value; `draft` is written by the agent for owner review. */
   action: z.enum(['fill', 'select', 'upload_cv', 'draft', 'skip', 'ask']).default('fill'),
   /** The form's allowed option labels; a `select` value is always one of them. */
   options: z.array(z.string()).optional(),
+  /** What to ask the owner when `action` is `ask` and the label alone is not enough. */
+  question: z.string().optional(),
   /** Why a field is left alone (`skip`) or is not fillable yet (`ask`). */
   note: z.string().optional(),
 });
