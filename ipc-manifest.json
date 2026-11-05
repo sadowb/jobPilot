@@ -48,6 +48,10 @@
     "schema": "z.void()"
   },
   {
+    "channel": "chat:cancel",
+    "schema": "ChatKeyInputSchema"
+  },
+  {
     "channel": "chat:cap:list",
     "schema": "z.void()"
   },
@@ -62,6 +66,10 @@
   {
     "channel": "chat:job:send",
     "schema": "SendJobChatSchema"
+  },
+  {
+    "channel": "chat:warm",
+    "schema": "ChatKeyInputSchema"
   },
   {
     "channel": "documents:save",

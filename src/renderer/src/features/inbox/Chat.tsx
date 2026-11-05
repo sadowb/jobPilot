@@ -1,21 +1,47 @@
-import type { ChatMessage } from '../../../../shared/dto';
-import { runErrorMessage } from '../dashboard/upnext/rowActions';
-import { useSendChat } from '../../lib/api';
+import { useEffect } from 'react';
+import { useChatThread } from '../../lib/api';
+import { CAP_CHIPS, JOB_CHIPS, chatThread } from './chatThread';
 import { Composer } from './Composer';
 import type { ThreadMessage } from './Messages';
 
-export const chatBubbles = (chat: readonly ChatMessage[] | undefined): ThreadMessage[] =>
-  (chat ?? []).map((m) => ({ kind: 'bubble', text: m.body, mine: m.role === 'owner' }));
+export { CAP_CHIPS, JOB_CHIPS };
+
+/**
+ * A job's thread (`applicationId`) or Cap's pilot chat (`null`): its messages and its composer share one live state.
+ * `before` is what the page already shows above the chat (the questions, the review card).
+ */
+export function useChatView(applicationId: string | null, before: ThreadMessage[]) {
+  const thread = useChatThread(applicationId);
+  return {
+    thread,
+    messages: [...before, ...chatThread(thread.saved, thread.live, thread.retry)],
+    busy: thread.live.reply !== null,
+  };
+}
 
 /** The composer of a job thread (`applicationId`) or of Cap's pilot chat (`null`). */
-export function ChatComposer({ applicationId, placeholder }: { applicationId: string | null; placeholder: string }) {
-  const send = useSendChat(applicationId);
+export function ChatComposer({
+  applicationId,
+  placeholder,
+  thread,
+  chips,
+}: {
+  applicationId: string | null;
+  placeholder: string;
+  thread: ReturnType<typeof useChatThread>;
+  chips: readonly string[];
+}) {
+  const { warm } = thread;
+  // Opening a chat is the cue to get the agent ready, so the first reply does not wait for a cold start.
+  useEffect(() => warm(), [applicationId, warm]);
   return (
     <Composer
+      key={applicationId ?? 'cap'}
       placeholder={placeholder}
-      pending={send.isPending}
-      error={send.error ? runErrorMessage(send.error, 'Could not send that. Try again.') : null}
-      onSend={(text) => send.mutateAsync(text)}
+      replying={thread.live.reply !== null}
+      chips={chips}
+      onSend={(text) => void thread.send(text)}
+      onStop={thread.cancel}
     />
   );
 }

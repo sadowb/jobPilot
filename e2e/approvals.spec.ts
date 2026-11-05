@@ -115,31 +115,55 @@ test('fill, review, approve and submit; drift, needs-you answers, double approve
       await window.screenshot({ path: testInfo.outputPath(`inbox-review-${theme}.png`), animations: 'disabled' });
     }
     await window.evaluate((source) => window.jobpilot!.theme.set(source), 'light');
-    // Messaging (#242, #243): the thread composer saves a note and shows the reply; Cap relays to a real job only.
+    // Messaging (#242, #243, #255): the owner's message shows at once, the reply streams word by word, Esc stops it.
     await inMain(
       app,
       (main, appId) => {
-        main.fakeAgent!.delayMs = 0; // chat turns answer at once; runs get their 60 s hold back below
-        main.fakeAgent!.reply = (spec) =>
+        main.fakeAgent!.delayMs = 3000; // a slow model: six words over three seconds; runs get their 60 s hold back below
+        main.fakeAgent!.streamReply = (spec) =>
           spec.prompt.includes('<jobs>')
-            ? { reply: 'Cap: passing that on.', relays: [{ applicationId: appId, note: 'keep it short' }] }
-            : spec.prompt.includes('<owner_message>')
-              ? { reply: 'Agent: noted for the next fill.' }
-              : undefined;
+            ? 'Cap: passing that on now.'
+            : spec.prompt.includes('mention Rust')
+              ? 'Rust: noted for the next fill.'
+              : 'Agent: noted for the next fill.';
+        main.fakeAgent!.reply = (spec) =>
+          spec.prompt.includes('<jobs>') ? { relays: [{ applicationId: appId, note: 'keep it short' }] } : undefined;
       },
       id(101),
     );
-    await window.getByLabel('Message this agent').fill('Please use my short bio');
-    await window.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(window.getByRole('log')).toContainText('Agent: noted for the next fill.');
-    await expect(window.getByRole('log')).toContainText('Please use my short bio');
-    await window.getByText('Ask me anything about your jobs').click();
-    await window.getByLabel('Message Cap').fill('Tell the Fake employer agent to keep it short');
-    await window.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(window.getByRole('log')).toContainText('Cap: passing that on.');
+    const log = window.getByRole('log');
+    const field = window.getByLabel('Message this agent');
+    await field.fill('Please use my short bio');
+    await field.press('Enter');
+    // Instant feedback: the message and the typing indicator are there long before the first token.
+    await expect(log).toContainText('Please use my short bio', { timeout: 400 });
+    await expect(field).toHaveValue('');
+    await expect(window.getByRole('status', { name: 'The agent is replying' })).toBeVisible({ timeout: 400 });
+    await expect(window.getByRole('button', { name: 'Stop reply' })).toBeVisible();
+    await expect(log).toContainText('Agent:'); // the first words arrive...
+    await expect(log).not.toContainText('next fill.'); // ...while the rest is still being written
+    await expect(log).toContainText('Agent: noted for the next fill.');
+    await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
+    // Esc stops a reply in flight and keeps what was already written.
+    await field.fill('And mention Rust');
+    await field.press('Enter');
+    await expect(log).toContainText('Rust:'); // the first words of the second reply are on screen
+    await field.press('Escape');
+    await expect(window.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
+    await expect(log).not.toContainText('Rust: noted for the next fill.');
     expect(await rows(app, 'SELECT sender, body FROM inbox_message ORDER BY created_at, id')).toEqual([
       { sender: 'owner', body: 'Please use my short bio' },
       { sender: 'agent', body: 'Agent: noted for the next fill.' },
+      { sender: 'owner', body: 'And mention Rust' },
+      { sender: 'agent', body: 'Rust:' }, // the partial text, not the whole reply
+    ]);
+    await inMain(app, (main) => void (main.fakeAgent!.delayMs = 0), 0); // Cap answers at once
+    await window.getByText('Ask me anything about your jobs').click();
+    await window.getByLabel('Message Cap').fill('Tell the Fake employer agent to keep it short');
+    await window.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(window.getByRole('log')).toContainText('Cap: passing that on now.');
+    await expect(window.getByRole('log')).toContainText('Passed to');
+    expect(await rows(app, "SELECT sender, body FROM inbox_message WHERE body LIKE 'Via Cap%'")).toEqual([
       { sender: 'owner', body: 'Via Cap: keep it short' },
     ]);
     await window

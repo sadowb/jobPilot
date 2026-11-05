@@ -23,6 +23,9 @@ import {
   CancelRunSchema,
   AnswerRunSchema,
   ChatMessageSchema,
+  ChatEventSchema,
+  ChatKeyInputSchema,
+  SendChatResultSchema,
   JobChatSchema,
   SendCapChatSchema,
   SendJobChatSchema,
@@ -178,13 +181,27 @@ const bridge: JobPilotBridge = {
         .parse(await invoke(Channels.listJobChat, parseInput(JobChatSchema, { applicationId })));
     },
     async sendToJob(input) {
-      return z.array(ChatMessageSchema).parse(await invoke(Channels.sendJobChat, parseInput(SendJobChatSchema, input)));
+      return SendChatResultSchema.parse(await invoke(Channels.sendJobChat, parseInput(SendJobChatSchema, input)));
     },
     async capMessages() {
       return z.array(ChatMessageSchema).parse(await invoke(Channels.listCapChat));
     },
     async sendToCap(input) {
-      return z.array(ChatMessageSchema).parse(await invoke(Channels.sendCapChat, parseInput(SendCapChatSchema, input)));
+      return SendChatResultSchema.parse(await invoke(Channels.sendCapChat, parseInput(SendCapChatSchema, input)));
+    },
+    async cancel(chatKey) {
+      await invoke(Channels.cancelChat, parseInput(ChatKeyInputSchema, { chatKey }));
+    },
+    async warm(chatKey) {
+      await invoke(Channels.warmChat, parseInput(ChatKeyInputSchema, { chatKey }));
+    },
+    onEvent(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        const parsed = ChatEventSchema.safeParse(payload);
+        if (parsed.success) listener(parsed.data);
+      };
+      ipcRenderer.on(Channels.chatEvent, handler);
+      return () => ipcRenderer.removeListener(Channels.chatEvent, handler);
     },
   },
   inbox: {

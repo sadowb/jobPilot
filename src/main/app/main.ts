@@ -70,6 +70,8 @@ import {
 import { CapChatService } from '../modules/cap/cap.service';
 import { chatHandlers } from '../modules/inbox/inbox.controller';
 import { InboxChatService } from '../modules/inbox/inbox.service';
+import { ChatTurns } from '../modules/inbox/chat-turns';
+import { emitChatEvent } from '../platform/ipc/events';
 import { originCheck, registerIpc, stopAcceptingIpc } from '../platform/ipc/registry';
 import { waitForRecovery } from '../modules/settings/recovery.service';
 import { isTrustedUrl } from './env';
@@ -86,6 +88,7 @@ export let databaseBackupTimer: NodeJS.Timeout | undefined;
 
 let runsService: RunsService;
 export let agentSettings: AgentSettingsService;
+let chatTurns: ChatTurns | undefined;
 export let fakeAgent: FakeAgentProvider | undefined;
 export let fakeBrowser: FakeBrowserProvider | undefined;
 export let fakeMemory: FakeMemoryProvider | undefined;
@@ -228,8 +231,9 @@ if (logsError) {
         fakeAgent ? () => Promise.resolve(null) : undefined,
       );
       runsService = new RunsService(db, app.getPath('userData'), agent, browser, memory);
-      const jobChat = new InboxChatService(db, agent, () => runsService.listInbox());
-      const capChat = new CapChatService(db, agent, jobChat, () => runsService.listInbox(), memory);
+      chatTurns = new ChatTurns(agent, emitChatEvent);
+      const jobChat = new InboxChatService(db, agent, () => runsService.listInbox(), chatTurns);
+      const capChat = new CapChatService(db, agent, jobChat, () => runsService.listInbox(), memory, chatTurns);
       grants.onRevoked((kind, provider) => {
         runsService
           .cancelUsing(kind, provider)
@@ -246,6 +250,7 @@ if (logsError) {
       let stopping: Promise<void> | undefined;
       const stopOwnedWork = () =>
         (stopping ??= (async () => {
+          chatTurns?.stop();
           backups.stop();
           agentSettings.stop();
           await Promise.race([
@@ -300,7 +305,7 @@ if (logsError) {
       registerIpc(
         [
           ...runsHandlers(runsService),
-          ...chatHandlers(jobChat, capChat),
+          ...chatHandlers(jobChat, capChat, chatTurns),
           ...settingsHandlers,
           ...dataHandlers(removeEverything),
           ...agentHandlers(fakeAgent ? fakeClaudeControl : agentSettings),

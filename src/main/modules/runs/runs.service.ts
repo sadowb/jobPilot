@@ -372,6 +372,7 @@ export class RunsService {
   private async drain(runId: string, events: AsyncIterable<unknown>): Promise<void> {
     for await (const rawEvent of events) {
       const event = RunEventSchema.parse(rawEvent);
+      if (event.type === 'delta') continue; // only conversational turns stream text
       RunTraceService.append({ runId, type: event.type, payload: z.json().parse(event) });
       this.repository.touch(runId);
       loggerFor('runs').info({ run_id: runId, event_type: event.type }, 'Run event received');

@@ -43,6 +43,12 @@ export function gateProviders(
       await grants.assert('browser', browser.id);
       await agent.prepare?.();
     },
+    warm() {
+      void grants
+        .assert('agent', agent.id)
+        .then(() => agent.warm?.())
+        .catch(() => undefined);
+    },
     run<S extends z.ZodType = typeof RunResultSchema>(spec: RunSpec<S>): AgentRun<z.infer<S>> {
       const started = grants.assert('agent', agent.id).then(() => agent.run(spec));
       const result = started.then((run) => run.result);

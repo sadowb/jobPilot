@@ -16,6 +16,9 @@ import type {
   RunSummaryDto,
   AnswerRunInput,
   ChatMessage,
+  ChatEvent,
+  ChatKey,
+  SendChatResult,
   SendCapChatInput,
   SendJobChatInput,
   RunTabLocation,
@@ -71,6 +74,9 @@ export const Channels = {
   sendJobChat: 'chat:job:send',
   listCapChat: 'chat:cap:list',
   sendCapChat: 'chat:cap:send',
+  cancelChat: 'chat:cancel',
+  warmChat: 'chat:warm',
+  chatEvent: 'chat:event',
   goToRunTab: 'runs:go-to-tab',
   takeOverRun: 'runs:take-over',
   handBackRun: 'runs:hand-back',
@@ -175,12 +181,18 @@ export interface JobPilotBridge {
   chat: {
     /** The saved thread with one job's agent. */
     jobMessages(applicationId: string): Promise<ChatMessage[]>;
-    /** Saves the owner's message for the agent's next fill and returns it with the reply. */
-    sendToJob(input: SendJobChatInput): Promise<ChatMessage[]>;
+    /** Saves the owner's message for the agent's next fill and returns at once; the reply streams via `onEvent`. */
+    sendToJob(input: SendJobChatInput): Promise<SendChatResult>;
     /** Cap's saved pilot chat. */
     capMessages(): Promise<ChatMessage[]>;
     /** Cap is read-only: it answers and can pass notes to an agent's next fill, never approve or send. */
-    sendToCap(input: SendCapChatInput): Promise<ChatMessage[]>;
+    sendToCap(input: SendCapChatInput): Promise<SendChatResult>;
+    /** Stops the reply in flight for this chat; what streamed so far is kept. */
+    cancel(chatKey: ChatKey): Promise<void>;
+    /** Hint that the owner opened this chat: main may prepare the agent so the first reply starts sooner. */
+    warm(chatKey: ChatKey): Promise<void>;
+    /** Streamed reply events (validated); returns the unsubscribe. */
+    onEvent(listener: (event: ChatEvent) => void): () => void;
   };
   inbox: {
     list(): Promise<InboxEntry[]>;
