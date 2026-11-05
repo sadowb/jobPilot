@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.5.0](https://github.com/sadowb/jobPilot/compare/v0.4.0...v0.5.0) (2026-11-05)
+
+
+### Features
+
+* **chat:** Cap saves lasting preferences with an undoable chip; they feed every fill (part of [#251](https://github.com/sadowb/jobPilot/issues/251)) ([#265](https://github.com/sadowb/jobPilot/issues/265)) ([ae374bb](https://github.com/sadowb/jobPilot/commit/ae374bbcb9734c84177e1215bffead2020880d67))
+* **chat:** fluent streamed chat for job threads and Cap (Fixes [#255](https://github.com/sadowb/jobPilot/issues/255)) ([#262](https://github.com/sadowb/jobPilot/issues/262)) ([c63876b](https://github.com/sadowb/jobPilot/commit/c63876be464c19d34e72d4edca37f2bd7281b22b))
+* **chat:** profile/CV/answers context for the job chat, code-computed facts for Cap, notes rank below answers (Fixes [#259](https://github.com/sadowb/jobPilot/issues/259), [#256](https://github.com/sadowb/jobPilot/issues/256); part of [#251](https://github.com/sadowb/jobPilot/issues/251)) ([#264](https://github.com/sadowb/jobPilot/issues/264)) ([625fa7f](https://github.com/sadowb/jobPilot/commit/625fa7f1e6e8a7b555f9d5759757a21e5f11e6b3))
+* **inbox:** message an agent, Cap pilot chat, Go to tab and Take over (contract: chat DTOs/channels, BrowserProvider tab control, InboxEntry.takenOver) ([#249](https://github.com/sadowb/jobPilot/issues/249)) ([37fb96d](https://github.com/sadowb/jobPilot/commit/37fb96d123120dd0c85d3951eb23858a37afa6aa))
+* **onboarding:** agent-led About you chat (contract: capTurn DTOs) ([#214](https://github.com/sadowb/jobPilot/issues/214)) ([5a728e8](https://github.com/sadowb/jobPilot/commit/5a728e8b78455bfb1837d826f3323041330a42d6))
+* **onboarding:** v5 Pre-flight, About you, Take-off with consent grants (contract: adds grant table, onboarding IPC, DTOs) ([#213](https://github.com/sadowb/jobPilot/issues/213)) ([fb9101e](https://github.com/sadowb/jobPilot/commit/fb9101eeec840e164306132af74077835d053cd2))
+* **postings:** fill from the ATS form definition first; Neo only executes the plan (Fixes [#237](https://github.com/sadowb/jobPilot/issues/237), [#233](https://github.com/sadowb/jobPilot/issues/233)) ([#248](https://github.com/sadowb/jobPilot/issues/248)) ([6cfe09d](https://github.com/sadowb/jobPilot/commit/6cfe09d57225d8aee904a614ffef44a78e6400f5))
+* **runs:** review, approve and submit bound to the form hash (contract: approval.submit_claimed_at, BrowserProvider.formSnapshot, inbox DTOs) ([#230](https://github.com/sadowb/jobPilot/issues/230)) ([bdc0639](https://github.com/sadowb/jobPilot/commit/bdc06394428333172d650d5210714b82732adba0))
+
+
+### Bug Fixes
+
+* **agents:** emit draft-7 JSON Schema so Claude Code accepts structured output ([#219](https://github.com/sadowb/jobPilot/issues/219)) ([496e03b](https://github.com/sadowb/jobPilot/commit/496e03bfd216a67e33696a3f773ac011b2a2d357))
+* **memory:** install Mnemosyne on Windows and Linux ([#205](https://github.com/sadowb/jobPilot/issues/205)) ([279a19d](https://github.com/sadowb/jobPilot/commit/279a19d523ab5b0eb7fa3b04a7907f83be5e1689))
+* **observability:** encrypt run transcripts and enforce retention ([#218](https://github.com/sadowb/jobPilot/issues/218)) ([d34f1ab](https://github.com/sadowb/jobPilot/commit/d34f1ab23e29bdd560d507225670c92229633b55))
+* **onboarding,settings:** surface rejected chat values, keep CV history and LinkedIn, confirm revoke during runs ([#250](https://github.com/sadowb/jobPilot/issues/250)) ([d01548d](https://github.com/sadowb/jobPilot/commit/d01548d6fa98cdda7daecf85df778886a1eadc11))
+* **postings:** plan covers education, phone country, demographic and conditional fields from the Greenhouse definition (Fixes [#257](https://github.com/sadowb/jobPilot/issues/257)) ([#266](https://github.com/sadowb/jobPilot/issues/266)) ([9c1c5fd](https://github.com/sadowb/jobPilot/commit/9c1c5fdf829b4f8896c6b4ce89d5584120675264))
+* **postings:** show a job board state for board URLs (contract: adds JOB_BOARD to IngestResult) ([#207](https://github.com/sadowb/jobPilot/issues/207)) ([d6a6592](https://github.com/sadowb/jobPilot/commit/d6a6592c79fe6d80a8d0b0750e2f8b2e5e341001))
+* **runs:** discover the Neo endpoint from its config, no fixed port ([#215](https://github.com/sadowb/jobPilot/issues/215)) ([5abe957](https://github.com/sadowb/jobPilot/commit/5abe9573977861f0495dd6fbb77beaad4f081140))
+* **runs:** show failed runs and block doomed starts ([#216](https://github.com/sadowb/jobPilot/issues/216)) ([93bcb7a](https://github.com/sadowb/jobPilot/commit/93bcb7a7c44a2adc2f4c12b710066d007964b026))
+* **runs:** stop runs on revoke, record failure reasons, close stray Neo tabs, persist application removal ([#247](https://github.com/sadowb/jobPilot/issues/247)) ([4e9d38f](https://github.com/sadowb/jobPilot/commit/4e9d38fcc01ec6a8f345132b54586b218e998ffb))
+
 ## [0.4.0](https://github.com/sadowb/jobPilot/compare/v0.3.0...v0.4.0) (2026-10-29)
 
 
