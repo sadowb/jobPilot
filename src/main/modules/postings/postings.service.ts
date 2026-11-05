@@ -110,7 +110,9 @@ export class PostingService {
   ): Promise<FillPlanDto> {
     const inputs = this.repository.planInputs(applicationId);
     try {
-      const schema = await fetchFormSchema(inputs.canonicalUrl, signal);
+      const schema = await fetchFormSchema(inputs.canonicalUrl, signal, undefined, {
+        school: input.profile.personal?.school || null,
+      });
       if (schema)
         return buildFillPlan(applicationId, schema, {
           ...input,

@@ -157,6 +157,8 @@ describe('schema-first runs (#237)', () => {
     expect(tabs).toHaveLength(1);
     const prompt = prompts[0]!;
     expect(prompt).toContain('built from the ATS form definition');
+    expect(prompt).toMatch(/Conditional questions appear only after earlier answers/);
+    expect(prompt).toMatch(/profile phone always wins/);
     const data = JSON.parse(prompt.split('\n').at(-1)!) as {
       fillPlan: { origin: string; unresolved_required: unknown[]; entries: Array<Record<string, unknown>> };
     };

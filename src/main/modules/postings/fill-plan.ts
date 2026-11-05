@@ -1,3 +1,4 @@
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import type { FillPlanDto, FillPlanEntry, ProfileData } from '../../../shared/dto';
 import { toCountryCode } from './ats/common';
 import type { AtsFormField, AtsFormSchema } from './ats/schema';
@@ -132,6 +133,69 @@ function fromCv(text: string | null | undefined, kind: keyof typeof CV_PATTERNS)
 const OPEN_ENDED =
   /\b(why|what excites|excites you|tell us|describe|motivat|interest(?:ed)? in|cover letter|about yourself)\b/i;
 
+const DEGREES: Array<[RegExp, string]> = [
+  [/\bm\.?b\.?a\b|master of business/i, 'Master of Business Administration (M.B.A.)'],
+  [/ph\.?d|doctor(ate)? of philosophy/i, 'Doctor of Philosophy (Ph.D.)'],
+  [/\bj\.?d\b|juris doctor/i, 'Juris Doctor (J.D.)'],
+  [/\bm\.?d\b|doctor of medicine/i, 'Doctor of Medicine (M.D.)'],
+  [/master|\bm\.?sc?\b|\bm\.?a\b|\bmeng\b|\bmsc\b/i, "Master's Degree"],
+  [/bachelor|\bb\.?sc?\b|\bb\.?a\b|\bbeng\b|licen[cs]e|\bbsc\b/i, "Bachelor's Degree"],
+  [/associate/i, "Associate's Degree"],
+  [/high school|baccalaur|secondary/i, 'High School'],
+];
+
+/** "BSc Computer Science" -> "Bachelor's Degree"; the form's own labels are only ever returned, never invented. */
+export function degreeOption(text: string, options: readonly string[]): string | null {
+  const direct = matchOption(text, options);
+  if (direct) return direct;
+  const label = DEGREES.find(([pattern]) => pattern.test(text))?.[1];
+  return label ? matchOption(label, options) : null;
+}
+
+/** A month the profile holds ("2024-06", "06/2024", "June 2024", "2024") as YYYY-MM, or the bare year. */
+export function monthValue(text: string | null | undefined): { value: string; yearOnly: boolean } | null {
+  const t = text?.trim();
+  if (!t) return null;
+  let m = t.match(/^(\d{4})-(\d{2})/);
+  if (m) return { value: `${m[1]}-${m[2]}`, yearOnly: false };
+  m = t.match(/^(\d{1,2})[/.](\d{4})$/);
+  if (m) return { value: `${m[2]}-${m[1]!.padStart(2, '0')}`, yearOnly: false };
+  m = t.match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+  if (m) {
+    const index = new Date(`${m[1]} 1, 2000`).getMonth();
+    if (!Number.isNaN(index)) return { value: `${m[2]}-${String(index + 1).padStart(2, '0')}`, yearOnly: false };
+  }
+  m = t.match(/^(\d{4})$/);
+  return m ? { value: m[1]!, yearOnly: true } : null;
+}
+
+function resolveEducation(field: AtsFormField, ctx: PlanContext): Candidate | null {
+  const personal = ctx.profile.personal;
+  const own = (value: string | null | undefined): Candidate | null => {
+    const v = present(value);
+    return v ? { value: v, source: 'profile' } : null;
+  };
+  switch (field.role) {
+    case 'school':
+      return own(personal?.school);
+    case 'degree': {
+      const text = present(personal?.degree);
+      const option = text ? (field.options.length ? degreeOption(text, field.options) : text) : null;
+      return option ? { value: option, source: 'profile' } : null;
+    }
+    case 'discipline':
+      return own(personal?.fieldOfStudy);
+    case 'education_start':
+      return own(monthValue(personal?.schoolStart)?.value);
+    case 'education_end':
+      return own(monthValue(personal?.graduation)?.value);
+    default:
+      return null;
+  }
+}
+
+const CONDITIONAL = /^\s*(?:if|when)\s+(?:you|your|yes|no|so|not|applicable|the answer|selected|other)\b/i;
+
 function resolveText(field: AtsFormField, ctx: PlanContext): Candidate | null {
   const personal = ctx.profile.personal;
   const profile = (value: string | null | undefined): Candidate | null => {
@@ -153,11 +217,16 @@ function resolveText(field: AtsFormField, ctx: PlanContext): Candidate | null {
       return profile(personal?.preferredName || personal?.firstName);
     case 'email':
       return profile(personal?.email) ?? cv(fromCv(ctx.cv?.text, 'email'));
-    case 'phone':
-      // The confirmed profile wins over whatever the CV prints (#233); the CV is never a phone source.
-      return profile(personal?.phone);
     default:
   }
+
+  if (
+    field.role === 'school' ||
+    field.role === 'degree' ||
+    field.role === 'discipline' ||
+    field.role?.startsWith('education_')
+  )
+    return resolveEducation(field, ctx);
 
   const text = `${field.label} ${field.name}`;
   const key = canonicalKey(text);
@@ -213,6 +282,49 @@ function resolveText(field: AtsFormField, ctx: PlanContext): Candidate | null {
   return libraryFor(key);
 }
 
+const HINTS: Record<string, string> = {
+  typeahead:
+    'Autocomplete: click the control, type the first letters, wait for the list, click the suggestion that matches exactly.',
+  school: 'Autocomplete: type the first letters of the school, then click the option whose text equals the value.',
+  degree: 'Dropdown: open it and click the option whose text equals the value.',
+  discipline: 'Autocomplete: type the first letters, then click the option whose text equals the value.',
+  education_start: 'Month and year; use the form’s month and year controls.',
+  education_end: 'Month and year; use the form’s month and year controls.',
+};
+
+/** The phone number split for a country selector: deterministic from the confirmed profile, never from the CV (#233). */
+function phoneEntry(
+  field: AtsFormField,
+  entry: (rest: Partial<FillPlanEntry> & Pick<FillPlanEntry, 'action'>) => FillPlanEntry,
+  ctx: PlanContext,
+): FillPlanEntry {
+  const raw = present(ctx.profile.personal?.phone);
+  const parsed = raw
+    ? parsePhoneNumberFromString(raw, (ctx.profile.personal?.countryCode || undefined) as never)
+    : undefined;
+  if (parsed?.country && parsed.isValid()) {
+    const country_name = new Intl.DisplayNames('en', { type: 'region' }).of(parsed.country) ?? parsed.country;
+    return entry({
+      action: 'fill',
+      value: parsed.formatNational(),
+      source: 'profile',
+      phone: {
+        country: parsed.country,
+        country_name,
+        calling_code: parsed.countryCallingCode,
+        national: parsed.formatNational(),
+        e164: parsed.number,
+      },
+      note: `If the form has a country selector, choose ${country_name} (+${parsed.countryCallingCode}) first, then type the national number.`,
+    });
+  }
+  if (raw && parsed?.isValid()) return entry({ action: 'fill', value: raw, source: 'profile' });
+  return entry({
+    action: field.required ? 'ask' : 'skip',
+    note: raw ? 'The profile phone number is not a valid international number.' : 'No phone on file.',
+  });
+}
+
 /** The plan for one form: every field either has a value, is drafted, is deliberately skipped, or is asked of the owner. */
 export function buildFillPlan(applicationId: string, schema: AtsFormSchema, input: PlanContext): FillPlanDto {
   const entries: FillPlanEntry[] = [];
@@ -257,15 +369,25 @@ export function buildFillPlan(applicationId: string, schema: AtsFormSchema, inpu
           ? entry({ action: 'draft', note: 'Write a short, truthful cover letter from the profile and CV.' })
           : entry({ action: 'skip', note: 'Optional.' }),
       );
+    else if (field.role === 'phone' && !ctx.owner.has(field.name)) entries.push(phoneEntry(field, entry, ctx));
     else {
       const ownerValue = ctx.owner.get(field.name) ?? ctx.owner.get(`gh:${field.name}`);
       const found: Candidate | null = ownerValue ? { value: ownerValue, source: 'owner' } : resolveText(field, ctx);
       const choice = field.kind === 'select' || field.kind === 'multiselect' || field.options.length > 0;
       const value = found ? (choice ? matchOption(found.value, field.options) : found.value) : null;
-      if (found && value) entries.push(entry({ action: choice ? 'select' : 'fill', value, source: found.source }));
+      const hint = HINTS[field.role ?? ''] ?? (field.name === 'location' ? HINTS.typeahead : undefined);
+      if (found && value)
+        entries.push(entry({ action: choice ? 'select' : 'fill', value, source: found.source, note: hint }));
       else if (!field.required)
         entries.push(
           entry({ action: 'skip', note: found ? 'Does not match an option.' : 'Optional, nothing on file.' }),
+        );
+      else if (CONDITIONAL.test(field.label))
+        entries.push(
+          entry({
+            action: 'skip',
+            note: 'Only shown after another answer. If it appears, answer it from the profile and CV or report it with the other revealed fields.',
+          }),
         );
       else if (!choice && field.kind !== 'file' && field.kind !== 'checkbox' && OPEN_ENDED.test(field.label))
         entries.push(
@@ -276,6 +398,9 @@ export function buildFillPlan(applicationId: string, schema: AtsFormSchema, inpu
           entry({
             action: 'ask',
             note: found ? 'The known answer is not one of the form’s options.' : 'Nothing on file answers this.',
+            ...(found && field.role
+              ? { question: `${field.label}: “${found.value}” is not in the form’s list. Pick the closest match.` }
+              : {}),
           }),
         );
     }
