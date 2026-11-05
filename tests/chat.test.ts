@@ -11,6 +11,9 @@ import type { MemoryProvider } from '../src/main/platform/memory/types';
 import { CapChatService } from '../src/main/modules/cap/cap.service';
 import { ChatTurns } from '../src/main/modules/inbox/chat-turns';
 import { InboxChatService } from '../src/main/modules/inbox/inbox.service';
+import { DocumentsRepository } from '../src/main/modules/documents/documents.repository';
+import { ProfileRepository } from '../src/main/modules/profile/profile.repository';
+import { saraProfile } from './helpers-profile';
 import { PostingsRepository } from '../src/main/modules/postings/postings.repository';
 
 vi.mock('../src/main/modules/observability/observability.service', () => ({
@@ -306,5 +309,72 @@ describe('Cap pilot chat (#243)', () => {
     answer = () => ({ relays: [{ applicationId: id, note: 'x' }] });
     await cap.send('tell them x').finished;
     expect(specs.filter((s) => !s.streamText)).toHaveLength(0);
+  });
+});
+
+describe('context for the chats (#259, #251)', () => {
+  it('gives the job chat the owner’s background, CV text and saved answers as data, without contact details', async () => {
+    const id = application();
+    new ProfileRepository(db).write(
+      saraProfile({
+        headline: 'Data scientist',
+        career: [{ id: 'b', role: 'Senior Data Scientist', organisation: 'Globex', start: '2019-02', end: 'present' }],
+      }),
+    );
+    new DocumentsRepository(db).addCvVersion({
+      fileName: 'CV.pdf',
+      mime: 'application/pdf',
+      sizeBytes: 1,
+      sha256: 'a'.repeat(64),
+      storagePath: 'x.pdf',
+      parsedText: 'Built forecasting models at Globex for seven years',
+    });
+    sqlite
+      .prepare(
+        "INSERT INTO application_answer (id, application_id, field_key, question_text, answer, source, created_at, updated_at) VALUES ('01J0000000000000000000000Z', ?, 'remote', 'Remote only?', 'Yes', 'owner', 1, 1)",
+      )
+      .run(id);
+    await inbox().send(id, 'Why do you need 5 years of data science?').finished;
+    const prompt = specs[0]!.prompt;
+    expect(prompt).toContain('Senior Data Scientist at Globex');
+    expect(prompt).toContain('Built forecasting models at Globex');
+    expect(prompt).toContain('Remote only? -> Yes (owner)');
+    expect(prompt).not.toMatch(/sara\.benali@example\.com|\+1 215/);
+    expect(prompt.match(/<\/context>/g)).toHaveLength(1);
+  });
+
+  it('gives Cap computed counts and states, and the full read-out of a job the owner names', async () => {
+    const id = application();
+    sqlite
+      .prepare(
+        "INSERT INTO run (id, application_id, agent, browser, status, attempts, created_at, updated_at, error) VALUES ('01J0000000000000000000000R', ?, 'claude', 'neo', 'failed', 1, 1, 1, 'Form changed')",
+      )
+      .run(id);
+    const turns = newTurns();
+    const jobs = inbox(turns);
+    const live = () => ({
+      runs: [
+        {
+          id: '01J0000000000000000000000R',
+          applicationId: id,
+          status: 'failed' as const,
+          startedAt: 1,
+          finishedAt: null,
+          error: 'Form changed',
+        },
+      ],
+      paused: true,
+    });
+    const cap = new CapChatService(db, agent, jobs, () => [], undefined, turns, live);
+    await cap.send('What happened with Acme?').finished;
+    const prompt = specs[0]!.prompt;
+    expect(prompt).toContain('Total applications: 1');
+    expect(prompt).toContain('Queue: paused');
+    expect(prompt).toContain('quote its counts and states exactly');
+    expect(prompt).toContain('Total applications: 1 (1 failed)');
+    expect(prompt).toContain('Form changed');
+    expect(prompt).toContain('<job_details>');
+    expect(prompt).toContain(id);
+    expect(prompt).not.toContain('--- CV text ---'); // Cap sees the profile once, not each job's CV
   });
 });
