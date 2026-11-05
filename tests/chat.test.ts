@@ -13,6 +13,7 @@ import { ChatTurns } from '../src/main/modules/inbox/chat-turns';
 import { InboxChatService } from '../src/main/modules/inbox/inbox.service';
 import { DocumentsRepository } from '../src/main/modules/documents/documents.repository';
 import { ProfileRepository } from '../src/main/modules/profile/profile.repository';
+import { PreferencesService } from '../src/main/modules/cap/preferences';
 import { saraProfile } from './helpers-profile';
 import { PostingsRepository } from '../src/main/modules/postings/postings.repository';
 
@@ -40,7 +41,7 @@ const agent: AgentProvider = {
   run: ((spec: RunSpec) => {
     specs.push(spec);
     if (!spec.streamText) {
-      const structured = (async () => answer())();
+      const structured = (async () => spec.outputSchema.parse(answer()))();
       structured.catch(() => undefined);
       return { events: (async function* () {})(), result: structured };
     }
@@ -376,5 +377,55 @@ describe('context for the chats (#259, #251)', () => {
     expect(prompt).toContain('<job_details>');
     expect(prompt).toContain(id);
     expect(prompt).not.toContain('--- CV text ---'); // Cap sees the profile once, not each job's CV
+  });
+});
+
+describe('global preferences from Cap (#251)', () => {
+  const setup = () => {
+    const turns = newTurns();
+    return { turns, cap: new CapChatService(db, agent, inbox(turns), () => [], undefined, turns) };
+  };
+
+  it('saves a stated preference after the reply, with an undoable chip, and applies it to every fill prompt', async () => {
+    const { cap } = setup();
+    script = { chunks: ['Saved: ', 'remote roles only.'] };
+    answer = () => ({ relays: [], preferences: [{ kind: 'work_mode', value: 'remote' }] });
+    await cap.send('I only want remote roles').finished;
+    const chip = events.find((e) => e.type === 'actions');
+    expect(chip).toMatchObject({ actions: [{ kind: 'preference', label: 'Saved for every job: remote' }] });
+    const undoId = (chip as { actions: Array<{ undoId?: string }> }).actions[0]!.undoId!;
+    expect(new PreferencesService(db).promptLines()).toEqual(['Work mode: remote']);
+    // The next Cap turn knows it, and a run prompt would carry it.
+    events = [];
+    answer = () => ({ relays: [], preferences: [] });
+    await cap.send('what do you know about me').finished;
+    expect(specs.filter((x) => x.streamText).at(-1)!.prompt).toContain('Work mode: remote');
+    // Undo is idempotent and removes it everywhere.
+    expect(cap.undo(undoId)).toBe(true);
+    expect(cap.undo(undoId)).toBe(false);
+    expect(new PreferencesService(db).list()).toEqual([]);
+  });
+
+  it('drops an invalid preference instead of saving it, and saves nothing without a statement', async () => {
+    const { cap } = setup();
+    answer = () => ({ relays: [], preferences: [{ kind: 'work_mode', value: 'anywhere-ish' }] });
+    await cap.send('hmm').finished;
+    expect(new PreferencesService(db).list()).toEqual([]);
+    expect(events.some((e) => e.type === 'actions')).toBe(false);
+  });
+
+  it('works for a preference even when there are no jobs yet', async () => {
+    const { cap } = setup();
+    answer = () => ({ relays: [], preferences: [{ kind: 'rule', value: 'Never mention my salary' }] });
+    await cap.send('Never mention my salary on forms').finished;
+    expect(new PreferencesService(db).list().map((p) => p.value)).toEqual(['Never mention my salary']);
+  });
+
+  it('flags postings that conflict with a remote-only preference in the facts, without skipping them', async () => {
+    const id = application();
+    new PreferencesService(db).add('work_mode', 'remote');
+    const { cap } = setup();
+    await cap.send('what is queued').finished;
+    expect(specs[0]!.prompt).toContain(id);
   });
 });

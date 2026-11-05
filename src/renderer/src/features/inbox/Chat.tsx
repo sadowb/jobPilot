@@ -14,7 +14,7 @@ export function useChatView(applicationId: string | null, before: ThreadMessage[
   const thread = useChatThread(applicationId);
   return {
     thread,
-    messages: [...before, ...chatThread(thread.saved, thread.live, thread.retry, applicationId ?? 'cap')],
+    messages: [...before, ...chatThread(thread.saved, thread.live, thread.retry, applicationId ?? 'cap', thread.undo)],
     busy: thread.live.phase !== 'none',
   };
 }

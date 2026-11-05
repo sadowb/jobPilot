@@ -76,6 +76,7 @@ export const Channels = {
   sendCapChat: 'chat:cap:send',
   cancelChat: 'chat:cancel',
   warmChat: 'chat:warm',
+  undoChatAction: 'chat:undo',
   chatEvent: 'chat:event',
   goToRunTab: 'runs:go-to-tab',
   takeOverRun: 'runs:take-over',
@@ -191,6 +192,8 @@ export interface JobPilotBridge {
     cancel(chatKey: ChatKey): Promise<void>;
     /** Hint that the owner opened this chat: main may prepare the agent so the first reply starts sooner. */
     warm(chatKey: ChatKey): Promise<void>;
+    /** Takes back something Cap saved (a preference); true when it was still there. */
+    undo(undoId: string): Promise<boolean>;
     /** Streamed reply events (validated); returns the unsubscribe. */
     onEvent(listener: (event: ChatEvent) => void): () => void;
   };

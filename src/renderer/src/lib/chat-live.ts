@@ -16,14 +16,17 @@ export interface LiveChat {
   reply: { replyId: string | null; text: string } | null;
   /** What Cap did beside answering (passed a note on), shown under the reply. */
   actions: readonly ChatAction[];
+  /** Ids of actions the owner took back (a saved preference), so their chips read as undone. */
+  undone: readonly string[];
 }
 
-export const EMPTY_LIVE: LiveChat = { pending: [], reply: null, actions: [] };
+export const EMPTY_LIVE: LiveChat = { pending: [], reply: null, actions: [], undone: [] };
 
 export type LiveAction =
   | { type: 'sending'; localId: string; text: string }
   | { type: 'saved'; localId: string; replyId: string }
   | { type: 'send-failed'; localId: string; error: string }
+  | { type: 'undone'; undoId: string }
   | { type: 'event'; event: ChatEvent };
 
 const TYPING = { replyId: null, text: '' } as const;
@@ -36,6 +39,7 @@ export function reduceLive(state: LiveChat, action: LiveAction): LiveChat {
         pending: [...others, { localId: action.localId, text: action.text, status: 'sending' }],
         reply: { ...TYPING },
         actions: [],
+        undone: state.undone,
       };
     }
     case 'saved':
@@ -52,6 +56,8 @@ export function reduceLive(state: LiveChat, action: LiveAction): LiveChat {
         ),
         reply: state.reply?.replyId === null ? null : state.reply,
       };
+    case 'undone':
+      return state.undone.includes(action.undoId) ? state : { ...state, undone: [...state.undone, action.undoId] };
     case 'event': {
       const { event } = action;
       const mine = state.reply === null || state.reply.replyId === null || state.reply.replyId === event.replyId;
@@ -75,14 +81,16 @@ export interface LiveView {
   pending: readonly PendingOwner[];
   phase: 'none' | 'typing' | 'streaming';
   actions: readonly ChatAction[];
+  undone: readonly string[];
 }
 
-export const NO_VIEW: LiveView = { pending: [], phase: 'none', actions: [] };
+export const NO_VIEW: LiveView = { pending: [], phase: 'none', actions: [], undone: [] };
 
 const viewOf = (state: LiveChat): LiveView => ({
   pending: state.pending,
   phase: state.reply === null ? 'none' : state.reply.text === '' ? 'typing' : 'streaming',
   actions: state.actions,
+  undone: state.undone,
 });
 
 const states = new Map<string, LiveChat>();
@@ -95,7 +103,12 @@ export function dispatchLive(chatKey: string, action: LiveAction): void {
   const view = viewOf(next);
   const prev = views.get(chatKey) ?? NO_VIEW;
   // Keep the same object while nothing the thread draws changed, so a token does not re-render the thread.
-  if (view.pending !== prev.pending || view.phase !== prev.phase || view.actions !== prev.actions)
+  if (
+    view.pending !== prev.pending ||
+    view.phase !== prev.phase ||
+    view.actions !== prev.actions ||
+    view.undone !== prev.undone
+  )
     views.set(chatKey, view);
   for (const listener of listeners) listener();
 }

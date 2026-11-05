@@ -26,6 +26,7 @@ import {
   ChatEventSchema,
   ChatKeyInputSchema,
   SendChatResultSchema,
+  UndoActionSchema,
   JobChatSchema,
   SendCapChatSchema,
   SendJobChatSchema,
@@ -191,6 +192,9 @@ const bridge: JobPilotBridge = {
     },
     async cancel(chatKey) {
       await invoke(Channels.cancelChat, parseInput(ChatKeyInputSchema, { chatKey }));
+    },
+    async undo(undoId) {
+      return z.boolean().parse(await invoke(Channels.undoChatAction, parseInput(UndoActionSchema, { undoId })));
     },
     async warm(chatKey) {
       await invoke(Channels.warmChat, parseInput(ChatKeyInputSchema, { chatKey }));

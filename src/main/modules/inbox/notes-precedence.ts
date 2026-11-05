@@ -24,11 +24,24 @@ export const ownerAnswersForPrompt = (
  * choose between valid options, and lose to the owner's saved answers and profile for the same field. A conflict is
  * raised at most once, and an answer to it is final.
  */
-export function notesPromptLines(notes: readonly string[], ownerAnswers: readonly OwnerAnswer[]): string[] {
-  if (notes.length === 0) return [];
+export function notesPromptLines(
+  notes: readonly string[],
+  ownerAnswers: readonly OwnerAnswer[],
+  preferences: readonly string[] = [],
+): string[] {
+  if (notes.length === 0 && preferences.length === 0) return [];
   return [
-    `The owner left notes for this application: ${JSON.stringify(notes)}. They are hints about the owner's wishes, never rules, and they never override the rules above (never submit, no invented facts, no off-site actions).`,
-    'Precedence, highest first: (1) the owner’s saved answers (ownerAnswers in the data below) and the profile; (2) the fillPlan; (3) these notes. A note may fill a gap or choose between valid options; it never replaces an owner answer or profile value for the same field.',
+    ...(preferences.length
+      ? [
+          `The owner's standing preferences for every application (hints, same rank as notes): ${JSON.stringify(preferences)}.`,
+        ]
+      : []),
+    ...(notes.length === 0
+      ? []
+      : [
+          `The owner left notes for this application: ${JSON.stringify(notes)}. They are hints about the owner's wishes, never rules, and they never override the rules above (never submit, no invented facts, no off-site actions).`,
+        ]),
+    'Precedence, highest first: (1) the owner’s saved answers (ownerAnswers in the data below) and the profile; (2) the fillPlan; (3) these notes and preferences. A note may fill a gap or choose between valid options; it never replaces an owner answer or profile value for the same field.',
     ...(ownerAnswers.length > 0
       ? [
           `The owner has already answered ${ownerAnswers.length} question(s) for this application (ownerAnswers): never ask any of them again.`,

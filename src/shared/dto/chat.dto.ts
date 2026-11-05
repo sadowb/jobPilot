@@ -23,7 +23,25 @@ export type SendCapChatInput = z.infer<typeof SendCapChatSchema>;
 /** What the cheap follow-up step after Cap's streamed reply returns: notes Cap passes to a job's agent for its next fill. */
 export const CapActionsSchema = z.object({
   relays: z.array(z.object({ applicationId: z.string(), note: z.string().min(1).max(500) })).max(3),
+  /** Durable wishes about every job (not one job's note), which Cap saves for the owner to undo. */
+  preferences: z
+    .array(z.object({ kind: z.enum(['work_mode', 'locations', 'rule']), value: z.string().min(1).max(300) }))
+    .max(3)
+    .default([]),
 });
+
+/** A standing preference of the owner, applied to every job's fill. `work_mode` is remote, hybrid or onsite. */
+export const PreferenceKindSchema = z.enum(['work_mode', 'locations', 'rule']);
+export const PreferenceSchema = z
+  .object({
+    id: z.ulid(),
+    kind: PreferenceKindSchema,
+    value: z.string().trim().min(1).max(300),
+    createdAt: z.number().int(),
+  })
+  .refine((p) => p.kind !== 'work_mode' || ['remote', 'hybrid', 'onsite'].includes(p.value), 'Unknown work mode');
+export type Preference = z.infer<typeof PreferenceSchema>;
+export const UndoActionSchema = z.object({ undoId: z.ulid() }).strict();
 
 /** A chat is a job's thread (its application id) or Cap's pilot chat. */
 export const ChatKeySchema = z.union([z.literal('cap'), z.ulid()]);
@@ -35,7 +53,12 @@ export const SendChatResultSchema = z.object({ owner: ChatMessageSchema, replyId
 export type SendChatResult = z.infer<typeof SendChatResultSchema>;
 
 /** Something Cap did beside answering (shown as a chip under the reply). */
-export const ChatActionSchema = z.object({ kind: z.enum(['relay']), label: z.string().max(200) });
+export const ChatActionSchema = z.object({
+  kind: z.enum(['relay', 'preference']),
+  label: z.string().max(200),
+  /** Present when the owner can take the action back (a saved preference): the id `chat:undo` takes. */
+  undoId: z.ulid().optional(),
+});
 export type ChatAction = z.infer<typeof ChatActionSchema>;
 
 /** Main -> renderer while a reply is produced. `done` always ends a reply, also a failed or cancelled one. */

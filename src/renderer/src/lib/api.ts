@@ -129,6 +129,14 @@ export function useChatThread(applicationId: string | null) {
     },
     [live.pending, send],
   );
+  const undo = useCallback(
+    (undoId: string) =>
+      void bridge()
+        .chat.undo(undoId)
+        .then(() => dispatchLive(key, { type: 'undone', undoId }))
+        .catch(() => undefined),
+    [key],
+  );
   const cancel = useCallback(
     () =>
       void bridge()
@@ -143,7 +151,7 @@ export function useChatThread(applicationId: string | null) {
         .catch(() => undefined),
     [key],
   );
-  return { saved, live, send, retry, cancel, warm };
+  return { saved, live, send, retry, undo, cancel, warm };
 }
 
 export const useGoToTab = () => useMutation({ mutationFn: (runId: string) => bridge().runs.goToTab(runId) });

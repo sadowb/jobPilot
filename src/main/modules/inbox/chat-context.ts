@@ -94,6 +94,8 @@ export interface JobFact {
   state: JobState;
   /** Why it is waiting or failed, when the app recorded a reason. */
   reason?: string;
+  /** Where the posting conflicts with the owner's standing preferences (computed in code). */
+  conflicts?: string[];
   runId?: string;
 }
 
@@ -125,6 +127,7 @@ export function computeFacts(input: {
   runs: readonly RunSummaryDto[];
   entries: readonly InboxEntry[];
   queuePaused: boolean;
+  conflictsFor?: (application: ApplicationListItem) => string[];
 }): CapFacts {
   const runById = new Map(input.runs.map((r) => [r.id, r]));
   const entryByApplication = new Map(input.entries.map((e) => [e.applicationId, e]));
@@ -154,6 +157,8 @@ export function computeFacts(input: {
               : a.latestRunStatus;
       fact = { ...base, state, ...(state === 'failed' && latest?.error ? { reason: latest.error } : {}) };
     }
+    const conflicts = input.conflictsFor?.(a) ?? [];
+    if (conflicts.length) fact.conflicts = conflicts;
     counts[fact.state] += 1;
     return fact;
   });
@@ -183,7 +188,7 @@ export function renderFacts(facts: CapFacts, maxJobs = 30): string[] {
       .slice(0, maxJobs)
       .map(
         (j) =>
-          `${j.applicationId} | ${asData(j.company, 80)} | ${asData(j.title, 120)} | ${LABEL[j.state]}${j.reason ? ` | ${asData(j.reason, 200)}` : ''}`,
+          `${j.applicationId} | ${asData(j.company, 80)} | ${asData(j.title, 120)} | ${LABEL[j.state]}${j.reason ? ` | ${asData(j.reason, 200)}` : ''}${j.conflicts?.length ? ` | conflicts with the owner's preferences: ${asData(j.conflicts.join('; '), 200)}` : ''}`,
       ),
     ...(facts.jobs.length > maxJobs ? [`(${facts.jobs.length - maxJobs} more not listed)`] : []),
   ];

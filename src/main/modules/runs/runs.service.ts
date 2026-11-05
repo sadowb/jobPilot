@@ -25,6 +25,7 @@ import type { BrowserProvider, SubmitAuthorisation } from '../../platform/browse
 import { MEMORY_TOOLS, type MemoryProvider } from '../../platform/memory/types';
 import { emitDataChanged } from '../../platform/ipc/events';
 import { ApplyWorker } from '../../platform/queue/apply';
+import { PreferencesService } from '../cap/preferences';
 import { InboxRepository } from '../inbox/inbox.repository';
 import { notesPromptLines, ownerAnswersForPrompt } from '../inbox/notes-precedence';
 import { InboxChatService } from '../inbox/inbox.service';
@@ -798,6 +799,7 @@ export class RunsService {
       this.repository.update(runId, { tabId: tab.tabId });
       // What the owner told this application's agent in its thread (or through Cap); data, never rules.
       const ownerNotes = new InboxChatService(this.db).notes(application.id);
+      const preferences = new PreferencesService(this.db).promptLines();
       const ownerAnswers = ownerAnswersForPrompt(new InboxRepository(this.db).savedAnswers(application.id));
       const mcpServer = await this.browser.mcpServerConfig(
         runId,
@@ -827,7 +829,7 @@ export class RunsService {
             : []),
           'If login, credentials, CAPTCHA, or a different host is required, return blocked for owner intervention.',
           'Return the filled form hash for the approval gate. No submission is authorized in this run.',
-          ...notesPromptLines(ownerNotes, ownerAnswers),
+          ...notesPromptLines(ownerNotes, ownerAnswers, preferences),
           ...(cv
             ? [
                 `The owner's CV is ready as the file ${cv.fileName}: attach it with the upload_cv tool on the resume file input (usually behind an Attach button; snapshot first). Only if no file input exists, paste the CV text from the data below into the resume text box. Never say a file cannot be attached without trying upload_cv.`,
