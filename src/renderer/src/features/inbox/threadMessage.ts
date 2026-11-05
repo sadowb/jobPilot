@@ -20,6 +20,6 @@ export type ThreadMessage =
   /** The agent has received the message and has not written anything yet. */
   | { kind: 'typing' }
   /** Something the pilot did beside answering, e.g. passed a note on. */
-  | { kind: 'note'; text: string }
+  | { kind: 'note'; text: string; onUndo?: () => void }
   /** An interactive widget card owned by the page. */
   | { kind: 'widget'; node: ReactNode };

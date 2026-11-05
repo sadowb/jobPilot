@@ -153,8 +153,17 @@ function renderMessage(m: ThreadMessage, i: number): ReactNode {
       );
     case 'note':
       return (
-        <span key={i} className="self-start pl-1 text-[12.5px] text-muted">
-          ✓ {m.text}
+        <span key={i} className="flex items-center gap-2 self-start pl-1 text-[12.5px] text-muted">
+          <span>✓ {m.text}</span>
+          {m.onUndo ? (
+            <button
+              type="button"
+              className="min-h-7 rounded-full border border-line-2 bg-bg px-2.5 text-[12.5px] font-semibold text-ink"
+              onClick={m.onUndo}
+            >
+              Undo
+            </button>
+          ) : null}
         </span>
       );
     case 'widget':

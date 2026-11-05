@@ -7,6 +7,7 @@ import {
   SendCapChatSchema,
   SendChatResultSchema,
   SendJobChatSchema,
+  UndoActionSchema,
 } from '../../../shared/dto';
 import { defineHandler } from '../../platform/ipc/registry';
 import type { CapChatService } from '../cap/cap.service';
@@ -30,6 +31,7 @@ export function chatHandlers(jobs: InboxChatService, cap: CapChatService, turns:
       return SendChatResultSchema.parse({ owner, replyId });
     }),
     defineHandler(Channels.cancelChat, ChatKeyInputSchema, ({ chatKey }) => void turns.cancel(chatKey)),
+    defineHandler(Channels.undoChatAction, UndoActionSchema, ({ undoId }) => cap.undo(undoId)),
     defineHandler(Channels.warmChat, ChatKeyInputSchema, () => turns.warm()),
   ];
 }

@@ -68,6 +68,10 @@
     "schema": "SendJobChatSchema"
   },
   {
+    "channel": "chat:undo",
+    "schema": "UndoActionSchema"
+  },
+  {
     "channel": "chat:warm",
     "schema": "ChatKeyInputSchema"
   },

@@ -20,6 +20,7 @@ const viewOf = (live: LiveChat): LiveView => ({
   pending: live.pending,
   phase: live.reply === null ? 'none' : live.reply.text === '' ? 'typing' : 'streaming',
   actions: live.actions,
+  undone: live.undone,
 });
 const thread = (saved: ChatMessage[], live: LiveChat, retry = vi.fn()) => chatThread(saved, viewOf(live), retry, KEY);
 const run = (...actions: LiveAction[]): LiveChat => actions.reduce(reduceLive, EMPTY_LIVE);

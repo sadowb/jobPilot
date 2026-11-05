@@ -12,6 +12,7 @@ export function chatThread(
   live: LiveView,
   retry: (localId: string) => void,
   chatKey: string,
+  undo: (undoId: string) => void = () => undefined,
 ): ThreadMessage[] {
   return [
     ...(saved ?? []).map((m): ThreadMessage => ({ kind: 'bubble', text: m.body, mine: m.role === 'owner' })),
@@ -29,7 +30,13 @@ export function chatThread(
       : live.phase === 'typing'
         ? [{ kind: 'typing' } as const]
         : [{ kind: 'bubble', text: '', streaming: true, liveKey: chatKey } as const]),
-    ...live.actions.map((a): ThreadMessage => ({ kind: 'note', text: a.label })),
+    ...live.actions.map((a): ThreadMessage =>
+      a.undoId === undefined
+        ? { kind: 'note', text: a.label }
+        : live.undone.includes(a.undoId)
+          ? { kind: 'note', text: `Undone: ${a.label}` }
+          : { kind: 'note', text: a.label, onUndo: () => undo(a.undoId!) },
+    ),
   ];
 }
 
