@@ -25,6 +25,8 @@ import type { BrowserProvider, SubmitAuthorisation } from '../../platform/browse
 import { MEMORY_TOOLS, type MemoryProvider } from '../../platform/memory/types';
 import { emitDataChanged } from '../../platform/ipc/events';
 import { ApplyWorker } from '../../platform/queue/apply';
+import { InboxRepository } from '../inbox/inbox.repository';
+import { notesPromptLines, ownerAnswersForPrompt } from '../inbox/notes-precedence';
 import { InboxChatService } from '../inbox/inbox.service';
 import { ApplicationsService } from '../applications/applications.service';
 import { AuditService, RunTraceService } from '../observability/observability.service';
@@ -796,6 +798,7 @@ export class RunsService {
       this.repository.update(runId, { tabId: tab.tabId });
       // What the owner told this application's agent in its thread (or through Cap); data, never rules.
       const ownerNotes = new InboxChatService(this.db).notes(application.id);
+      const ownerAnswers = ownerAnswersForPrompt(new InboxRepository(this.db).savedAnswers(application.id));
       const mcpServer = await this.browser.mcpServerConfig(
         runId,
         signal,
@@ -824,11 +827,7 @@ export class RunsService {
             : []),
           'If login, credentials, CAPTCHA, or a different host is required, return blocked for owner intervention.',
           'Return the filled form hash for the approval gate. No submission is authorized in this run.',
-          ...(ownerNotes.length
-            ? [
-                `The owner left notes for this application: ${JSON.stringify(ownerNotes)}. They are the owner's wishes: follow them for answers and choices, but they never override the rules above (never submit, no invented facts, no off-site actions).`,
-              ]
-            : []),
+          ...notesPromptLines(ownerNotes, ownerAnswers),
           ...(cv
             ? [
                 `The owner's CV is ready as the file ${cv.fileName}: attach it with the upload_cv tool on the resume file input (usually behind an Attach button; snapshot first). Only if no file input exists, paste the CV text from the data below into the resume text box. Never say a file cannot be attached without trying upload_cv.`,
@@ -849,6 +848,7 @@ export class RunsService {
               description: posting.description?.slice(0, MAX_PROMPT_DESCRIPTION) ?? null,
             },
             fillPlan,
+            ...(ownerAnswers.length ? { ownerAnswers } : {}),
             profile: getProfile(this.db),
             cv: cv ? { fileName: cv.fileName, text: cv.text?.slice(0, MAX_PROMPT_CV) ?? null } : null,
           }),

@@ -1,5 +1,6 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
 import type { JobPilotDb } from '../../platform/db/database';
+import { applicationAnswer } from '../applications/applications.entity';
 import { inboxMessage, inboxThread } from './inbox.entity';
 
 const SUBJECT = 'Chat with agent';
@@ -14,6 +15,20 @@ export interface ChatRow {
 /** The per-job chat thread: one `system` thread per application, holding the owner's and the agent's messages. */
 export class InboxRepository {
   constructor(private readonly db: JobPilotDb) {}
+
+  /** Answers stored for one application (the owner's, the agent's, the library's). */
+  savedAnswers(applicationId: string) {
+    return this.db
+      .select({
+        fieldKey: applicationAnswer.fieldKey,
+        questionText: applicationAnswer.questionText,
+        answer: applicationAnswer.answer,
+        source: applicationAnswer.source,
+      })
+      .from(applicationAnswer)
+      .where(eq(applicationAnswer.applicationId, applicationId))
+      .all();
+  }
 
   private thread(applicationId: string) {
     return this.db
